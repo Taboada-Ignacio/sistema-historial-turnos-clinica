@@ -1,0 +1,32 @@
+services:
+  # --- INFRAESTRUCTURA DE USUARIOS ---
+  db-usuarios:
+    image: postgres:16-alpine
+    container_name: db-usuarios
+    environment:
+      POSTGRES_DB: db_clinica_usuarios
+      POSTGRES_USER: user_clinica
+      POSTGRES_PASSWORD: password_clinica
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./ms-usuarios/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  # --- MICROSERVICIOS ---
+  ms-usuarios:
+    build: 
+      context: ./ms-usuarios  # <-- Docker va a esta carpeta y busca el Dockerfile
+    container_name: ms-usuarios
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db-usuarios:5432/db_clinica_usuarios
+      SPRING_DATASOURCE_USERNAME: user_clinica
+      SPRING_DATASOURCE_PASSWORD: password_clinica
+    depends_on:
+      - db-usuarios
+
+  # Cuando crees el de turnos, simplemente lo agregas abajo:
+  # ms-turnos:
+  #   build: ./ms-turnos
+  #   ...

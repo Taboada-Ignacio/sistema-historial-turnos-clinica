@@ -1,0 +1,26 @@
+services:
+  db-usuarios:
+    image: postgres:16-alpine
+    container_name: db-usuarios
+    environment:
+      POSTGRES_DB: db_clinica_usuarios
+      POSTGRES_USER: user_clinica
+      POSTGRES_PASSWORD: password_clinica
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  ms-usuarios:
+    build: .
+    container_name: ms-usuarios
+    ports:
+      - "8080:8080"
+    environment:
+      # IMPORTANTE: Aquí usamos el nombre del servicio 'db-usuarios' en lugar de localhost
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db-usuarios:5432/db_clinica_usuarios
+      SPRING_DATASOURCE_USERNAME: user_clinica
+      SPRING_DATASOURCE_PASSWORD: password_clinica
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+    depends_on:
+      - db-usuarios

@@ -1,0 +1,28 @@
+server:
+  port: 8081  # Puerto específico para el microservicio de usuarios
+
+spring:
+  application:
+    name: ms-usuarios
+  
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/db_clinica_usuarios}
+    username: ${SPRING_DATASOURCE_USERNAME:user_clinica}
+    password: ${SPRING_DATASOURCE_PASSWORD:password_clinica}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update  # Crea/actualiza las tablas automáticamente al detectar cambios en las clases
+    show-sql: true      # Muestra las consultas SQL en la consola para depuración
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  # Configuración básica de Seguridad (por ahora para que no bloquee las pruebas iniciales)
+  # Más adelante configuraremos JWT a fondo
+  security:
+    user:
+      name: admin
+      password: ojedaTaboada1979
