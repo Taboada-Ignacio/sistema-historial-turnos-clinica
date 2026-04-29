@@ -9,6 +9,9 @@ import com.clinica.usuarios.model.*;
 import com.clinica.usuarios.repository.*;
 import com.clinica.usuarios.service.PacienteService;
 import lombok.RequiredArgsConstructor;
+import java.util.List;
+import java.util.stream.Collectors;
+
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -63,5 +66,30 @@ public class PacienteServiceImpl implements PacienteService {
         Paciente pacienteGuardado = pacienteRepository.save(paciente);
 
         return pacienteMapper.toResponseDTO(pacienteGuardado);
+    }
+
+    // --- NUEVOS MÉTODOS CRUD (READ) ---
+
+    @SuppressWarnings("null")
+    @Override
+    @Transactional(readOnly = true)
+    public PacienteResponseDTO obtenerPacientePorId(Long id) {
+        Paciente paciente = pacienteRepository.findById(id)
+                .orElseThrow(() -> new RecursoNoEncontradoException("No se encontró el paciente con ID: " + id));
+        
+        // Mapeamos la entidad encontrada al DTO de respuesta
+        return pacienteMapper.toResponseDTO(paciente);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PacienteResponseDTO> obtenerTodosLosPacientes() {
+        List<Paciente> pacientes = pacienteRepository.findAll();
+        
+        // Usamos la API de Streams de Java para transformar la lista de Entidades a lista de DTOs
+        return pacientes.stream()
+                .map(pacienteMapper::toResponseDTO)
+                .collect(Collectors.toList()); 
+        // Nota: Si estás usando Java 16 o superior, puedes usar .toList() en lugar de .collect(Collectors.toList())
     }
 }

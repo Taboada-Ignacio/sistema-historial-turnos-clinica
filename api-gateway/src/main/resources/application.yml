@@ -11,7 +11,7 @@ spring:
         corsConfigurations:
           '[/**]':
             allowedOrigins: 
-              - "http://localhost:5173" # Puerto por defecto de Vite
+              - "http://localhost:5173" # Puerto por defecto de Vite (React)
             allowedMethods:
               - GET
               - POST
@@ -23,8 +23,11 @@ spring:
       # Definición de las rutas hacia tus microservicios
       routes:
         - id: ms-usuarios
-          uri: http://ms-usuarios:8081 # Cambiaremos esto por el nombre del contenedor en Docker luego
+          # Si estás usando Docker, asegurate de que el nombre coincida con el service en docker-compose
+          uri: http://localhost:8081 
           predicates:
-            - Path=/api/usuarios/**
-            
-        
+            # Ahora coincide con http://localhost:8080/usuarios/...
+            - Path=/usuarios/**
+          filters:
+            # Quita "/usuarios" para que al MS le llegue solo "/api/pacientes/registro"
+            - StripPrefix=1

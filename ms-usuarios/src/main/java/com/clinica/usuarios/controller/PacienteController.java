@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/pacientes")
@@ -27,5 +28,25 @@ public class PacienteController {
         return new ResponseEntity<>(nuevoPaciente, HttpStatus.CREATED);
     }
 
-    // Aquí irán más adelante los endpoints de GET, PUT, DELETE
+    /**
+     * Endpoint para obtener un paciente específico por su ID.
+     */
+    @GetMapping("/{id}")
+    public ResponseEntity<PacienteResponseDTO> obtenerPorId(@PathVariable Long id) {
+        PacienteResponseDTO paciente = pacienteService.obtenerPacientePorId(id);
+        // Devolvemos 200 OK con el DTO del paciente
+        return ResponseEntity.ok(paciente); 
+    }
+
+    /**
+     * Endpoint para obtener el listado completo de pacientes.
+     */
+    @GetMapping
+    public ResponseEntity<List<PacienteResponseDTO>> obtenerTodos() {
+        List<PacienteResponseDTO> pacientes = pacienteService.obtenerTodosLosPacientes();
+        // Devolvemos 200 OK con la lista de DTOs
+        return ResponseEntity.ok(pacientes); 
+    }
+
+    // Aquí irán más adelante los endpoints de PUT, DELETE
 }

@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # ==========================================
   # --- INFRAESTRUCTURA DE BASES DE DATOS ---
@@ -13,39 +11,9 @@ services:
       POSTGRES_USER: user_clinica
       POSTGRES_PASSWORD: password_clinica
     ports:
-      - "5432:5432" # Puerto 5432 en tu host
+      - "5432:5432" 
     volumes:
       - ./ms-usuarios/init.sql:/docker-entrypoint-initdb.d/init.sql
-    networks:
-      - clinica-network
-
-  db-turnos:
-    image: postgres:16-alpine
-    container_name: db-turnos
-    environment:
-      POSTGRES_DB: db_clinica_turnos
-      POSTGRES_USER: user_clinica
-      POSTGRES_PASSWORD: password_clinica
-    ports:
-      - "5433:5432" # Mapeado al 5433 en tu host para evitar colisión
-    # Si tenés un init.sql para turnos, descomentá esto:
-    # volumes:
-    #   - ./ms-turnos/init.sql:/docker-entrypoint-initdb.d/init.sql
-    networks:
-      - clinica-network
-
-  db-historial:
-    image: postgres:16-alpine
-    container_name: db-historial
-    environment:
-      POSTGRES_DB: db_clinica_historial
-      POSTGRES_USER: user_clinica
-      POSTGRES_PASSWORD: password_clinica
-    ports:
-      - "5434:5432" # Mapeado al 5434 en tu host
-    # Si tenés un init.sql para el historial, descomentá esto:
-    # volumes:
-    #   - ./ms-historial-clinico/init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - clinica-network
 
@@ -68,8 +36,6 @@ services:
     networks:
       - clinica-network
 
-
-
   # ==========================================
   # --- API GATEWAY ---
   # ==========================================
@@ -79,11 +45,9 @@ services:
       context: ./api-gateway
     container_name: api-gateway
     ports:
-      - "8080:8080" # El puerto por el cual React se comunicará con todo el backend
+      - "8080:8080" 
     depends_on:
       - ms-usuarios
-      - ms-turnos
-      - ms-historial-clinico
     networks:
       - clinica-network
 
