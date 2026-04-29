@@ -1,0 +1,30 @@
+server:
+  port: 8080 # El puerto donde escuchará el API Gateway
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      # Configuración global de CORS para que React pueda comunicarse sin errores
+      globalcors:
+        corsConfigurations:
+          '[/**]':
+            allowedOrigins: 
+              - "http://localhost:5173" # Puerto por defecto de Vite
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowedHeaders: "*"
+      
+      # Definición de las rutas hacia tus microservicios
+      routes:
+        - id: ms-usuarios
+          uri: http://ms-usuarios:8081 # Cambiaremos esto por el nombre del contenedor en Docker luego
+          predicates:
+            - Path=/api/usuarios/**
+            
+        
