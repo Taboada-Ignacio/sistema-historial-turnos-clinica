@@ -1,6 +1,7 @@
 package com.clinica.usuarios.controller;
 
 import com.clinica.usuarios.dto.request.PacienteRegistroDTO;
+import com.clinica.usuarios.dto.request.PacienteUpdateDTO;
 import com.clinica.usuarios.dto.response.PacienteResponseDTO;
 import com.clinica.usuarios.service.PacienteService;
 import jakarta.validation.Valid;
@@ -48,5 +49,21 @@ public class PacienteController {
         return ResponseEntity.ok(pacientes); 
     }
 
-    // Aquí irán más adelante los endpoints de PUT, DELETE
+    /**
+     * Endpoint para actualizar todos los datos de un paciente (excepto su ID y Password).
+     * Reemplaza el recurso completo con los datos enviados en el body.
+     */
+    @PutMapping("/{id}")
+    public ResponseEntity<PacienteResponseDTO> actualizar(
+            @PathVariable Long id, 
+            @Valid @RequestBody PacienteUpdateDTO dto) {
+        
+        // Llamamos al service que hace toda la magia y construye el response con el @Builder
+        PacienteResponseDTO pacienteActualizado = pacienteService.actualizarPaciente(id, dto);
+        
+        // Devolvemos 200 OK con el paciente actualizado y sus relaciones aplanadas
+        return ResponseEntity.ok(pacienteActualizado);
+    }
+
+    // Aquí irán más adelante los endpoints de DELETE si hacen falta
 }

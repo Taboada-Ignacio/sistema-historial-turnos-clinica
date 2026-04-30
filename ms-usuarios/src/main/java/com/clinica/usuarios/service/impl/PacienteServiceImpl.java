@@ -1,6 +1,7 @@
 package com.clinica.usuarios.service.impl;
 
 import com.clinica.usuarios.dto.request.PacienteRegistroDTO;
+import com.clinica.usuarios.dto.request.PacienteUpdateDTO;
 import com.clinica.usuarios.dto.response.PacienteResponseDTO;
 import com.clinica.usuarios.exception.RecursoNoEncontradoException;
 import com.clinica.usuarios.exception.ReglaDeNegocioException;
@@ -15,6 +16,8 @@ import java.util.stream.Collectors;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+
 
 @Service
 @RequiredArgsConstructor
@@ -89,5 +92,57 @@ public class PacienteServiceImpl implements PacienteService {
                 .map(pacienteMapper::toResponseDTO)
                 .collect(Collectors.toList()); 
         // Nota: Si estás usando Java 16 o superior, puedes usar .toList() en lugar de .collect(Collectors.toList())
+    }
+
+    @Override
+    @Transactional
+    public PacienteResponseDTO actualizarPaciente(Long id, PacienteUpdateDTO dto) {
+        
+        // 1. Buscamos el paciente existente
+        Paciente paciente = pacienteRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Paciente no encontrado con ID: " + id));
+
+        // 2. Actualizamos TODOS los datos básicos (heredados de Usuario)
+        paciente.setNombre(dto.getNombre());
+        paciente.setApellido(dto.getApellido());
+        paciente.setDni(dto.getDni());
+        paciente.setEmail(dto.getEmail());
+        paciente.setTelefono(dto.getTelefono());
+        paciente.setFechaNacimiento(dto.getFechaNacimiento());
+        paciente.setEstado(dto.getEstado());
+
+        // 3. Actualizamos los datos propios de Paciente
+        paciente.setNumeroAfiliado(dto.getNumeroAfiliado());
+
+        // 4. Actualizamos las relaciones (Localidad y Obra Social)
+        // Usamos findById porque necesitamos extraer sus nombres más abajo para el DTO
+        Localidad localidad = localidadRepository.findById(dto.getIdLocalidad())
+                .orElseThrow(() -> new RuntimeException("Localidad no encontrada con ID: " + dto.getIdLocalidad()));
+        paciente.setLocalidad(localidad);
+
+        ObraSocial obraSocial = obraSocialRepository.findById(dto.getIdObraSocial())
+                .orElseThrow(() -> new RuntimeException("Obra Social no encontrada con ID: " + dto.getIdObraSocial()));
+        paciente.setObraSocial(obraSocial);
+
+        // 5. Guardamos los cambios
+        // (JPA actualiza la tabla pacientes y usuarios automáticamente)
+        paciente = pacienteRepository.save(paciente);
+
+        // 6. Construimos el DTO aplanado usando el patrón Builder
+        return PacienteResponseDTO.builder()
+                .idUsuario(paciente.getIdUsuario()) // O paciente.getId(), según cómo lo hayas nombrado
+                .nombre(paciente.getNombre())
+                .apellido(paciente.getApellido())
+                .dni(paciente.getDni())
+                .email(paciente.getEmail())
+                .telefono(paciente.getTelefono())
+                .fechaNacimiento(paciente.getFechaNacimiento())
+                .estado(paciente.getEstado())
+                .numeroAfiliado(paciente.getNumeroAfiliado())
+                // Extraemos los strings para aplanar las relaciones:
+                .nombreObraSocial(paciente.getObraSocial().getDescripcion()) // Asegurate de que el atributo se llame nombre en ObraSocial
+                .nombreLocalidad(paciente.getLocalidad().getNombre())   // Lo mismo para Localidad
+                .nombreProvincia(paciente.getLocalidad().getProvincia().getNombre()) // Y para Provincia
+                .build();
     }
 }

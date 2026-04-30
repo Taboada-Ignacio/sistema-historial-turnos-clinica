@@ -1,26 +1,47 @@
 package com.clinica.usuarios.dto.request;
 
 import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Size;
-import lombok.Data;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import lombok.Getter;
+import lombok.Setter;
 
-@Data
+import java.time.LocalDate;
+
+@Getter
+@Setter
 public class PacienteUpdateDTO {
 
-    // En las actualizaciones, a veces los campos pueden venir nulos si el usuario no los quiso cambiar.
-    // Usamos validaciones que aplican SOLO si el campo tiene contenido.
+    @NotBlank(message = "El nombre es obligatorio")
+    private String nombre;
 
-    @Email(message = "El formato del email no es válido")
+    @NotBlank(message = "El apellido es obligatorio")
+    private String apellido;
+
+    @NotNull(message = "El DNI es obligatorio")
+    private Integer dni;
+
+    @NotBlank(message = "El email es obligatorio")
+    @Email(message = "El formato del email debe ser válido")
     private String email;
 
-    @Size(min = 8, message = "La contraseña debe tener al menos 8 caracteres")
-    @Pattern(regexp = "^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%^&+=!]).{8,}$", 
-             message = "La contraseña debe contener al menos un dígito, una minúscula, una mayúscula y un carácter especial")
-    private String password;
+    
 
-    @Pattern(regexp = "^\\+?[0-9]{10,15}$", message = "El formato del teléfono no es válido")
+    @NotBlank(message = "El teléfono es obligatorio")
     private String telefono;
 
+    @NotNull(message = "La fecha de nacimiento es obligatoria")
+    private LocalDate fechaNacimiento;
+
+    @NotNull(message = "El estado (activo/inactivo) es obligatorio")
     private Boolean estado;
+
+    @NotNull(message = "El ID de la localidad es obligatorio")
+    private Long idLocalidad;
+
+    @NotNull(message = "El ID de la obra social es obligatorio")
+    private Long idObraSocial;
+
+    @NotBlank(message = "El número de afiliado es obligatorio")
+    private String numeroAfiliado;
 }
