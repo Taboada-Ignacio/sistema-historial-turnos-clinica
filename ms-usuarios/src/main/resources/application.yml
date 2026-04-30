@@ -6,7 +6,8 @@ spring:
     name: ms-usuarios
   
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/db_clinica_usuarios}
+    # Cambia localhost por el nombre del servicio en Docker
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://db-usuarios:5432/db_clinica_usuarios}
     username: ${SPRING_DATASOURCE_USERNAME:user_clinica}
     password: ${SPRING_DATASOURCE_PASSWORD:password_clinica}
     driver-class-name: org.postgresql.Driver

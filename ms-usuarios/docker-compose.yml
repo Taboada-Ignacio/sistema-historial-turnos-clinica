@@ -15,12 +15,15 @@ services:
     build: .
     container_name: ms-usuarios
     ports:
-      - "8080:8080"
+      # ERROR CORREGIDO: El MS debe exponer el 8081 para no chocar con el Gateway
+      - "8081:8081" 
     environment:
-      # IMPORTANTE: Aquí usamos el nombre del servicio 'db-usuarios' en lugar de localhost
+      # Mantenemos el nombre del servicio para la red interna de Docker
       SPRING_DATASOURCE_URL: jdbc:postgresql://db-usuarios:5432/db_clinica_usuarios
       SPRING_DATASOURCE_USERNAME: user_clinica
       SPRING_DATASOURCE_PASSWORD: password_clinica
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      # Agregamos esta propiedad para asegurar que el puerto interno sea 8081
+      SERVER_PORT: 8081
     depends_on:
       - db-usuarios

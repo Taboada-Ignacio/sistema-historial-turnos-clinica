@@ -28,7 +28,6 @@ public class PacienteServiceImpl implements PacienteService {
     private final PacienteMapper pacienteMapper;
     private final PasswordEncoder passwordEncoder;
 
-    @SuppressWarnings("null") // <--- ESTO ELIMINA LAS ADVERTENCIAS AMARILLAS
     @Override
     @Transactional
     public PacienteResponseDTO registrarPaciente(PacienteRegistroDTO dto) {
@@ -70,7 +69,6 @@ public class PacienteServiceImpl implements PacienteService {
 
     // --- NUEVOS MÉTODOS CRUD (READ) ---
 
-    @SuppressWarnings("null")
     @Override
     @Transactional(readOnly = true)
     public PacienteResponseDTO obtenerPacientePorId(Long id) {

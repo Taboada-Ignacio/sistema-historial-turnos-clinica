@@ -1,17 +1,17 @@
 server:
-  port: 8080 # El puerto donde escuchará el API Gateway
+  port: 8080 # Puerto de entrada principal para React y Postman
 
 spring:
   application:
     name: api-gateway
   cloud:
     gateway:
-      # Configuración global de CORS para que React pueda comunicarse sin errores
+      # Configuración global de CORS para que Vite (React) pueda comunicarse sin bloqueos
       globalcors:
         corsConfigurations:
           '[/**]':
             allowedOrigins: 
-              - "http://localhost:5173" # Puerto por defecto de Vite (React)
+              - "http://localhost:5173" # Puerto por defecto de Vite
             allowedMethods:
               - GET
               - POST
@@ -23,11 +23,12 @@ spring:
       # Definición de las rutas hacia tus microservicios
       routes:
         - id: ms-usuarios
-          # Si estás usando Docker, asegurate de que el nombre coincida con el service en docker-compose
-          uri: http://localhost:8081 
+          # Usamos el nombre exacto del contenedor en la red de Docker Compose
+          uri: http://ms-usuarios:8081
           predicates:
-            # Ahora coincide con http://localhost:8080/usuarios/...
+            # Captura todas las peticiones que empiecen con /usuarios
             - Path=/usuarios/**
           filters:
-            # Quita "/usuarios" para que al MS le llegue solo "/api/pacientes/registro"
+            # Elimina la primera parte del path ("/usuarios") antes de enviar al microservicio
+            # Ejemplo: /usuarios/api/pacientes/registro -> /api/pacientes/registro
             - StripPrefix=1
