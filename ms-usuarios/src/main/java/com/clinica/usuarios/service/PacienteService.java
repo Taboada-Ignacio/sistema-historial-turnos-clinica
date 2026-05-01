@@ -14,4 +14,6 @@ public interface PacienteService {
     List<PacienteResponseDTO> obtenerTodosLosPacientes();
 
     PacienteResponseDTO actualizarPaciente(Long id, PacienteUpdateDTO dto);
+
+    void eliminarSoloPaciente(Long id);
 }

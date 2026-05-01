@@ -65,5 +65,10 @@ public class PacienteController {
         return ResponseEntity.ok(pacienteActualizado);
     }
 
-    // Aquí irán más adelante los endpoints de DELETE si hacen falta
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteSoloPaciente(@PathVariable Long id) {
+        // CORREGIDO: El nombre correcto de la variable es pacienteService
+        pacienteService.eliminarSoloPaciente(id); 
+        return ResponseEntity.noContent().build(); 
+    }
 }

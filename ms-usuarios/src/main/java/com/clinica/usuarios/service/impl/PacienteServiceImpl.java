@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -144,5 +145,26 @@ public class PacienteServiceImpl implements PacienteService {
                 .nombreLocalidad(paciente.getLocalidad().getNombre())   // Lo mismo para Localidad
                 .nombreProvincia(paciente.getLocalidad().getProvincia().getNombre()) // Y para Provincia
                 .build();
+    }
+
+    @Override
+    @Transactional // CORREGIDO: Agregamos la anotación de transacción
+    public void eliminarSoloPaciente(Long id) {
+        // 1. Validamos con tu excepción de recurso no encontrado
+        if (!pacienteRepository.existsById(id)) {
+            throw new RecursoNoEncontradoException("El paciente con ID " + id + " no fue encontrado.");
+        }
+
+        try {
+            // 2. Intentamos el borrado físico
+            pacienteRepository.deleteById(id);
+            
+        } catch (DataIntegrityViolationException e) {
+            // 3. Si PostgreSQL frena el borrado por claves foráneas, lanzamos tu regla de negocio
+            throw new ReglaDeNegocioException(
+                "No se puede eliminar el paciente con ID " + id + 
+                " porque tiene turnos o historial clínico asociado."
+            );
+        }
     }
 }
