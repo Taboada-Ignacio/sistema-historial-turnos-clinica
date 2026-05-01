@@ -19,7 +19,7 @@ import lombok.experimental.SuperBuilder;
 public class Profesional extends Usuario {
 
     @Column(name = "nro_matricula", nullable = false, unique = true)
-    private Integer nroMatricula;
+    private String matricula;
 
     // Relación: Muchos profesionales pueden tener la misma especialidad
     @ManyToOne(fetch = FetchType.EAGER)

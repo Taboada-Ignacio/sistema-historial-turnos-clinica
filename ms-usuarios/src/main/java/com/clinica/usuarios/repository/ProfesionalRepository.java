@@ -10,5 +10,5 @@ import java.util.Optional;
 public interface ProfesionalRepository extends JpaRepository<Profesional, Long> {
     
     // Buscar un profesional por su matrícula
-    Optional<Profesional> findByNroMatricula(Integer nroMatricula);
+    Optional<Profesional> findByMatricula(String matricula);
 }

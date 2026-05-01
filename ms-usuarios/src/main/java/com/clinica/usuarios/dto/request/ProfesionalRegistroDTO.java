@@ -33,7 +33,7 @@ public class ProfesionalRegistroDTO {
     private LocalDate fechaNacimiento;
 
     @NotNull(message = "La matrícula es obligatoria")
-    private Integer nroMatricula;
+    private String matricula;
 
     @NotNull(message = "La localidad es obligatoria")
     private Long idLocalidad;

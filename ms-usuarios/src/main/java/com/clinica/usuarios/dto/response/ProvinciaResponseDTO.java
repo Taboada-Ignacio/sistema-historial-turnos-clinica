@@ -7,8 +7,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @Builder
-public class LocalidadResponseDTO {
-    private Long idLocalidad;
+public class ProvinciaResponseDTO {
+    private Long idProvincia;
     private String nombre;
-    private String nombreProvincia; // Nombre de la provincia aplanado para el frontend
 }
