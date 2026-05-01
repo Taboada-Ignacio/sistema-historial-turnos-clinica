@@ -2,16 +2,17 @@ package com.clinica.usuarios.dto.request;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import lombok.Getter;
-import lombok.Setter;
-import java.util.Set;
 import jakarta.validation.constraints.NotEmpty;
-import java.time.LocalDate;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
+import lombok.Data;
 
-@Getter
-@Setter
-public class PacienteUpdateDTO {
+import java.time.LocalDate;
+import java.util.Set;
+
+@Data
+public class AdministradorRegistroDTO {
 
     @NotBlank(message = "El nombre es obligatorio")
     private String nombre;
@@ -23,10 +24,14 @@ public class PacienteUpdateDTO {
     private Integer dni;
 
     @NotBlank(message = "El email es obligatorio")
-    @Email(message = "El formato del email debe ser válido")
+    @Email(message = "El formato del email no es válido")
     private String email;
 
-    
+    @NotBlank(message = "La contraseña es obligatoria")
+    @Size(min = 8, message = "Mínimo 8 caracteres")
+    @Pattern(regexp = "^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%^&+=!]).{8,}$", 
+             message = "La contraseña debe ser fuerte (Mayúscula, minúscula, número y símbolo)")
+    private String password;
 
     @NotBlank(message = "El teléfono es obligatorio")
     private String telefono;
@@ -34,18 +39,10 @@ public class PacienteUpdateDTO {
     @NotNull(message = "La fecha de nacimiento es obligatoria")
     private LocalDate fechaNacimiento;
 
-    @NotNull(message = "El estado (activo/inactivo) es obligatorio")
-    private Boolean estado;
-
-    @NotNull(message = "El ID de la localidad es obligatorio")
+    // ¡Acá está el campo que faltaba!
+    @NotNull(message = "La localidad es obligatoria")
     private Long idLocalidad;
 
-    @NotNull(message = "El ID de la obra social es obligatorio")
-    private Long idObraSocial;
-
-    @NotBlank(message = "El número de afiliado es obligatorio")
-    private String numeroAfiliado;
-
-    @NotEmpty(message = "El paciente debe tener al menos un rol asignado")
+    @NotEmpty(message = "Debe tener al menos un rol asignado (Admin)")
     private Set<Long> rolesIds;
 }

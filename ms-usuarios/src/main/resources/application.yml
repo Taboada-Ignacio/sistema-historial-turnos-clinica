@@ -21,9 +21,16 @@ spring:
         format_sql: true
         dialect: org.hibernate.dialect.PostgreSQLDialect
 
-  # Configuración básica de Seguridad (por ahora para que no bloquee las pruebas iniciales)
-  # Más adelante configuraremos JWT a fondo
+  # Configuración de usuario por defecto de Spring Security
   security:
     user:
-      name: admin
-      password: ojedaTaboada1979
+      name: ${SPRING_SECURITY_USER_NAME:admin_generico}
+      password: ${SPRING_SECURITY_USER_PASSWORD:password_generico}
+
+# Configuración de Seguridad JWT
+jwt:
+  # Clave secreta (mínimo 256 bits / 32 caracteres en Base64). 
+  # En producción, inyectar mediante la variable de entorno JWT_SECRET.
+  secret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+  # Expiración del token en milisegundos (Ejemplo: 86400000 = 1 día)
+  expiration: ${JWT_EXPIRATION:86400000}

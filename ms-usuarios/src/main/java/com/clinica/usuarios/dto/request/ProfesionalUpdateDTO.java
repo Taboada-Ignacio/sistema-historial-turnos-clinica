@@ -6,7 +6,7 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
 import java.util.Set;
-
+import jakarta.validation.constraints.NotEmpty;
 import java.time.LocalDate;
 
 @Getter
@@ -46,5 +46,6 @@ public class ProfesionalUpdateDTO {
     @NotBlank(message = "La matrícula es obligatoria")
     private String matricula;
 
+    @NotEmpty(message = "El profesional debe tener al menos un rol asignado")
     private Set<Long> rolesIds;
 }

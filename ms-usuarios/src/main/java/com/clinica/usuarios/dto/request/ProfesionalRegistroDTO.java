@@ -42,5 +42,6 @@ public class ProfesionalRegistroDTO {
     @NotNull(message = "La especialidad es obligatoria")
     private Long idEspecialidad;
 
+    @NotEmpty(message = "El profesional debe tener al menos un rol asignado")
     private Set<Long> rolesIds;
 }

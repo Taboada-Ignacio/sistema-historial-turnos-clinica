@@ -31,8 +31,11 @@ CREATE TABLE IF NOT EXISTS localidades (
 -- 2. Carga de datos con validación de existencia (ON CONFLICT)
 -- Usamos 'descripcion' o 'nombre' como llave para saber si ya están
 
--- Roles
-INSERT INTO roles (descripcion) VALUES ('PROFESIONAL'), ('PACIENTE'), ('ADMINISTRADOR')
+-- Roles adaptados al estándar de Spring Security
+INSERT INTO roles (descripcion) VALUES 
+    ('ROLE_PROFESIONAL'), 
+    ('ROLE_PACIENTE'), 
+    ('ROLE_ADMINISTRADOR')
 ON CONFLICT (descripcion) DO NOTHING;
 
 -- Especialidades

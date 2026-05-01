@@ -4,6 +4,7 @@ import jakarta.validation.constraints.*;
 import lombok.Data;
 import java.time.LocalDate;
 import java.util.Set;
+import jakarta.validation.constraints.NotEmpty;
 
 @Data
 public class PacienteRegistroDTO {
@@ -46,5 +47,6 @@ public class PacienteRegistroDTO {
     // Al no poner @NotBlank ni @NotNull, Spring Validation permite que llegue vacío o nulo
     private String numeroAfiliado;
 
+    @NotEmpty(message = "El paciente debe tener al menos un rol asignado")
     private Set<Long> rolesIds;
 }
