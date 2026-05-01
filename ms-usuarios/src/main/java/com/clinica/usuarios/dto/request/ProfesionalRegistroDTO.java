@@ -3,6 +3,7 @@ package com.clinica.usuarios.dto.request;
 import jakarta.validation.constraints.*;
 import lombok.Data;
 import java.time.LocalDate;
+import java.util.Set;
 
 @Data
 public class ProfesionalRegistroDTO {
@@ -40,4 +41,6 @@ public class ProfesionalRegistroDTO {
 
     @NotNull(message = "La especialidad es obligatoria")
     private Long idEspecialidad;
+
+    private Set<Long> rolesIds;
 }

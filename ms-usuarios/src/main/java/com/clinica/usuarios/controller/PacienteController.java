@@ -58,7 +58,7 @@ public class PacienteController {
             @PathVariable Long id, 
             @Valid @RequestBody PacienteUpdateDTO dto) {
         
-        // Llamamos al service que hace toda la magia y construye el response con el @Builder
+        // Llamamos al service que hace la actualización y usa el Mapper para retornar el response
         PacienteResponseDTO pacienteActualizado = pacienteService.actualizarPaciente(id, dto);
         
         // Devolvemos 200 OK con el paciente actualizado y sus relaciones aplanadas
@@ -67,7 +67,6 @@ public class PacienteController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteSoloPaciente(@PathVariable Long id) {
-        // CORREGIDO: El nombre correcto de la variable es pacienteService
         pacienteService.eliminarSoloPaciente(id); 
         return ResponseEntity.noContent().build(); 
     }

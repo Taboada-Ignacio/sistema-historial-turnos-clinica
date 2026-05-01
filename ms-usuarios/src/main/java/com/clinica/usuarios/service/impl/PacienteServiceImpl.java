@@ -11,14 +11,13 @@ import com.clinica.usuarios.repository.*;
 import com.clinica.usuarios.service.PacienteService;
 import lombok.RequiredArgsConstructor;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-
 
 @Service
 @RequiredArgsConstructor
@@ -45,11 +44,12 @@ public class PacienteServiceImpl implements PacienteService {
             throw new ReglaDeNegocioException("El DNI " + dto.getDni() + " ya está registrado en el sistema.");
         }
 
-        // 2. Obtención de dependencias
-        Rol rolPaciente = rolRepository.findByDescripcion("PACIENTE")  
-                .orElseThrow(() -> new RecursoNoEncontradoException("Error interno: El rol 'PACIENTE' no existe."));
+        // 2. Obtención de dependencias (¡NUEVA LÓGICA DE ROLES!)
+        Set<Rol> rolesAsignados = dto.getRolesIds().stream()
+                .map(rolId -> rolRepository.findById(rolId)
+                        .orElseThrow(() -> new RecursoNoEncontradoException("No se encontró el rol con ID: " + rolId)))
+                .collect(Collectors.toSet());
 
-        // Aquí es donde saltaba el aviso porque findById espera un @NonNull
         Localidad localidad = localidadRepository.findById(dto.getIdLocalidad())
                 .orElseThrow(() -> new RecursoNoEncontradoException("No se encontró la localidad con ID: " + dto.getIdLocalidad()));
 
@@ -60,7 +60,7 @@ public class PacienteServiceImpl implements PacienteService {
         Paciente paciente = pacienteMapper.toEntity(dto);
 
         // 4. Configuración extra
-        paciente.setRol(rolPaciente);
+        paciente.setRoles(rolesAsignados); // Usamos setRoles en plural
         paciente.setLocalidad(localidad);
         paciente.setObraSocial(obraSocial);
         paciente.setPassword(passwordEncoder.encode(dto.getPassword()));
@@ -71,7 +71,7 @@ public class PacienteServiceImpl implements PacienteService {
         return pacienteMapper.toResponseDTO(pacienteGuardado);
     }
 
-    // --- NUEVOS MÉTODOS CRUD (READ) ---
+    // --- MÉTODOS CRUD (READ) ---
 
     @Override
     @Transactional(readOnly = true)
@@ -79,7 +79,6 @@ public class PacienteServiceImpl implements PacienteService {
         Paciente paciente = pacienteRepository.findById(id)
                 .orElseThrow(() -> new RecursoNoEncontradoException("No se encontró el paciente con ID: " + id));
         
-        // Mapeamos la entidad encontrada al DTO de respuesta
         return pacienteMapper.toResponseDTO(paciente);
     }
 
@@ -88,11 +87,9 @@ public class PacienteServiceImpl implements PacienteService {
     public List<PacienteResponseDTO> obtenerTodosLosPacientes() {
         List<Paciente> pacientes = pacienteRepository.findAll();
         
-        // Usamos la API de Streams de Java para transformar la lista de Entidades a lista de DTOs
         return pacientes.stream()
                 .map(pacienteMapper::toResponseDTO)
                 .collect(Collectors.toList()); 
-        // Nota: Si estás usando Java 16 o superior, puedes usar .toList() en lugar de .collect(Collectors.toList())
     }
 
     @Override
@@ -101,7 +98,7 @@ public class PacienteServiceImpl implements PacienteService {
         
         // 1. Buscamos el paciente existente
         Paciente paciente = pacienteRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Paciente no encontrado con ID: " + id));
+                .orElseThrow(() -> new RecursoNoEncontradoException("Paciente no encontrado con ID: " + id));
 
         // 2. Actualizamos TODOS los datos básicos (heredados de Usuario)
         paciente.setNombre(dto.getNombre());
@@ -115,52 +112,44 @@ public class PacienteServiceImpl implements PacienteService {
         // 3. Actualizamos los datos propios de Paciente
         paciente.setNumeroAfiliado(dto.getNumeroAfiliado());
 
-        // 4. Actualizamos las relaciones (Localidad y Obra Social)
-        // Usamos findById porque necesitamos extraer sus nombres más abajo para el DTO
+        // 4. Actualizamos las relaciones (Roles, Localidad y Obra Social)
+        
+        // --- Actualizamos Roles ---
+        if (dto.getRolesIds() != null && !dto.getRolesIds().isEmpty()) {
+            Set<Rol> rolesActualizados = dto.getRolesIds().stream()
+                    .map(rolId -> rolRepository.findById(rolId)
+                            .orElseThrow(() -> new RecursoNoEncontradoException("No se encontró el rol con ID: " + rolId)))
+                    .collect(Collectors.toSet());
+            paciente.setRoles(rolesActualizados);
+        }
+
+        // --- Actualizamos Localidad ---
         Localidad localidad = localidadRepository.findById(dto.getIdLocalidad())
-                .orElseThrow(() -> new RuntimeException("Localidad no encontrada con ID: " + dto.getIdLocalidad()));
+                .orElseThrow(() -> new RecursoNoEncontradoException("Localidad no encontrada con ID: " + dto.getIdLocalidad()));
         paciente.setLocalidad(localidad);
 
+        // --- Actualizamos Obra Social ---
         ObraSocial obraSocial = obraSocialRepository.findById(dto.getIdObraSocial())
-                .orElseThrow(() -> new RuntimeException("Obra Social no encontrada con ID: " + dto.getIdObraSocial()));
+                .orElseThrow(() -> new RecursoNoEncontradoException("Obra Social no encontrada con ID: " + dto.getIdObraSocial()));
         paciente.setObraSocial(obraSocial);
 
         // 5. Guardamos los cambios
-        // (JPA actualiza la tabla pacientes y usuarios automáticamente)
         paciente = pacienteRepository.save(paciente);
 
-        // 6. Construimos el DTO aplanado usando el patrón Builder
-        return PacienteResponseDTO.builder()
-                .idUsuario(paciente.getIdUsuario()) // O paciente.getId(), según cómo lo hayas nombrado
-                .nombre(paciente.getNombre())
-                .apellido(paciente.getApellido())
-                .dni(paciente.getDni())
-                .email(paciente.getEmail())
-                .telefono(paciente.getTelefono())
-                .fechaNacimiento(paciente.getFechaNacimiento())
-                .estado(paciente.getEstado())
-                .numeroAfiliado(paciente.getNumeroAfiliado())
-                // Extraemos los strings para aplanar las relaciones:
-                .nombreObraSocial(paciente.getObraSocial().getDescripcion()) // Asegurate de que el atributo se llame nombre en ObraSocial
-                .nombreLocalidad(paciente.getLocalidad().getNombre())   // Lo mismo para Localidad
-                .nombreProvincia(paciente.getLocalidad().getProvincia().getNombre()) // Y para Provincia
-                .build();
+        // 6. Retornamos usando el Mapper (¡mucho más limpio y a prueba de errores!)
+        return pacienteMapper.toResponseDTO(paciente);
     }
 
     @Override
-    @Transactional // CORREGIDO: Agregamos la anotación de transacción
+    @Transactional 
     public void eliminarSoloPaciente(Long id) {
-        // 1. Validamos con tu excepción de recurso no encontrado
         if (!pacienteRepository.existsById(id)) {
             throw new RecursoNoEncontradoException("El paciente con ID " + id + " no fue encontrado.");
         }
 
         try {
-            // 2. Intentamos el borrado físico
             pacienteRepository.deleteById(id);
-            
         } catch (DataIntegrityViolationException e) {
-            // 3. Si PostgreSQL frena el borrado por claves foráneas, lanzamos tu regla de negocio
             throw new ReglaDeNegocioException(
                 "No se puede eliminar el paciente con ID " + id + 
                 " porque tiene turnos o historial clínico asociado."

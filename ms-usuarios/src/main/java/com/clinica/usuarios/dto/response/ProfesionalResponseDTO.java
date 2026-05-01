@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.time.LocalDate;
+import java.util.Set;
 
 @Data
 @Builder
@@ -23,4 +24,5 @@ public class ProfesionalResponseDTO {
     private String nombreLocalidad;
     private String nombreProvincia;
     private Boolean estado;
+    private Set<String> roles;
 }

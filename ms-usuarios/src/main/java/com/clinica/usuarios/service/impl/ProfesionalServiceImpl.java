@@ -11,6 +11,7 @@ import com.clinica.usuarios.repository.*;
 import com.clinica.usuarios.service.ProfesionalService;
 import lombok.RequiredArgsConstructor;
 import java.util.List;
+import java.util.Set; // Importante para manejar Set<Rol>
 import java.util.stream.Collectors;
 
 import org.springframework.dao.DataIntegrityViolationException;
@@ -43,9 +44,12 @@ public class ProfesionalServiceImpl implements ProfesionalService {
             throw new ReglaDeNegocioException("El DNI " + dto.getDni() + " ya está registrado en el sistema.");
         }
 
-        // 2. Obtención de dependencias
-        Rol rolProfesional = rolRepository.findByDescripcion("PROFESIONAL")  
-                .orElseThrow(() -> new RecursoNoEncontradoException("Error interno: El rol 'PROFESIONAL' no existe."));
+        // 2. Obtención de dependencias (¡NUEVA LÓGICA DE ROLES!)
+        // Ahora iteramos sobre los IDs recibidos, pudiendo asignar Profesional, Paciente, o ambos.
+        Set<Rol> rolesAsignados = dto.getRolesIds().stream()
+                .map(rolId -> rolRepository.findById(rolId)
+                        .orElseThrow(() -> new RecursoNoEncontradoException("No se encontró el rol con ID: " + rolId)))
+                .collect(Collectors.toSet());
 
         Localidad localidad = localidadRepository.findById(dto.getIdLocalidad())
                 .orElseThrow(() -> new RecursoNoEncontradoException("No se encontró la localidad con ID: " + dto.getIdLocalidad()));
@@ -53,11 +57,11 @@ public class ProfesionalServiceImpl implements ProfesionalService {
         Especialidad especialidad = especialidadRepository.findById(dto.getIdEspecialidad())
                 .orElseThrow(() -> new RecursoNoEncontradoException("No se encontró la Especialidad con ID: " + dto.getIdEspecialidad()));
 
-        // 3. Mapeo (ignora relaciones complejas según tu configuración en el mapper)
+        // 3. Mapeo
         Profesional profesional = profesionalMapper.toEntity(dto);
 
         // 4. Configuración extra
-        profesional.setRol(rolProfesional);
+        profesional.setRoles(rolesAsignados); // CAMBIO: Usamos setRoles en plural
         profesional.setLocalidad(localidad);
         profesional.setEspecialidad(especialidad);
         profesional.setPassword(passwordEncoder.encode(dto.getPassword()));
@@ -109,10 +113,22 @@ public class ProfesionalServiceImpl implements ProfesionalService {
         profesional.setMatricula(dto.getMatricula());
 
         // 4. Actualizamos las relaciones
+        
+        // --- Actualizamos Roles ---
+        if (dto.getRolesIds() != null && !dto.getRolesIds().isEmpty()) {
+            Set<Rol> rolesActualizados = dto.getRolesIds().stream()
+                    .map(rolId -> rolRepository.findById(rolId)
+                            .orElseThrow(() -> new RecursoNoEncontradoException("No se encontró el rol con ID: " + rolId)))
+                    .collect(Collectors.toSet());
+            profesional.setRoles(rolesActualizados);
+        }
+
+        // --- Actualizamos Localidad ---
         Localidad localidad = localidadRepository.findById(dto.getIdLocalidad())
                 .orElseThrow(() -> new RecursoNoEncontradoException("Localidad no encontrada con ID: " + dto.getIdLocalidad()));
         profesional.setLocalidad(localidad);
 
+        // --- Actualizamos Especialidad ---
         Especialidad especialidad = especialidadRepository.findById(dto.getIdEspecialidad())
                 .orElseThrow(() -> new RecursoNoEncontradoException("Especialidad no encontrada con ID: " + dto.getIdEspecialidad()));
         profesional.setEspecialidad(especialidad);

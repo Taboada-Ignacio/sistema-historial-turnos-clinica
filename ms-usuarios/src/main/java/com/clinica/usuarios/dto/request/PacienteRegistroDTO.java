@@ -3,6 +3,7 @@ package com.clinica.usuarios.dto.request;
 import jakarta.validation.constraints.*;
 import lombok.Data;
 import java.time.LocalDate;
+import java.util.Set;
 
 @Data
 public class PacienteRegistroDTO {
@@ -43,5 +44,7 @@ public class PacienteRegistroDTO {
     private Long idObraSocial;
 
     // Al no poner @NotBlank ni @NotNull, Spring Validation permite que llegue vacío o nulo
-    private String numeroAfiliado; 
+    private String numeroAfiliado;
+
+    private Set<Long> rolesIds;
 }

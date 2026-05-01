@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
+import java.util.Set;
 
 import java.time.LocalDate;
 
@@ -44,4 +45,6 @@ public class PacienteUpdateDTO {
 
     @NotBlank(message = "El número de afiliado es obligatorio")
     private String numeroAfiliado;
+    
+    private Set<Long> rolesIds;
 }

@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 import java.time.LocalDate;
+import java.util.Set; // Asegúrate de importar Set
 
 @Entity
 @Table(name = "usuarios")
@@ -46,10 +47,14 @@ public class Usuario {
     @Column(nullable = false)
     private Boolean estado;
 
-    // Relación con Rol: Muchos usuarios tienen un rol
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "id_rol", nullable = false)
-    private Rol rol;
+    // Relación con Rol: Un usuario puede tener uno o muchos roles
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(
+        name = "usuario_roles", // Nombre de la tabla intermedia en la base de datos
+        joinColumns = @JoinColumn(name = "id_usuario"), // Clave foránea hacia la tabla 'usuarios'
+        inverseJoinColumns = @JoinColumn(name = "id_rol") // Clave foránea hacia la tabla 'roles'
+    )
+    private Set<Rol> roles; // Cambiado de 'Rol' a 'Set<Rol>' y renombrado a plural
 
     // Relación con Localidad: Muchos usuarios viven en una localidad
     @ManyToOne(fetch = FetchType.LAZY)

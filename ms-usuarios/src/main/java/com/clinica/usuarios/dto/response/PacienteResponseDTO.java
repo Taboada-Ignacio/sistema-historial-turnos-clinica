@@ -3,6 +3,7 @@ package com.clinica.usuarios.dto.response;
 import lombok.Builder;
 import lombok.Data;
 import java.time.LocalDate;
+import java.util.Set;
 
 @Data
 @Builder // Muy útil para construir la respuesta en el Service
@@ -21,4 +22,6 @@ public class PacienteResponseDTO {
     private String numeroAfiliado;
     private String nombreLocalidad;
     private String nombreProvincia;
+
+    private Set<String> roles;
 }
