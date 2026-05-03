@@ -20,6 +20,19 @@ spring:
         format_sql: true
         dialect: org.hibernate.dialect.PostgreSQLDialect
 
+  # --- CONFIGURACIÓN DE CORREO (NUEVA) ---
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${MAIL_USERNAME:tu-correo@gmail.com}
+    password: ${MAIL_PASSWORD:tu-clave-de-aplicacion}
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+      mail.smtp.timeout: 5000
+      mail.smtp.connectiontimeout: 5000
+      mail.smtp.writetimeout: 5000
+
   security:
     user:
       name: ${SPRING_SECURITY_USER_NAME:admin_generico}
@@ -30,8 +43,12 @@ jwt:
   secret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
   expiration: ${JWT_EXPIRATION:86400000}
 
-# --- NUEVA CONFIGURACIÓN ---
+# --- CONFIGURACIÓN DE SISTEMA ---
 system:
   registration:
-    # Esta es la clave que deberás enviar en el Header 'X-System-Key'
+    # Header 'X-System-Key'
     secret: ${ADMIN_REGISTRATION_SECRET:utn_frc_2026_secret_key}
+
+# --- URL DEL GATEWAY PARA LINKS ---
+app:
+  url: ${APP_URL:http://localhost:8080}

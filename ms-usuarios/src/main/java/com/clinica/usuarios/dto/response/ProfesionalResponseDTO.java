@@ -15,7 +15,7 @@ public class ProfesionalResponseDTO {
     private Long idUsuario;
     private String nombre;
     private String apellido;
-    private Integer dni;              
+    private Integer dni;               
     private String email;
     private String telefono;
     private LocalDate fechaNacimiento;
@@ -23,6 +23,9 @@ public class ProfesionalResponseDTO {
     private String especialidad;
     private String nombreLocalidad;
     private String nombreProvincia;
-    private Boolean estado;
+    
+    // Cambiado de Boolean a String
+    private String estadoActual; 
+    
     private Set<String> roles;
 }

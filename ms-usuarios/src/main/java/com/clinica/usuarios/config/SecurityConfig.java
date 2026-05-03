@@ -1,6 +1,8 @@
 package com.clinica.usuarios.config;
 
 import com.clinica.usuarios.security.JwtAuthFilter;
+
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -14,7 +16,6 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-// Importar HttpMethod para ser más precisos
 import org.springframework.http.HttpMethod;
 
 @Configuration
@@ -29,7 +30,6 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
-    // Exponemos el AuthenticationManager para usarlo en nuestro controlador de Login
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
@@ -39,25 +39,32 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
             .csrf(AbstractHttpConfigurer::disable)
+            // Agregamos manejo de excepciones explícito para devolver 401 en vez de 403 genérico
+            .exceptionHandling(ex -> ex
+                .authenticationEntryPoint((request, response, authException) -> {
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    response.getWriter().write("{\"error\": \"No autorizado\", \"message\": \"" + authException.getMessage() + "\"}");
+                })
+            )
             .authorizeHttpRequests(auth -> auth
-                // Endpoints de autenticación y registro (Públicos)
-                .requestMatchers(
-                        "/api/auth/**", 
-                        "/api/pacientes/registro",
-                        "/api/administradores/registro",
-                        "/api/profesionales/registro"
-                ).permitAll()
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                
+                // Usamos patrones con asteriscos para cubrir sub-rutas
+                .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/api/pacientes/registro/**").permitAll()
+                .requestMatchers("/api/administradores/registro/**").permitAll()
+                .requestMatchers("/api/profesionales/registro/**").permitAll()
+                
+                .requestMatchers(HttpMethod.GET, "/api/pacientes/confirmar/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/profesionales/confirmar/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/administradores/confirmar/**").permitAll()
 
-                // DESBLOQUEO DE DATOS DE REFERENCIA (Solo lectura pública)
-                .requestMatchers(HttpMethod.GET, 
-                        "/api/obras-sociales/**",
-                        "/api/roles/**",
-                        "/api/especialidades/**",
-                        "/api/provincias/**",
-                        "/api/localidades/**"
-                ).permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/obras-sociales/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/roles/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/especialidades/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/provincias/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/localidades/**").permitAll()
 
-                // Cualquier otra petición (como crear una nueva especialidad) requiere token
                 .anyRequest().authenticated()
             )
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

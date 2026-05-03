@@ -6,6 +6,8 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.http.HttpMethod;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -23,12 +25,34 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private final JwtUtil jwtUtil;
     private final UserDetailsServiceImpl userDetailsService;
 
-    // MEJORA 1: Optimización de rutas públicas
     @Override
     protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
         String path = request.getServletPath();
-        return path.contains("/api/auth/") || 
-               path.contains("/registro");
+        String method = request.getMethod();
+
+        // 1. Siempre ignorar peticiones OPTIONS (Pre-flight de CORS)
+        if (request.getMethod().equals(HttpMethod.OPTIONS.name())) {
+            return true;
+        }
+
+        // 2. Rutas de Auth, Registro y Confirmación (Cualquier método)
+        if (path.contains("/api/auth/") || 
+            path.contains("/registro") || 
+            path.contains("/confirmar")) {
+            return true;
+        }
+
+        // 3. Datos de referencia públicos (Solo si es GET)
+        // Esto asegura que si alguien intenta un POST a provincias, el filtro SÍ actúe
+        if (request.getMethod().equals(HttpMethod.GET.name())) {
+            return path.contains("/api/provincias") || 
+                path.contains("/api/localidades") || 
+                path.contains("/api/especialidades") || 
+                path.contains("/api/roles") || 
+                path.contains("/api/obras-sociales");
+        }
+
+        return false;
     }
 
     @Override

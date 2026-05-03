@@ -19,55 +19,58 @@ public class ProfesionalController {
     private final ProfesionalService profesionalService;
 
     /**
-     * Endpoint para registrar un nuevo profesional.
+     * Registra un nuevo profesional médico.
+     * Se asigna el estado 'PENDIENTE' y se envía el correo de confirmación.
      */
     @PostMapping("/registro")
     public ResponseEntity<ProfesionalResponseDTO> registrar(@Valid @RequestBody ProfesionalRegistroDTO dto) {
         ProfesionalResponseDTO nuevoProfesional = profesionalService.registrarProfesional(dto);
-        // Devolvemos 201 Created con el objeto guardado
         return new ResponseEntity<>(nuevoProfesional, HttpStatus.CREATED);
     }
 
     /**
-     * Endpoint para obtener un profesional específico por su ID.
+     * Endpoint público para la confirmación de identidad vía email.
+     * Cambia el estado del profesional a 'ACTIVO'.
      */
-    @GetMapping("/{id}")
-    public ResponseEntity<ProfesionalResponseDTO> obtenerPorId(@PathVariable Long id) {
-        ProfesionalResponseDTO profesional = profesionalService.obtenerProfesionalPorId(id);
-        // Devolvemos 200 OK con el DTO del profesional
-        return ResponseEntity.ok(profesional); 
+    @GetMapping("/confirmar")
+    public ResponseEntity<String> confirmar(@RequestParam("token") String token) {
+        profesionalService.confirmarCuenta(token);
+        return ResponseEntity.ok("Profesional confirmado con éxito. Ahora puede acceder al sistema.");
     }
 
     /**
-     * Endpoint para obtener el listado completo de profesionales.
+     * Retorna el listado completo de profesionales registrados.
      */
     @GetMapping
     public ResponseEntity<List<ProfesionalResponseDTO>> obtenerTodos() {
         List<ProfesionalResponseDTO> profesionales = profesionalService.obtenerTodosLosProfesionales();
-        // Devolvemos 200 OK con la lista de DTOs
-        return ResponseEntity.ok(profesionales); 
+        return ResponseEntity.ok(profesionales);
     }
 
     /**
-     * Endpoint para actualizar todos los datos de un profesional (excepto su ID y Password).
+     * Obtiene la información detallada de un profesional por su ID.
+     */
+    @GetMapping("/{id}")
+    public ResponseEntity<ProfesionalResponseDTO> obtenerPorId(@PathVariable Long id) {
+        return ResponseEntity.ok(profesionalService.obtenerProfesionalPorId(id));
+    }
+
+    /**
+     * Actualiza los datos del profesional y registra cambios de estado si corresponde.
      */
     @PutMapping("/{id}")
     public ResponseEntity<ProfesionalResponseDTO> actualizar(
             @PathVariable Long id, 
             @Valid @RequestBody ProfesionalUpdateDTO dto) {
-        
-        ProfesionalResponseDTO profesionalActualizado = profesionalService.actualizarProfesional(id, dto);
-        // Devolvemos 200 OK con el profesional actualizado
-        return ResponseEntity.ok(profesionalActualizado);
+        return ResponseEntity.ok(profesionalService.actualizarProfesional(id, dto));
     }
 
     /**
-     * Endpoint para eliminar físicamente un profesional.
+     * Elimina el registro del profesional (Borrado físico).
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteSoloProfesional(@PathVariable Long id) {
-        profesionalService.eliminarSoloProfesional(id); 
-        // Devolvemos 204 No Content
-        return ResponseEntity.noContent().build(); 
+    public ResponseEntity<Void> eliminar(@PathVariable Long id) {
+        profesionalService.eliminarSoloProfesional(id);
+        return ResponseEntity.noContent().build();
     }
 }

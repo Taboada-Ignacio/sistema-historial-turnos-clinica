@@ -10,43 +10,25 @@ import org.mapstruct.Mapping;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-// componentModel = "spring" permite inyectar este mapper con @Autowired en nuestro Service
 @Mapper(componentModel = "spring")
 public interface PacienteMapper {
 
-    /**
-     * Convierte los datos que entran (DTO) a una Entidad para guardar en BD.
-     * Ignoramos los objetos complejos (Roles, Localidad, ObraSocial) porque el
-     * Service se encargará de buscarlos en la base de datos por su ID de forma segura.
-     */
     @Mapping(target = "idUsuario", ignore = true)
-    @Mapping(target = "roles", ignore = true) // CAMBIO 1: Ahora se llama 'roles' (en plural)
+    @Mapping(target = "roles", ignore = true)
     @Mapping(target = "localidad", ignore = true)
     @Mapping(target = "obraSocial", ignore = true)
-    @Mapping(target = "estado", constant = "true") // Por defecto, el paciente nace activo
+    @Mapping(target = "estadoActual", ignore = true) // El Service asignará "PENDIENTE"
+    @Mapping(target = "historialEstados", ignore = true)
     Paciente toEntity(PacienteRegistroDTO dto);
 
-    /**
-     * Convierte la Entidad de la BD a un "sobre" seguro (DTO) para el Frontend.
-     * Aquí hacemos la magia de "aplanar" las relaciones para sacar solo los nombres.
-     */
     @Mapping(source = "obraSocial.descripcion", target = "nombreObraSocial")
     @Mapping(source = "localidad.nombre", target = "nombreLocalidad")
     @Mapping(source = "localidad.provincia.nombre", target = "nombreProvincia")
-    // CAMBIO 2: MapStruct necesita saber cómo pasar de un Set<Rol> a un Set<String>.
-    // Como los dos campos se llaman "roles" (en Entity y DTO), MapStruct intentará mapearlos,
-    // pero usará el método de abajo (mapRolToString) para transformar cada elemento de la lista.
+    @Mapping(source = "estadoActual.nombre", target = "estadoActual") // Aplanamos el estado
     PacienteResponseDTO toResponseDTO(Paciente entity);
 
-    /**
-     * CAMBIO 3: Método auxiliar (default) para enseñarle a MapStruct
-     * cómo convertir un objeto Rol en un simple String (su nombre).
-     * MapStruct usará esto automáticamente cuando mapee colecciones.
-     */
     default String mapRolToString(Rol rol) {
-        if (rol == null || rol.getDescripcion() == null) {
-            return null;
-        }
+        if (rol == null || rol.getDescripcion() == null) return null;
         return rol.getDescripcion(); 
     }
 }

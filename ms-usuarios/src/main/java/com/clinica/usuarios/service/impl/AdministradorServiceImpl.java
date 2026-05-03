@@ -6,29 +6,26 @@ import com.clinica.usuarios.dto.response.AdministradorResponseDTO;
 import com.clinica.usuarios.exception.RecursoNoEncontradoException;
 import com.clinica.usuarios.exception.ReglaDeNegocioException;
 import com.clinica.usuarios.mapper.AdministradorMapper;
-import com.clinica.usuarios.model.Administrador;
-import com.clinica.usuarios.model.Localidad;
-import com.clinica.usuarios.model.Rol;
-import com.clinica.usuarios.repository.AdministradorRepository;
-import com.clinica.usuarios.repository.LocalidadRepository;
-import com.clinica.usuarios.repository.RolRepository;
-import com.clinica.usuarios.repository.UsuarioRepository;
+import com.clinica.usuarios.model.*;
+import com.clinica.usuarios.repository.*;
 import com.clinica.usuarios.service.AdministradorService;
+import com.clinica.usuarios.service.EmailService; // Importado
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class AdministradorServiceImpl implements AdministradorService {
 
-    // Inyectamos la clave desde application.yml
     @Value("${system.registration.secret}")
     private String systemSecret;
 
@@ -36,55 +33,81 @@ public class AdministradorServiceImpl implements AdministradorService {
     private final UsuarioRepository usuarioRepository;
     private final RolRepository rolRepository;
     private final LocalidadRepository localidadRepository;
+    private final EstadoRepository estadoRepository;
+    private final CambioEstadoRepository cambioEstadoRepository;
+    private final VerificationTokenRepository tokenRepository;
+    private final EmailService emailService; // NUEVA DEPENDENCIA
     private final AdministradorMapper administradorMapper;
     private final PasswordEncoder passwordEncoder;
 
     @Override
     @Transactional
     public AdministradorResponseDTO registrarAdministrador(AdministradorRegistroDTO dto, String providedSecret) {
-
-        // 1. Validar la Clave del Sistema (System Key)
+        
+        // 1. Validar Clave del Sistema (Seguridad de infraestructura)
         if (providedSecret == null || !providedSecret.equals(systemSecret)) {
-            throw new ReglaDeNegocioException("Acceso denegado: La clave del sistema es incorrecta o no fue proporcionada.");
+            throw new ReglaDeNegocioException("Acceso denegado: La clave del sistema es incorrecta.");
         }
 
-        // 2. Validar unicidad (Email y DNI en toda la tabla usuarios)
-        if (usuarioRepository.findByEmail(dto.getEmail()).isPresent()) {
-            throw new ReglaDeNegocioException("El correo electrónico " + dto.getEmail() + " ya está en uso.");
-        }
-        if (usuarioRepository.findByDni(dto.getDni()).isPresent()) {
-            throw new ReglaDeNegocioException("El DNI " + dto.getDni() + " ya está registrado.");
-        }
+        // 2. Validar Unicidad de Email y DNI
+        validarUnicidadUsuario(dto.getEmail(), dto.getDni());
 
-        // 3. Buscar el Rol por descripción ('ADMINISTRADOR')
+        // 3. Obtención de dependencias y Estado inicial
         Rol rolAdmin = rolRepository.findByDescripcion("ROLE_ADMINISTRADOR")
-                .orElseThrow(() -> new RecursoNoEncontradoException("No se encontró el rol con descripción: ROLE_ADMINISTRADOR"));
-
+                .orElseThrow(() -> new RecursoNoEncontradoException("Rol ROLE_ADMINISTRADOR no encontrado"));
+        
         Localidad localidad = localidadRepository.findById(dto.getIdLocalidad())
                 .orElseThrow(() -> new RecursoNoEncontradoException("Localidad no encontrada con ID: " + dto.getIdLocalidad()));
 
-        // 4. Mapear y configurar
-        Administrador admin = administradorMapper.toEntity(dto);
-        admin.setRoles(Set.of(rolAdmin)); // Asignación automática del rol
-        admin.setLocalidad(localidad);
-        
-        // Encriptar la contraseña antes de guardar
-        admin.setPassword(passwordEncoder.encode(dto.getPassword())); 
+        Estado estadoPendiente = estadoRepository.findByNombre("PENDIENTE")
+                .orElseThrow(() -> new ReglaDeNegocioException("Estado inicial PENDIENTE no configurado"));
 
-        // 5. Guardar
+        // 4. Mapeo y Configuración
+        Administrador admin = administradorMapper.toEntity(dto);
+        admin.setRoles(Set.of(rolAdmin)); 
+        admin.setLocalidad(localidad);
+        admin.setPassword(passwordEncoder.encode(dto.getPassword()));
+        admin.setEstadoActual(estadoPendiente); 
+
+        // 5. Guardado del Administrador
         Administrador adminGuardado = administradorRepository.save(admin);
+
+        // 6. Registro de Auditoría, Generación de Token y ENVÍO DE EMAIL
+        registrarCambioEstado(adminGuardado, estadoPendiente);
+        String token = generarTokenVerificacion(adminGuardado); // Ahora devuelve el String
+        
+        // Disparamos el correo asíncrono
+        emailService.enviarEmailConfirmacion(adminGuardado, token);
 
         return administradorMapper.toResponseDTO(adminGuardado);
     }
-    
-    // --- MÉTODOS CRUD RESTANTES ---
+
+    @Override
+    @Transactional
+    public void confirmarCuenta(String token) {
+        VerificationToken vToken = tokenRepository.findByToken(token)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Token de confirmación inválido"));
+
+        if (vToken.getFechaExpiracion().isBefore(LocalDateTime.now())) {
+            throw new ReglaDeNegocioException("El link de confirmación ha expirado.");
+        }
+
+        Usuario usuario = vToken.getUsuario();
+        Estado estadoActivo = estadoRepository.findByNombre("ACTIVO")
+                .orElseThrow(() -> new ReglaDeNegocioException("Estado ACTIVO no disponible"));
+
+        usuario.setEstadoActual(estadoActivo);
+        usuarioRepository.save(usuario);
+        registrarCambioEstado(usuario, estadoActivo);
+
+        tokenRepository.delete(vToken);
+    }
 
     @Override
     @Transactional(readOnly = true)
     public AdministradorResponseDTO obtenerAdministradorPorId(Long id) {
         Administrador admin = administradorRepository.findById(id)
-                .orElseThrow(() -> new RecursoNoEncontradoException("No se encontró el administrador con ID: " + id));
-        
+                .orElseThrow(() -> new RecursoNoEncontradoException("Administrador no encontrado con ID: " + id));
         return administradorMapper.toResponseDTO(admin);
     }
 
@@ -99,52 +122,70 @@ public class AdministradorServiceImpl implements AdministradorService {
     @Override
     @Transactional
     public AdministradorResponseDTO actualizarAdministrador(Long id, AdministradorUpdateDTO dto) {
-        
-        // 1. Buscamos el admin
         Administrador admin = administradorRepository.findById(id)
-                .orElseThrow(() -> new RecursoNoEncontradoException("Administrador no encontrado con ID: " + id));
+                .orElseThrow(() -> new RecursoNoEncontradoException("Administrador no encontrado"));
 
-        // 2. Actualizamos datos básicos
         admin.setNombre(dto.getNombre());
         admin.setApellido(dto.getApellido());
         admin.setDni(dto.getDni());
         admin.setEmail(dto.getEmail());
         admin.setTelefono(dto.getTelefono());
         admin.setFechaNacimiento(dto.getFechaNacimiento());
-        admin.setEstado(dto.getEstado());
 
-        // 3. Actualizamos relaciones
-        if (dto.getRolesIds() != null && !dto.getRolesIds().isEmpty()) {
-            Set<Rol> rolesActualizados = dto.getRolesIds().stream()
-                    .map(rolId -> rolRepository.findById(rolId)
-                            .orElseThrow(() -> new RecursoNoEncontradoException("No se encontró el rol con ID: " + rolId)))
-                    .collect(Collectors.toSet());
-            admin.setRoles(rolesActualizados);
+        if (dto.getEstadoActual() != null) {
+            Estado nuevoEstado = estadoRepository.findByNombre(dto.getEstadoActual())
+                    .orElseThrow(() -> new RecursoNoEncontradoException("Estado no válido: " + dto.getEstadoActual()));
+            
+            if (!admin.getEstadoActual().equals(nuevoEstado)) {
+                admin.setEstadoActual(nuevoEstado);
+                registrarCambioEstado(admin, nuevoEstado);
+            }
         }
 
-        Localidad localidad = localidadRepository.findById(dto.getIdLocalidad())
-                .orElseThrow(() -> new RecursoNoEncontradoException("Localidad no encontrada con ID: " + dto.getIdLocalidad()));
-        admin.setLocalidad(localidad);
-
-        // 4. Guardamos y retornamos
-        Administrador adminActualizado = administradorRepository.save(admin);
-        return administradorMapper.toResponseDTO(adminActualizado);
+        return administradorMapper.toResponseDTO(administradorRepository.save(admin));
     }
 
     @Override
     @Transactional
     public void eliminarAdministrador(Long id) {
         if (!administradorRepository.existsById(id)) {
-            throw new RecursoNoEncontradoException("El administrador con ID " + id + " no fue encontrado.");
+            throw new RecursoNoEncontradoException("Administrador no encontrado");
         }
-        
         try {
             administradorRepository.deleteById(id);
         } catch (Exception e) {
-            throw new ReglaDeNegocioException(
-                "No se puede eliminar el administrador con ID " + id + 
-                " porque tiene registros asociados en el sistema."
-            );
+            throw new ReglaDeNegocioException("Error al eliminar administrador: posee registros asociados.");
+        }
+    }
+
+    // --- MÉTODOS PRIVADOS DE APOYO ---
+
+    private void registrarCambioEstado(Usuario usuario, Estado estado) {
+        CambioEstado historial = CambioEstado.builder()
+                .usuario(usuario)
+                .estado(estado)
+                .fecha(LocalDateTime.now())
+                .build();
+        cambioEstadoRepository.save(historial);
+    }
+
+    private String generarTokenVerificacion(Usuario usuario) {
+        String token = UUID.randomUUID().toString();
+        VerificationToken vToken = VerificationToken.builder()
+                .token(token)
+                .usuario(usuario)
+                .fechaExpiracion(LocalDateTime.now().plusHours(12)) 
+                .build();
+        tokenRepository.save(vToken);
+        return token; // Retornamos el token para el EmailService
+    }
+
+    private void validarUnicidadUsuario(String email, Integer dni) {
+        if (usuarioRepository.findByEmail(email).isPresent()) {
+            throw new ReglaDeNegocioException("El correo electrónico ya está en uso.");
+        }
+        if (usuarioRepository.findByDni(dni).isPresent()) {
+            throw new ReglaDeNegocioException("El DNI ya está registrado.");
         }
     }
 }

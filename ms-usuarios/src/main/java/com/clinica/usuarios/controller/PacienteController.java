@@ -19,55 +19,58 @@ public class PacienteController {
     private final PacienteService pacienteService;
 
     /**
-     * Endpoint para registrar un nuevo paciente.
-     * @Valid activa las anotaciones que pusimos en el DTO (@Email, @NotBlank, etc.)
+     * Registra un nuevo paciente.
+     * El estado inicial será 'PENDIENTE' y se disparará el correo.
      */
     @PostMapping("/registro")
     public ResponseEntity<PacienteResponseDTO> registrar(@Valid @RequestBody PacienteRegistroDTO dto) {
         PacienteResponseDTO nuevoPaciente = pacienteService.registrarPaciente(dto);
-        // Devolvemos 201 Created con el objeto guardado
         return new ResponseEntity<>(nuevoPaciente, HttpStatus.CREATED);
     }
 
     /**
-     * Endpoint para obtener un paciente específico por su ID.
+     * Endpoint público para confirmar la cuenta mediante el token del correo.
      */
-    @GetMapping("/{id}")
-    public ResponseEntity<PacienteResponseDTO> obtenerPorId(@PathVariable Long id) {
-        PacienteResponseDTO paciente = pacienteService.obtenerPacientePorId(id);
-        // Devolvemos 200 OK con el DTO del paciente
-        return ResponseEntity.ok(paciente); 
+    @GetMapping("/confirmar")
+    public ResponseEntity<String> confirmarCuenta(@RequestParam("token") String token) {
+        pacienteService.confirmarCuenta(token);
+        return ResponseEntity.ok("Cuenta confirmada con éxito. Ya podés iniciar sesión.");
     }
 
     /**
-     * Endpoint para obtener el listado completo de pacientes.
+     * Obtiene un paciente por su ID.
+     */
+    @GetMapping("/{id}")
+    public ResponseEntity<PacienteResponseDTO> obtenerPorId(@PathVariable Long id) {
+        return ResponseEntity.ok(pacienteService.obtenerPacientePorId(id)); 
+    }
+
+    /**
+     * Obtiene el listado completo de pacientes.
+     * (Útil para el panel de administración de tu clínica).
      */
     @GetMapping
     public ResponseEntity<List<PacienteResponseDTO>> obtenerTodos() {
         List<PacienteResponseDTO> pacientes = pacienteService.obtenerTodosLosPacientes();
-        // Devolvemos 200 OK con la lista de DTOs
-        return ResponseEntity.ok(pacientes); 
+        return ResponseEntity.ok(pacientes);
     }
 
     /**
-     * Endpoint para actualizar todos los datos de un paciente (excepto su ID y Password).
-     * Reemplaza el recurso completo con los datos enviados en el body.
+     * Actualiza los datos de un paciente.
      */
     @PutMapping("/{id}")
     public ResponseEntity<PacienteResponseDTO> actualizar(
             @PathVariable Long id, 
             @Valid @RequestBody PacienteUpdateDTO dto) {
-        
-        // Llamamos al service que hace la actualización y usa el Mapper para retornar el response
-        PacienteResponseDTO pacienteActualizado = pacienteService.actualizarPaciente(id, dto);
-        
-        // Devolvemos 200 OK con el paciente actualizado y sus relaciones aplanadas
-        return ResponseEntity.ok(pacienteActualizado);
+        return ResponseEntity.ok(pacienteService.actualizarPaciente(id, dto));
     }
 
+    /**
+     * Elimina físicamente a un paciente si no tiene turnos asociados.
+     */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteSoloPaciente(@PathVariable Long id) {
-        pacienteService.eliminarSoloPaciente(id); 
-        return ResponseEntity.noContent().build(); 
+    public ResponseEntity<Void> eliminar(@PathVariable Long id) {
+        pacienteService.eliminarSoloPaciente(id);
+        return ResponseEntity.noContent().build();
     }
 }

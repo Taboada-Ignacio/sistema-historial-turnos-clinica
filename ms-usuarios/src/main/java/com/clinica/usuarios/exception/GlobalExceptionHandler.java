@@ -2,6 +2,8 @@ package com.clinica.usuarios.exception;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -13,7 +15,7 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    // --- TUS EXCEPCIONES ORIGINALES ---
+    // --- MANEJO DE EXCEPCIONES DE NEGOCIO ---
 
     @ExceptionHandler(ReglaDeNegocioException.class)
     public ResponseEntity<Map<String, String>> handleReglaDeNegocio(ReglaDeNegocioException ex) {
@@ -29,18 +31,39 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
     }
 
-    // --- NUEVA: EXCEPCIÓN DE VALIDACIÓN DE DTOs (@Valid, @Pattern, etc.) ---
+    // --- NUEVO: MANEJO DE EXCEPCIONES DE SEGURIDAD (SPRING SECURITY) ---
+
+    /**
+     * Se dispara cuando el usuario existe pero 'enabled' es false (Estado PENDIENTE).
+     */
+    @ExceptionHandler(DisabledException.class)
+    public ResponseEntity<Map<String, String>> handleDisabledException(DisabledException ex) {
+        Map<String, String> error = new HashMap<>();
+        error.put("error", "Cuenta no activada");
+        error.put("mensaje", "Por favor, confirmá tu cuenta a través del correo electrónico enviado.");
+        return new ResponseEntity<>(error, HttpStatus.FORBIDDEN); // 403 Forbidden
+    }
+
+    /**
+     * Se dispara cuando el email o la contraseña son incorrectos.
+     */
+    @ExceptionHandler(BadCredentialsException.class)
+    public ResponseEntity<Map<String, String>> handleBadCredentials(BadCredentialsException ex) {
+        Map<String, String> error = new HashMap<>();
+        error.put("error", "Credenciales inválidas");
+        error.put("mensaje", "El correo o la contraseña ingresados no son correctos.");
+        return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED); // 401 Unauthorized
+    }
+
+    // --- EXCEPCIÓN DE VALIDACIÓN DE DTOs ---
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, String>> handleValidationExceptions(MethodArgumentNotValidException ex) {
         Map<String, String> errores = new HashMap<>();
         
-        // Iteramos sobre todos los errores de validación que saltaron
         ex.getBindingResult().getAllErrors().forEach((error) -> {
-            String nombreCampo = ((FieldError) error).getField(); // ej: "password" o "nombre"
-            String mensaje = error.getDefaultMessage();           // ej: "La contraseña debe contener..."
-            
-            // Guardamos el campo y su error específico
+            String nombreCampo = ((FieldError) error).getField();
+            String mensaje = error.getDefaultMessage();
             errores.put(nombreCampo, mensaje);
         });
         

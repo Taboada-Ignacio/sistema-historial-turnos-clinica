@@ -1,12 +1,16 @@
 package com.clinica.usuarios.dto.response;
 
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import java.time.LocalDate;
 import java.util.Set;
 
 @Data
-@Builder // Muy útil para construir la respuesta en el Service
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
 public class PacienteResponseDTO {
     private Long idUsuario;
     private String nombre;
@@ -15,13 +19,13 @@ public class PacienteResponseDTO {
     private String email;
     private String telefono;
     private LocalDate fechaNacimiento;
-    private Boolean estado;
     
-    // Aplanamos las relaciones para hacerle la vida más fácil al Frontend de React
+    // Cambiado de Boolean a String
+    private String estadoActual; 
+    
     private String nombreObraSocial;
     private String numeroAfiliado;
     private String nombreLocalidad;
     private String nombreProvincia;
-
     private Set<String> roles;
 }

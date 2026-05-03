@@ -8,10 +8,9 @@ const AdminRegisterSecret = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   
-  // --- ESTADOS PARA VISIBILIDAD DE CLAVES ---
   const [systemKey, setSystemKey] = useState('');
   const [showSystemKey, setShowSystemKey] = useState(false);
-  const [showPassword, setShowPassword] = useState(false); // Nuevo estado para la contraseña
+  const [showPassword, setShowPassword] = useState(false);
   
   const [provincias, setProvincias] = useState([]);
   const [localidades, setLocalidades] = useState([]);
@@ -96,15 +95,17 @@ const AdminRegisterSecret = () => {
         }
       });
 
+      // El backend devuelve 201 y dispara el mail de verificación
       if (response.status === 201) {
         setSuccess(true);
-        setTimeout(() => navigate('/'), 3000);
+        // Damos más tiempo (5s) para que el usuario lea la instrucción del mail
+        setTimeout(() => navigate('/'), 5000);
       }
     } catch (err) {
       if (err.response && err.response.status === 403) {
-        setError('Acceso denegado: X-System-Key incorrecta.');
+        setError('Acceso denegado: X-System-Key incorrecta o inválida.');
       } else {
-        setError(err.response?.data?.message || 'Error en el registro.');
+        setError(err.response?.data?.message || 'Error en el registro. Verificá si el email ya existe.');
       }
     } finally {
       setLoading(false);
@@ -129,12 +130,23 @@ const AdminRegisterSecret = () => {
             <p className="text-red-600 text-xs font-bold uppercase tracking-tight">Registro Maestro de Sistema</p>
           </div>
 
-          {error && <div className="bg-red-50 text-red-700 p-3 rounded-lg text-xs mb-4 border border-red-200">{error}</div>}
-          {success && <div className="bg-green-50 text-green-700 p-3 rounded-lg text-xs mb-4 border border-green-200 text-center font-bold">¡Alta confirmada! Redirigiendo...</div>}
+          {error && (
+            <div className="bg-red-50 text-red-700 p-3 rounded-lg text-xs mb-4 border border-red-200 animate-shake">
+              {error}
+            </div>
+          )}
+          
+          {success && (
+            <div className="bg-green-50 text-green-700 p-4 rounded-lg text-sm mb-4 border border-green-200 text-center">
+              <p className="font-bold">¡Registro exitoso!</p>
+              <p className="mt-1">Hemos enviado un enlace de activación a <strong>{formData.email}</strong>.</p>
+              <p className="text-xs mt-2 italic">Debés confirmar tu cuenta antes de poder iniciar sesión.</p>
+            </div>
+          )}
 
-          <form onSubmit={handleRegister} className="space-y-4">
+          <form onSubmit={handleRegister} className={`space-y-4 ${success ? 'opacity-50 pointer-events-none' : ''}`}>
             
-            {/* SECCIÓN X-SYSTEM-KEY */}
+            {/* SECCIÓN X-SYSTEM-KEY (Ingreso manual solicitado) */}
             <div className="bg-gray-100 p-4 rounded-lg border border-gray-300">
               <label className="block text-xs font-bold text-gray-700 mb-1 uppercase">X-System-Key</label>
               <div className="relative">
@@ -144,7 +156,7 @@ const AdminRegisterSecret = () => {
                   value={systemKey} 
                   onChange={(e) => setSystemKey(e.target.value)}
                   className="w-full px-4 py-2 pr-10 rounded border border-gray-400 focus:ring-2 focus:ring-red-500 outline-none text-center font-mono"
-                  placeholder="Ingrese Clave de Sistema"
+                  placeholder="Ingrese Clave Maestra"
                 />
                 <button
                   type="button"
@@ -160,7 +172,6 @@ const AdminRegisterSecret = () => {
               </div>
             </div>
 
-            {/* DATOS PERSONALES */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <input type="text" name="nombre" placeholder="Nombre" required value={formData.nombre} onChange={handleChange} className="px-3 py-2 border rounded outline-none focus:border-gray-400" />
               <input type="text" name="apellido" placeholder="Apellido" required value={formData.apellido} onChange={handleChange} className="px-3 py-2 border rounded outline-none focus:border-gray-400" />
@@ -176,7 +187,6 @@ const AdminRegisterSecret = () => {
               <input type="date" name="fechaNacimiento" required value={formData.fechaNacimiento} onChange={handleChange} className="px-3 py-2 border rounded outline-none text-gray-500" />
             </div>
 
-            {/* UBICACIÓN */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <select value={provinciaSeleccionada} onChange={handleProvinciaChange} required className="px-3 py-2 border rounded outline-none bg-white">
                 <option value="">Provincia</option>
@@ -188,9 +198,8 @@ const AdminRegisterSecret = () => {
               </select>
             </div>
 
-            {/* SECCIÓN CONTRASEÑA CON TOGGLE VISIBILIDAD */}
             <div className="bg-gray-50 p-4 rounded-lg border">
-              <label className="block text-xs font-bold text-gray-600 mb-1 uppercase">Contraseña del Administrador</label>
+              <label className="block text-xs font-bold text-gray-600 mb-1 uppercase">Contraseña</label>
               <div className="relative mb-3">
                 <input 
                   type={showPassword ? "text" : "password"} 
@@ -199,7 +208,7 @@ const AdminRegisterSecret = () => {
                   value={formData.password} 
                   onChange={handleChange}
                   className="w-full px-3 py-2 pr-10 border rounded outline-none focus:border-red-500"
-                  placeholder="Defina su contraseña segura"
+                  placeholder="Defina su clave"
                 />
                 <button
                   type="button"
@@ -225,10 +234,10 @@ const AdminRegisterSecret = () => {
 
             <button
               type="submit"
-              disabled={loading || !isPasswordValid || !systemKey}
+              disabled={loading || !isPasswordValid || !systemKey || success}
               className="w-full bg-red-600 text-white font-bold py-3 mt-4 rounded hover:bg-red-700 transition-colors disabled:opacity-50 uppercase tracking-wide"
             >
-              {loading ? "Sincronizando con Servidor..." : "Ejecutar Alta Administrativa"}
+              {loading ? "Sincronizando..." : "Ejecutar Alta Administrativa"}
             </button>
           </form>
         </div>

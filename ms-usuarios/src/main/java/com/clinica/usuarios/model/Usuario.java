@@ -6,17 +6,16 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 import java.time.LocalDate;
-import java.util.Set; // Asegúrate de importar Set
+import java.util.List;
+import java.util.Set;
 
 @Entity
 @Table(name = "usuarios")
-// Definimos la estrategia de herencia: JOINED creará una tabla por cada clase
-// pero la tabla 'usuarios' contendrá todos los campos comunes.
 @Inheritance(strategy = InheritanceType.JOINED)
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@SuperBuilder // Permite que las clases hijas hereden el builder
+@SuperBuilder
 public class Usuario {
 
     @Id
@@ -44,19 +43,27 @@ public class Usuario {
     @Column(name = "fecha_nacimiento")
     private LocalDate fechaNacimiento;
 
-    @Column(nullable = false)
-    private Boolean estado;
+    // --- NUEVAS RELACIONES DE ESTADO ---
 
-    // Relación con Rol: Un usuario puede tener uno o muchos roles
+    // Estado actual para consultas rápidas de seguridad
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "id_estado_actual", nullable = false)
+    private Estado estadoActual;
+
+    // Historial de auditoría de los cambios de estado
+    @OneToMany(mappedBy = "usuario", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<CambioEstado> historialEstados;
+
+    // --- RELACIONES EXISTENTES ---
+
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
-        name = "usuario_roles", // Nombre de la tabla intermedia en la base de datos
-        joinColumns = @JoinColumn(name = "id_usuario"), // Clave foránea hacia la tabla 'usuarios'
-        inverseJoinColumns = @JoinColumn(name = "id_rol") // Clave foránea hacia la tabla 'roles'
+        name = "usuario_roles",
+        joinColumns = @JoinColumn(name = "id_usuario"),
+        inverseJoinColumns = @JoinColumn(name = "id_rol")
     )
-    private Set<Rol> roles; // Cambiado de 'Rol' a 'Set<Rol>' y renombrado a plural
+    private Set<Rol> roles;
 
-    // Relación con Localidad: Muchos usuarios viven en una localidad
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_localidad", nullable = false)
     private Localidad localidad;

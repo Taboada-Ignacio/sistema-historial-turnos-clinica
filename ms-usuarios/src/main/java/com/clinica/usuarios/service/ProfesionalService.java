@@ -8,12 +8,11 @@ import java.util.List;
 
 public interface ProfesionalService {
     ProfesionalResponseDTO registrarProfesional(ProfesionalRegistroDTO dto);
-    
     ProfesionalResponseDTO obtenerProfesionalPorId(Long id);
-    
     List<ProfesionalResponseDTO> obtenerTodosLosProfesionales();
-
     ProfesionalResponseDTO actualizarProfesional(Long id, ProfesionalUpdateDTO dto);
-
     void eliminarSoloProfesional(Long id);
+    
+    // Método para el flujo de confirmación por correo
+    void confirmarCuenta(String token);
 }

@@ -17,4 +17,7 @@ public interface AdministradorService {
     AdministradorResponseDTO actualizarAdministrador(Long id, AdministradorUpdateDTO dto);
 
     void eliminarAdministrador(Long id);
+
+    // Método para activar la cuenta mediante el link del correo
+    void confirmarCuenta(String token);
 }
