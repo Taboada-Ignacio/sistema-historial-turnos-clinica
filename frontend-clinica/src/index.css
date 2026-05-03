@@ -1,0 +1,7 @@
+@import "tailwindcss";
+
+@theme {
+  --color-clinica-light: #def5df;
+  --color-clinica-dark: #307b36;
+  --color-clinica-hover: #246129;
+}

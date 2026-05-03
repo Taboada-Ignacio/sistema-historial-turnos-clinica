@@ -51,6 +51,28 @@ services:
     networks:
       - clinica-network
 
+  # ==========================================
+  # --- FRONTEND (REACT + VITE) ---
+  # ==========================================
+  
+  frontend-clinica:
+    build: 
+      context: ./frontend-clinica
+      dockerfile: Dockerfile
+    container_name: frontend-clinica
+    ports:
+      - "5173:5173"
+    volumes:
+      # Sincroniza el código local con el contenedor para ver cambios al instante
+      - ./frontend-clinica:/app
+      # Evita que se sobreescriba la carpeta node_modules del contenedor
+      - /app/node_modules
+    environment:
+      # Fuerza a Vite a buscar cambios en los archivos (esencial para Windows)
+      - CHOKIDAR_USEPOLLING=true
+    networks:
+      - clinica-network
+
 # ==========================================
 # --- CONFIGURACIÓN DE RED ---
 # ==========================================

@@ -10,7 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List; // <-- ¡Este era el import que faltaba!
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/administradores")
@@ -20,8 +20,12 @@ public class AdministradorController {
     private final AdministradorService administradorService;
 
     @PostMapping("/registro")
-    public ResponseEntity<AdministradorResponseDTO> registrar(@Valid @RequestBody AdministradorRegistroDTO dto) {
-        AdministradorResponseDTO nuevoAdmin = administradorService.registrarAdministrador(dto);
+    public ResponseEntity<AdministradorResponseDTO> registrar(
+            @Valid @RequestBody AdministradorRegistroDTO dto,
+            @RequestHeader(value = "X-System-Key", required = false) String systemKey) {
+        
+        // Pasamos tanto el DTO como la clave recibida por el header al servicio
+        AdministradorResponseDTO nuevoAdmin = administradorService.registrarAdministrador(dto, systemKey);
         return new ResponseEntity<>(nuevoAdmin, HttpStatus.CREATED);
     }
 

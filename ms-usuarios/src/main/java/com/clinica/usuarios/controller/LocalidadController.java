@@ -44,4 +44,11 @@ public class LocalidadController {
         localidadService.eliminarLocalidad(id);
         return ResponseEntity.noContent().build();
     }
+    
+    // Endpoint: GET /api/localidades/provincia/1
+    @GetMapping("/provincia/{provinciaId}")
+    public ResponseEntity<List<LocalidadResponseDTO>> listarPorProvincia(@PathVariable Long provinciaId) {
+        List<LocalidadResponseDTO> localidades = localidadService.obtenerLocalidadesPorProvincia(provinciaId);
+        return ResponseEntity.ok(localidades);
+    }
 }

@@ -1,5 +1,6 @@
 package com.clinica.usuarios.security;
 
+import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -22,6 +23,14 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private final JwtUtil jwtUtil;
     private final UserDetailsServiceImpl userDetailsService;
 
+    // MEJORA 1: Optimización de rutas públicas
+    @Override
+    protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
+        String path = request.getServletPath();
+        return path.contains("/api/auth/") || 
+               path.contains("/registro");
+    }
+
     @Override
     protected void doFilterInternal(
             @NonNull HttpServletRequest request,
@@ -33,36 +42,48 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         final String jwt;
         final String userEmail;
 
-        // Si no hay token o no empieza con "Bearer ", ignoramos y pasamos al siguiente filtro
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        // Extraemos el token (descartamos los primeros 7 caracteres: "Bearer ")
-        jwt = authHeader.substring(7);
-        userEmail = jwtUtil.extractUsername(jwt);
+        try {
+            jwt = authHeader.substring(7);
+            userEmail = jwtUtil.extractUsername(jwt);
 
-        // Si hay un email y el usuario aún no está autenticado en este contexto
-        if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
+            if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
 
-            // Validamos el token
-            if (jwtUtil.isTokenValid(jwt, userDetails)) {
-                // Creamos el token de autenticación para Spring Security
-                UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                        userDetails,
-                        null,
-                        userDetails.getAuthorities()
-                );
-                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                
-                // Guardamos la autenticación en el contexto
-                SecurityContextHolder.getContext().setAuthentication(authToken);
+                if (jwtUtil.isTokenValid(jwt, userDetails)) {
+                    UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                            userDetails,
+                            null,
+                            userDetails.getAuthorities()
+                    );
+                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    SecurityContextHolder.getContext().setAuthentication(authToken);
+                }
             }
+            filterChain.doFilter(request, response);
+
+        } catch (ExpiredJwtException e) {
+            // MEJORA 2: Manejo específico de token expirado para el Frontend
+            handleException(response, "El tiempo de sesión ha caducado. Por favor, inicie sesión nuevamente.", 401);
+        } catch (Exception e) {
+            // Otros errores de seguridad (token mal formado, etc.)
+            handleException(response, "Error de autenticación: " + e.getMessage(), 403);
         }
-        
-        // Continuamos con la cadena de filtros
-        filterChain.doFilter(request, response);
+    }
+
+    private void handleException(HttpServletResponse response, String message, int status) throws IOException {
+        response.setStatus(status);
+        response.setContentType("application/json");
+        response.setCharacterEncoding("UTF-8");
+        // Escribimos un JSON que el front pueda leer fácilmente
+        String jsonResponse = String.format(
+            "{\"status\": %d, \"error\": \"Unauthorized\", \"message\": \"%s\", \"code\": \"TOKEN_EXPIRED\"}", 
+            status, message
+        );
+        response.getWriter().write(jsonResponse);
     }
 }

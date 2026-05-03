@@ -14,6 +14,8 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+// Importar HttpMethod para ser más precisos
+import org.springframework.http.HttpMethod;
 
 @Configuration
 @EnableWebSecurity
@@ -38,19 +40,27 @@ public class SecurityConfig {
         http
             .csrf(AbstractHttpConfigurer::disable)
             .authorizeHttpRequests(auth -> auth
-                // Permitimos el acceso libre a los endpoints de registro y login
+                // Endpoints de autenticación y registro (Públicos)
                 .requestMatchers(
                         "/api/auth/**", 
                         "/api/pacientes/registro",
                         "/api/administradores/registro",
                         "/api/profesionales/registro"
                 ).permitAll()
-                // Cualquier otra petición (como buscar un paciente o listarlos) requerirá token
+
+                // DESBLOQUEO DE DATOS DE REFERENCIA (Solo lectura pública)
+                .requestMatchers(HttpMethod.GET, 
+                        "/api/obras-sociales/**",
+                        "/api/roles/**",
+                        "/api/especialidades/**",
+                        "/api/provincias/**",
+                        "/api/localidades/**"
+                ).permitAll()
+
+                // Cualquier otra petición (como crear una nueva especialidad) requiere token
                 .anyRequest().authenticated()
             )
-            // Desactivamos el manejo de sesiones de Spring (Stateless)
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            // Añadimos nuestro filtro ANTES del filtro estándar de Spring Security
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
         
         return http.build();

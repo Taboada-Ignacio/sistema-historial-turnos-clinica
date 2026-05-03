@@ -17,4 +17,6 @@ public interface LocalidadService {
     LocalidadResponseDTO actualizarLocalidad(Long id, LocalidadUpdateDTO dto);
 
     void eliminarLocalidad(Long id);
+
+    List<LocalidadResponseDTO> obtenerLocalidadesPorProvincia(Long provinciaId);
 }

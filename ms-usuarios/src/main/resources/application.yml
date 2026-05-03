@@ -6,7 +6,6 @@ spring:
     name: ms-usuarios
   
   datasource:
-    # Cambia localhost por el nombre del servicio en Docker
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://db-usuarios:5432/db_clinica_usuarios}
     username: ${SPRING_DATASOURCE_USERNAME:user_clinica}
     password: ${SPRING_DATASOURCE_PASSWORD:password_clinica}
@@ -14,14 +13,13 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update  # Crea/actualiza las tablas automáticamente al detectar cambios en las clases
-    show-sql: true      # Muestra las consultas SQL en la consola para depuración
+      ddl-auto: update
+    show-sql: true
     properties:
       hibernate:
         format_sql: true
         dialect: org.hibernate.dialect.PostgreSQLDialect
 
-  # Configuración de usuario por defecto de Spring Security
   security:
     user:
       name: ${SPRING_SECURITY_USER_NAME:admin_generico}
@@ -29,8 +27,11 @@ spring:
 
 # Configuración de Seguridad JWT
 jwt:
-  # Clave secreta (mínimo 256 bits / 32 caracteres en Base64). 
-  # En producción, inyectar mediante la variable de entorno JWT_SECRET.
   secret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
-  # Expiración del token en milisegundos (Ejemplo: 86400000 = 1 día)
   expiration: ${JWT_EXPIRATION:86400000}
+
+# --- NUEVA CONFIGURACIÓN ---
+system:
+  registration:
+    # Esta es la clave que deberás enviar en el Header 'X-System-Key'
+    secret: ${ADMIN_REGISTRATION_SECRET:utn_frc_2026_secret_key}

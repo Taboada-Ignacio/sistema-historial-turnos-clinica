@@ -15,9 +15,11 @@ import com.clinica.usuarios.repository.RolRepository;
 import com.clinica.usuarios.repository.UsuarioRepository;
 import com.clinica.usuarios.service.AdministradorService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -25,6 +27,10 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class AdministradorServiceImpl implements AdministradorService {
+
+    // Inyectamos la clave desde application.yml
+    @Value("${system.registration.secret}")
+    private String systemSecret;
 
     private final AdministradorRepository administradorRepository;
     private final UsuarioRepository usuarioRepository;
@@ -35,9 +41,14 @@ public class AdministradorServiceImpl implements AdministradorService {
 
     @Override
     @Transactional
-    public AdministradorResponseDTO registrarAdministrador(AdministradorRegistroDTO dto) {
+    public AdministradorResponseDTO registrarAdministrador(AdministradorRegistroDTO dto, String providedSecret) {
 
-        // 1. Validar unicidad (Email y DNI en toda la tabla usuarios)
+        // 1. Validar la Clave del Sistema (System Key)
+        if (providedSecret == null || !providedSecret.equals(systemSecret)) {
+            throw new ReglaDeNegocioException("Acceso denegado: La clave del sistema es incorrecta o no fue proporcionada.");
+        }
+
+        // 2. Validar unicidad (Email y DNI en toda la tabla usuarios)
         if (usuarioRepository.findByEmail(dto.getEmail()).isPresent()) {
             throw new ReglaDeNegocioException("El correo electrónico " + dto.getEmail() + " ya está en uso.");
         }
@@ -45,23 +56,22 @@ public class AdministradorServiceImpl implements AdministradorService {
             throw new ReglaDeNegocioException("El DNI " + dto.getDni() + " ya está registrado.");
         }
 
-        // 2. Buscar dependencias
-        Set<Rol> rolesAsignados = dto.getRolesIds().stream()
-                .map(rolId -> rolRepository.findById(rolId)
-                        .orElseThrow(() -> new RecursoNoEncontradoException("Rol no encontrado: " + rolId)))
-                .collect(Collectors.toSet());
+        // 3. Buscar el Rol por descripción ('ADMINISTRADOR')
+        Rol rolAdmin = rolRepository.findByDescripcion("ROLE_ADMINISTRADOR")
+                .orElseThrow(() -> new RecursoNoEncontradoException("No se encontró el rol con descripción: ROLE_ADMINISTRADOR"));
 
         Localidad localidad = localidadRepository.findById(dto.getIdLocalidad())
                 .orElseThrow(() -> new RecursoNoEncontradoException("Localidad no encontrada con ID: " + dto.getIdLocalidad()));
 
-        // 3. Mapear y configurar
+        // 4. Mapear y configurar
         Administrador admin = administradorMapper.toEntity(dto);
-        admin.setRoles(rolesAsignados);
+        admin.setRoles(Set.of(rolAdmin)); // Asignación automática del rol
         admin.setLocalidad(localidad);
-        // ¡ENCRIPTAMOS LA CONTRASEÑA!
+        
+        // Encriptar la contraseña antes de guardar
         admin.setPassword(passwordEncoder.encode(dto.getPassword())); 
 
-        // 4. Guardar
+        // 5. Guardar
         Administrador adminGuardado = administradorRepository.save(admin);
 
         return administradorMapper.toResponseDTO(adminGuardado);

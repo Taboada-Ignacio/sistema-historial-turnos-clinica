@@ -103,4 +103,15 @@ public class LocalidadServiceImpl implements LocalidadService {
         }
         localidadRepository.deleteById(id);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<LocalidadResponseDTO> obtenerLocalidadesPorProvincia(Long provinciaId) {
+        List<Localidad> localidades = localidadRepository.findByProvinciaId(provinciaId);
+        
+        // Si no hay localidades, podrías devolver una lista vacía o lanzar una excepción
+        return localidades.stream()
+                .map(localidadMapper::toResponseDTO)
+                .collect(Collectors.toList());
+    }
 }
