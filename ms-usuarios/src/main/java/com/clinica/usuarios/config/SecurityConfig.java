@@ -1,7 +1,6 @@
 package com.clinica.usuarios.config;
 
 import com.clinica.usuarios.security.JwtAuthFilter;
-
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -39,32 +38,41 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
             .csrf(AbstractHttpConfigurer::disable)
-            // Agregamos manejo de excepciones explícito para devolver 401 en vez de 403 genérico
             .exceptionHandling(ex -> ex
                 .authenticationEntryPoint((request, response, authException) -> {
                     response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    response.setContentType("application/json");
                     response.getWriter().write("{\"error\": \"No autorizado\", \"message\": \"" + authException.getMessage() + "\"}");
                 })
             )
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 
-                // Usamos patrones con asteriscos para cubrir sub-rutas
+                // --- AUTH & REGISTROS ---
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/api/pacientes/registro/**").permitAll()
                 .requestMatchers("/api/administradores/registro/**").permitAll()
-                .requestMatchers("/api/profesionales/registro/**").permitAll()
+                // Aseguramos que cubra tanto "/registro" como "/registro/"
+                .requestMatchers("/api/profesionales/registro", "/api/profesionales/registro/**").permitAll()
                 
+                // --- CONFIRMACIONES Y REENVÍOS ---
                 .requestMatchers(HttpMethod.GET, "/api/pacientes/confirmar/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/profesionales/confirmar/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/administradores/confirmar/**").permitAll()
+                // NUEVO: Endpoint para reenviar el correo
+                .requestMatchers(HttpMethod.POST, "/api/profesionales/reenviar-confirmacion").permitAll()
 
+                // --- DATOS MAESTROS (Públicos para los formularios de registro) ---
                 .requestMatchers(HttpMethod.GET, "/api/obras-sociales/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/roles/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/especialidades/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/provincias/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/localidades/**").permitAll()
 
+                // --- RECURSOS ESTÁTICOS ---
+                .requestMatchers(HttpMethod.GET, "/fotosPerfilProfesionales/**").permitAll()
+                .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                
                 .anyRequest().authenticated()
             )
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

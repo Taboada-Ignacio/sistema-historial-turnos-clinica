@@ -2,6 +2,7 @@ package com.clinica.usuarios.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import lombok.Data;
 import java.util.Set;
 
@@ -21,4 +22,7 @@ public class ProfesionalUpdateDTO {
     private Long idLocalidad;
     private Long idEspecialidad;
     private Set<Long> rolesIds;
+    
+    @Pattern(regexp = "^(?i)(.*\\.webp)$", message = "La foto de perfil debe ser estrictamente en formato .webp")
+    private String fotoPerfil;
 }

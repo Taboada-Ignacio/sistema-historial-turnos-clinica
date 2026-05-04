@@ -3,6 +3,7 @@ package com.clinica.usuarios.security;
 import com.clinica.usuarios.model.Usuario;
 import com.clinica.usuarios.repository.UsuarioRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.authentication.DisabledException; // Importante
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -27,21 +28,32 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         Usuario usuario = usuarioRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado con el email: " + email));
 
+        // 1. Obtenemos el nombre del estado de forma segura
+        String nombreEstado = (usuario.getEstadoActual() != null) 
+                ? usuario.getEstadoActual().getNombre() 
+                : "DESCONOCIDO";
+
+        // 2. Validación específica para PENDIENTE
+        if ("PENDIENTE".equalsIgnoreCase(nombreEstado)) {
+            throw new DisabledException("Su cuenta aún no ha sido activada. Por favor, confirme su correo electrónico para ingresar.");
+        }
+
+        // 3. Mapeo de roles
         Collection<? extends GrantedAuthority> authorities = usuario.getRoles().stream()
                 .map(rol -> new SimpleGrantedAuthority(rol.getDescripcion()))
                 .collect(Collectors.toList());
 
-        // Mejora: Verificamos que el objeto estado y su nombre no sean nulos
-        boolean enabled = usuario.getEstadoActual() != null && 
-                         "ACTIVO".equalsIgnoreCase(usuario.getEstadoActual().getNombre());
+        // 4. Determinamos estados booleanos para el objeto User de Spring
+        boolean enabled = "ACTIVO".equalsIgnoreCase(nombreEstado);
+        boolean accountNonLocked = !"BLOQUEADO".equalsIgnoreCase(nombreEstado);
 
         return new org.springframework.security.core.userdetails.User(
                 usuario.getEmail(),
                 usuario.getPassword(),
-                enabled, // Si es false, Spring Security lanza DisabledException
-                true,    // accountNonExpired
-                true,    // credentialsNonExpired
-                true,    // accountNonLocked
+                enabled,           // isEnabled
+                true,              // accountNonExpired
+                true,              // credentialsNonExpired
+                accountNonLocked,  // accountNonLocked
                 authorities
         );
     }

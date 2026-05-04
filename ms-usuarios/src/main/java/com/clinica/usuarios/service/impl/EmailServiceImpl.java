@@ -19,6 +19,7 @@ public class EmailServiceImpl implements EmailService {
 
     private final JavaMailSender mailSender;
 
+    // Asegurate que en application.yml app.url sea http://localhost:8080
     @Value("${app.url}")
     private String appUrl;
 
@@ -26,49 +27,56 @@ public class EmailServiceImpl implements EmailService {
     private String sender;
 
     @Override
-    @Async // Crucial: Envía el mail en un hilo separado para no trabar el registro
+    @Async
     public void enviarEmailConfirmacion(Usuario usuario, String token) {
         try {
-            // Determinamos el endpoint según el tipo de usuario para el link
-            String endpoint = usuario.getRoles().stream()
-                    .anyMatch(r -> r.getDescripcion().equals("ROLE_PACIENTE")) ? "pacientes" : "profesionales";
+            // 1. Determinar el endpoint según el rol (Priorizando Administradores)
+            String endpoint = "pacientes"; // Default
             
-            // Si es administrador, podrías tener otro endpoint o manejarlo general
-            if(usuario.getRoles().stream().anyMatch(r -> r.getDescripcion().equals("ROLE_ADMINISTRADOR"))) {
+            boolean esAdmin = usuario.getRoles().stream()
+                    .anyMatch(r -> r.getDescripcion().equals("ROLE_ADMINISTRADOR"));
+            boolean esProfesional = usuario.getRoles().stream()
+                    .anyMatch(r -> r.getDescripcion().equals("ROLE_PROFESIONAL"));
+
+            if (esAdmin) {
                 endpoint = "administradores";
+            } else if (esProfesional) {
+                endpoint = "profesionales";
             }
 
-            String linkConfirmacion = String.format("%s/api/%s/confirmar?token=%s", appUrl, endpoint, token);
+            // 2. IMPORTANTE: Agregamos el prefijo /usuarios para que el API Gateway (8080) 
+            // reconozca la ruta y la derive al microservicio correcto.
+            String linkConfirmacion = String.format("%s/usuarios/api/%s/confirmar?token=%s", appUrl, endpoint, token);
 
             MimeMessage mimeMessage = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, "utf-8");
 
             String htmlMsg = String.format(
-                "<div style='font-family: Arial, sans-serif; padding: 20px; border: 1px solid #ddd;'>" +
-                "<h2>¡Hola, %s!</h2>" +
+                "<div style='font-family: Arial, sans-serif; padding: 20px; border: 1px solid #ddd; max-width: 600px; margin: auto;'>" +
+                "<h2 style='color: #2c3e50;'>¡Hola, %s!</h2>" +
                 "<p>Gracias por registrarte en el sistema de la <strong>Clínica UTN</strong>.</p>" +
-                "<p>Para activar tu cuenta y acceder a todas las funcionalidades, por favor hacé clic en el siguiente botón:</p>" +
+                "<p>Para activar tu cuenta y acceder al portal, por favor hacé clic en el siguiente botón:</p>" +
                 "<div style='text-align: center; margin: 30px 0;'>" +
-                "  <a href='%s' style='background-color: #007bff; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;'>Confirmar mi Cuenta</a>" +
+                "  <a href='%s' style='background-color: #e74c3c; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;'>Activar mi Cuenta</a>" +
                 "</div>" +
-                "<p>Si el botón no funciona, podés copiar y pegar este link en tu navegador:</p>" +
-                "<p style='word-break: break-all; color: #007bff;'>%s</p>" +
-                "<hr style='border: 0; border-top: 1px solid #eee;'>" +
-                "<p style='font-size: 0.8em; color: #777;'>Este es un correo automático, por favor no lo respondas.</p>" +
+                "<p style='font-size: 0.9em; color: #555;'>Si el botón no funciona, podés copiar y pegar este link en tu navegador:</p>" +
+                "<p style='word-break: break-all; color: #3498db; font-size: 0.85em;'>%s</p>" +
+                "<hr style='border: 0; border-top: 1px solid #eee; margin-top: 30px;'>" +
+                "<p style='font-size: 0.8em; color: #777; text-align: center;'>Este es un correo automático del Sistema de Gestión de Historial Clínico.</p>" +
                 "</div>",
                 usuario.getNombre(), linkConfirmacion, linkConfirmacion
             );
 
-            helper.setText(htmlMsg, true); // 'true' indica que es HTML
+            helper.setText(htmlMsg, true);
             helper.setTo(usuario.getEmail());
-            helper.setSubject("Activá tu cuenta - Clínica UTN");
+            helper.setSubject("Confirmación de registro - Clínica UTN");
             helper.setFrom(sender);
 
             mailSender.send(mimeMessage);
-            log.info("Email de confirmación enviado exitosamente a: {}", usuario.getEmail());
+            log.info("Email de confirmación generado y enviado a: {}", usuario.getEmail());
 
         } catch (MessagingException e) {
-            log.error("Error al enviar el email a {}: {}", usuario.getEmail(), e.getMessage());
+            log.error("Fallo crítico al enviar el email a {}: {}", usuario.getEmail(), e.getMessage());
         }
     }
 }

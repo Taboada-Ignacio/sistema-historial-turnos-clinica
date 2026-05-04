@@ -7,9 +7,13 @@ import com.clinica.usuarios.service.ProfesionalService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/profesionales")
@@ -19,12 +23,15 @@ public class ProfesionalController {
     private final ProfesionalService profesionalService;
 
     /**
-     * Registra un nuevo profesional médico.
-     * Se asigna el estado 'PENDIENTE' y se envía el correo de confirmación.
+     * Registra un nuevo profesional médico y guarda su foto de perfil.
+     * Se asigna el estado 'PENDIENTE', membresía 'SIN_VERIFICAR' y se envía el correo.
      */
-    @PostMapping("/registro")
-    public ResponseEntity<ProfesionalResponseDTO> registrar(@Valid @RequestBody ProfesionalRegistroDTO dto) {
-        ProfesionalResponseDTO nuevoProfesional = profesionalService.registrarProfesional(dto);
+    @PostMapping(value = "/registro", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ProfesionalResponseDTO> registrar(
+            @RequestPart("datos") @Valid ProfesionalRegistroDTO dto,
+            @RequestPart(value = "foto", required = false) MultipartFile foto) {
+        
+        ProfesionalResponseDTO nuevoProfesional = profesionalService.registrarProfesional(dto, foto);
         return new ResponseEntity<>(nuevoProfesional, HttpStatus.CREATED);
     }
 
@@ -36,6 +43,17 @@ public class ProfesionalController {
     public ResponseEntity<String> confirmar(@RequestParam("token") String token) {
         profesionalService.confirmarCuenta(token);
         return ResponseEntity.ok("Profesional confirmado con éxito. Ahora puede acceder al sistema.");
+    }
+
+    /**
+     * Reenvía el correo de confirmación si el token anterior expiró o no llegó.
+     */
+    @PostMapping("/reenviar-confirmacion")
+    public ResponseEntity<?> reenviarConfirmacion(@RequestParam("email") String email) {
+        profesionalService.reenviarCorreoConfirmacion(email);
+        return ResponseEntity.ok().body(
+            Map.of("mensaje", "Si el correo existe y no está activado, se ha enviado un nuevo enlace de confirmación.")
+        );
     }
 
     /**
@@ -72,5 +90,25 @@ public class ProfesionalController {
     public ResponseEntity<Void> eliminar(@PathVariable Long id) {
         profesionalService.eliminarSoloProfesional(id);
         return ResponseEntity.noContent().build();
+    }
+
+    // --- ENDPOINTS DE GESTIÓN DE MEMBRESÍA ---
+
+    /**
+     * Verifica la matrícula del profesional y cambia su membresía a INACTIVA.
+     */
+    @PutMapping("/{id}/verificar-matricula")
+    public ResponseEntity<Void> verificarMatricula(@PathVariable Long id) {
+        profesionalService.verificarMatricula(id);
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * Otorga acceso indefinido al profesional (Cortesía o convenio).
+     */
+    @PutMapping("/{id}/acceso-indefinido")
+    public ResponseEntity<Void> otorgarAccesoIndefinido(@PathVariable Long id) {
+        profesionalService.otorgarAccesoIndefinido(id);
+        return ResponseEntity.ok().build();
     }
 }

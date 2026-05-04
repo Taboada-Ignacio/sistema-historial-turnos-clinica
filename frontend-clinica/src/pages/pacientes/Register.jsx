@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import clienteAxios from '../api/axiosConfig';
-
+import clienteAxios from "../../api/axiosConfig";
 const Register = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);

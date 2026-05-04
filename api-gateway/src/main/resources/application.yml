@@ -18,12 +18,14 @@ spring:
               - PUT
               - DELETE
               - OPTIONS
+              - PATCH # Siempre es buena práctica agregar PATCH
             allowedHeaders: "*"
       
       # Definición de las rutas hacia tus microservicios
       routes:
+        # --- RUTA 1: Microservicio de Usuarios (APIs y Fotos de Perfil) ---
         - id: ms-usuarios
-          # Usamos el nombre exacto del contenedor en la red de Docker Compose
+          # OJO: Si estás probando local sin levantar Docker Compose, cambia esto a http://localhost:8081 temporalmente
           uri: http://ms-usuarios:8081
           predicates:
             # Captura todas las peticiones que empiecen con /usuarios
@@ -31,4 +33,23 @@ spring:
           filters:
             # Elimina la primera parte del path ("/usuarios") antes de enviar al microservicio
             # Ejemplo: /usuarios/api/pacientes/registro -> /api/pacientes/registro
+            # Ejemplo 2: /usuarios/fotosPerfilProfesionales/foto.webp -> /fotosPerfilProfesionales/foto.webp
             - StripPrefix=1
+
+        # --- RUTA 2: Documentación OpenAPI de ms-usuarios ---
+        - id: openapi-usuarios
+          uri: http://ms-usuarios:8081
+          predicates:
+            # El Gateway intercepta esta ruta específica que pide la interfaz de Swagger
+            - Path=/v3/api-docs/ms-usuarios
+          filters:
+            # La reescribe para pedirle al microservicio su ruta real de documentación
+            - RewritePath=/v3/api-docs/ms-usuarios, /v3/api-docs
+
+# --- CONFIGURACIÓN DE SWAGGER AGREGADO EN EL GATEWAY ---
+springdoc:
+  swagger-ui:
+    # Esta configuración arma el menú desplegable en la esquina superior derecha del Swagger del Gateway
+    urls:
+      - name: API Usuarios
+        url: /v3/api-docs/ms-usuarios

@@ -3,11 +3,9 @@ package com.clinica.usuarios.mapper;
 import com.clinica.usuarios.dto.request.ProfesionalRegistroDTO;
 import com.clinica.usuarios.dto.response.ProfesionalResponseDTO;
 import com.clinica.usuarios.model.Profesional;
-import com.clinica.usuarios.model.Rol; // Importante para el método default
+import com.clinica.usuarios.model.Rol;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
-
-import java.util.Set; // Importante para la colección
 
 @Mapper(componentModel = "spring")
 public interface ProfesionalMapper {
@@ -18,12 +16,19 @@ public interface ProfesionalMapper {
     @Mapping(target = "especialidad", ignore = true)
     @Mapping(target = "estadoActual", ignore = true)
     @Mapping(target = "historialEstados", ignore = true)
+    // --- NUEVOS CAMPOS IGNORADOS (Se manejan en el Service) ---
+    @Mapping(target = "membresiaActual", ignore = true)
+    @Mapping(target = "historialMembresias", ignore = true)
+    @Mapping(target = "fotoPerfil", ignore = true) 
     Profesional toEntity(ProfesionalRegistroDTO dto);
 
     @Mapping(source = "especialidad.descripcion", target = "especialidad")
     @Mapping(source = "localidad.nombre", target = "nombreLocalidad")
     @Mapping(source = "localidad.provincia.nombre", target = "nombreProvincia")
     @Mapping(source = "estadoActual.nombre", target = "estadoActual")
+    // --- NUEVO CAMPO MAPEADO ---
+    @Mapping(source = "membresiaActual.nombre", target = "membresiaActual")
+    // Nota: fotoPerfil se mapea solo (Entity.fotoPerfil -> DTO.fotoPerfil)
     ProfesionalResponseDTO toResponseDTO(Profesional entity);
 
     default String mapRolToString(Rol rol) {

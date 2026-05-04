@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import clienteAxios from '../api/axiosConfig';
+import clienteAxios from '../../api/axiosConfig';
 
 const AdminRegisterSecret = () => {
   const navigate = useNavigate();

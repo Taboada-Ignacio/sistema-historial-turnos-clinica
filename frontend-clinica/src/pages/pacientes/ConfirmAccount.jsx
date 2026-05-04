@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import clienteAxios from '../api/axiosConfig';
+import clienteAxios from '../../api/axiosConfig';
 
 const ConfirmAccount = () => {
   const [searchParams] = useSearchParams();

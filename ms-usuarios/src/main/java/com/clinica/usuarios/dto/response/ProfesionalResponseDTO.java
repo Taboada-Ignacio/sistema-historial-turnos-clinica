@@ -24,8 +24,13 @@ public class ProfesionalResponseDTO {
     private String nombreLocalidad;
     private String nombreProvincia;
     
-    // Cambiado de Boolean a String
     private String estadoActual; 
+    
+    // --- NUEVO CAMPO ---
+    private String fotoPerfil;
+    
+    // --- NUEVO CAMPO ---
+    private String membresiaActual; 
     
     private Set<String> roles;
 }

@@ -27,6 +27,12 @@ CREATE TABLE IF NOT EXISTS estados (
     nombre VARCHAR(50) UNIQUE NOT NULL
 );
 
+-- NUEVA TABLA MAESTRA PARA MEMBRESÍAS
+CREATE TABLE IF NOT EXISTS membresias (
+    id_membresia BIGSERIAL PRIMARY KEY,
+    nombre VARCHAR(50) UNIQUE NOT NULL
+);
+
 -- ==========================================
 -- NIVEL 2: Tablas con dependencias simples
 -- ==========================================
@@ -72,7 +78,9 @@ CREATE TABLE IF NOT EXISTS pacientes (
 CREATE TABLE IF NOT EXISTS profesionales (
     id_profesional BIGINT PRIMARY KEY REFERENCES usuarios(id_usuario),
     nro_matricula VARCHAR(50) UNIQUE NOT NULL,
-    id_especialidad BIGINT NOT NULL REFERENCES especialidades(id_especialidad)
+    foto_perfil VARCHAR(255), -- Ruta de la foto (.webp)
+    id_especialidad BIGINT NOT NULL REFERENCES especialidades(id_especialidad),
+    id_membresia_actual BIGINT NOT NULL REFERENCES membresias(id_membresia)
 );
 
 -- ==========================================
@@ -100,20 +108,33 @@ CREATE TABLE IF NOT EXISTS tokens_confirmacion (
     id_usuario BIGINT NOT NULL REFERENCES usuarios(id_usuario)
 );
 
+-- NUEVA TABLA PARA EL HISTORIAL DE PAGOS / MEMBRESÍAS
+CREATE TABLE IF NOT EXISTS cambios_membresia (
+    id_cambio_membresia BIGSERIAL PRIMARY KEY,
+    fecha_inicio TIMESTAMP NOT NULL,
+    fecha_vencimiento TIMESTAMP,
+    id_profesional BIGINT NOT NULL REFERENCES profesionales(id_profesional),
+    id_membresia BIGINT NOT NULL REFERENCES membresias(id_membresia)
+);
+
 -- ==========================================
 -- CARGA DE DATOS INICIALES
 -- ==========================================
 
 INSERT INTO estados (nombre) VALUES ('PENDIENTE'), ('ACTIVO'), ('BLOQUEADO') ON CONFLICT (nombre) DO NOTHING;
 INSERT INTO roles (descripcion) VALUES ('ROLE_PROFESIONAL'), ('ROLE_PACIENTE'), ('ROLE_ADMINISTRADOR') ON CONFLICT (descripcion) DO NOTHING;
-INSERT INTO especialidades (descripcion) VALUES ('MÉDICO'), ('COSMIATRA'), ('ODÓNTOLOGO'), ('PSICÓLOGO') ON CONFLICT (descripcion) DO NOTHING;
+INSERT INTO especialidades (descripcion) VALUES ('MÉDICO'), ('COSMIATRA'), ('ODÓNTOLOGO'), ('PSICÓLOGO'), ('SIN CARGAR') ON CONFLICT (descripcion) DO NOTHING;
 INSERT INTO obras_sociales (descripcion) VALUES ('LA CAJA'), ('OSDE'), ('NO POSEE') ON CONFLICT (descripcion) DO NOTHING;
-INSERT INTO provincias (nombre) VALUES ('CORDOBA'), ('SANTA CRUZ') ON CONFLICT (nombre) DO NOTHING;
+INSERT INTO provincias (nombre) VALUES ('CORDOBA'), ('SANTA CRUZ'), ('SIN CARGAR') ON CONFLICT (nombre) DO NOTHING;
+
+-- CARGA INICIAL DE MEMBRESÍAS
+INSERT INTO membresias (nombre) VALUES ('SIN_VERIFICAR'), ('INACTIVA'), ('ACTIVA'), ('ACCESO_INDEFINIDO') ON CONFLICT (nombre) DO NOTHING;
 
 INSERT INTO localidades (nombre, id_provincia) 
 VALUES 
     ('CAPILLA DEL MONTE', (SELECT id_provincia FROM provincias WHERE nombre = 'CORDOBA')),
     ('CORDOBA CAPITAL', (SELECT id_provincia FROM provincias WHERE nombre = 'CORDOBA')),
     ('RIO GALLEGOS', (SELECT id_provincia FROM provincias WHERE nombre = 'SANTA CRUZ')),
-    ('PUERTO SAN JULIÁN', (SELECT id_provincia FROM provincias WHERE nombre = 'SANTA CRUZ'))
+    ('PUERTO SAN JULIÁN', (SELECT id_provincia FROM provincias WHERE nombre = 'SANTA CRUZ')),
+    ('SIN CARGAR', (SELECT id_provincia FROM provincias WHERE nombre = 'SIN CARGAR'))
 ON CONFLICT (nombre, id_provincia) DO NOTHING;

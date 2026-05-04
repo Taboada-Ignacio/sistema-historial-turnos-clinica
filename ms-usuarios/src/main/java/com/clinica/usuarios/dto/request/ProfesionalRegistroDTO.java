@@ -44,4 +44,7 @@ public class ProfesionalRegistroDTO {
 
     @NotEmpty(message = "El profesional debe tener al menos un rol asignado")
     private Set<Long> rolesIds;
+
+    @Pattern(regexp = "^(?i)(.*\\.webp)$", message = "La foto de perfil debe ser estrictamente en formato .webp")
+    private String fotoPerfil;
 }
