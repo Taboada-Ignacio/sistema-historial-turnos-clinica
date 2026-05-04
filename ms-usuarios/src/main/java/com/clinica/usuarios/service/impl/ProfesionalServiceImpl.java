@@ -298,7 +298,7 @@ public class ProfesionalServiceImpl implements ProfesionalService {
             throw new RuntimeException("Error al guardar la foto de perfil en el disco local", e);
         }
     }
-    
+
     @Override
     @Transactional
     public void reenviarCorreoConfirmacion(String email) {
@@ -314,7 +314,7 @@ public class ProfesionalServiceImpl implements ProfesionalService {
         // 3. (Opcional pero recomendado) Eliminar tokens anteriores para ese usuario 
         // para que no se acumulen en la base de datos si pide el reenvío muchas veces.
         // Si no tenés este método en tokenRepository, podés crearlo: void deleteByUsuario(Usuario usuario);
-        // tokenRepository.deleteByUsuario(usuario); 
+        tokenRepository.deleteByUsuario(usuario); 
 
         // 4. Generar un nuevo token usando tu método privado existente (que le da 48hs de validez)
         String nuevoToken = crearTokenVerificacion(usuario);
