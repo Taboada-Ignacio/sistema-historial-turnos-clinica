@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import clienteAxios from '../../api/axiosConfig';
-import { ADMIN_PATHS } from '../../utils/adminPaths';
+import { ADMIN_PATHS } from '../../utils/portalPaths';
 
 const AdminRegisterSecret = () => {
   const navigate = useNavigate();

@@ -48,7 +48,9 @@ system:
   registration:
     # Header 'X-System-Key'
     secret: ${ADMIN_REGISTRATION_SECRET:utn_frc_2026_secret_key}
-    #Taboada45934779#
+    # Taboada45934779#
+    # ignaciotaboada5@hotmail.com
+
 
 # --- URL DEL GATEWAY PARA LINKS ---
 app:

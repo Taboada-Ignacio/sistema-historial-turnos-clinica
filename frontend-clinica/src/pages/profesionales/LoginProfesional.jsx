@@ -1,15 +1,33 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import clienteAxios from '../../api/axiosConfig';
 import imgProfesionales from "../../assets/images/staff-medico.webp";
+import {
+  savePortalSession,
+  getUserEmailFromToken,
+  hasActiveSession,
+  getSessionPortal,
+  getDashboardRouteByPortal,
+} from '../../utils/auth';
+// Importamos también HOME_PATH
+import { PROFESIONAL_PATHS, HOME_PATH } from '../../utils/portalPaths';
+
 const LoginProfesional = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
+
+  // Redirección automática si ya hay una sesión activa en el portal de profesionales
+  useEffect(() => {
+    if (hasActiveSession() && getSessionPortal() === 'profesional') {
+      navigate(getDashboardRouteByPortal('profesional'));
+    }
+  }, [navigate]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -23,8 +41,17 @@ const LoginProfesional = () => {
       });
 
       if (response.data && response.data.token) {
-        localStorage.setItem('token', response.data.token);
-        navigate('/dashboard');
+        const token = response.data.token;
+        const emailFromToken = getUserEmailFromToken(token) || email;
+        
+        savePortalSession({
+          token,
+          portal: 'profesional',
+          rememberMe,
+          email: emailFromToken,
+        });
+        
+        navigate(getDashboardRouteByPortal('profesional'));
       }
     } catch (err) {
       const msg = err.response?.data?.message || "Error de conexión.";
@@ -37,7 +64,7 @@ const LoginProfesional = () => {
   return (
     <div className="min-h-screen bg-white flex flex-col lg:flex-row font-sans">
       
-      {/* LADO IZQUIERDO: Se quitó el 'p-8' para que la imagen toque los bordes */}
+      {/* LADO IZQUIERDO */}
       <div className="hidden lg:flex lg:w-1/2 relative bg-gradient-to-br from-blue-50 via-white to-blue-100 items-center justify-center overflow-hidden">
         <img 
           src={imgProfesionales} 
@@ -48,7 +75,8 @@ const LoginProfesional = () => {
 
       <div className="w-full lg:w-1/2 flex flex-col justify-center px-8 sm:px-16 md:px-24 lg:px-32 py-12 h-screen overflow-y-auto relative">
         
-        <Link to="/" className="absolute top-8 left-8 text-gray-400 hover:text-blue-600 flex items-center gap-2 font-medium transition-colors text-sm">
+        {/* BOTÓN VOLVER USANDO RUTA CENTRALIZADA */}
+        <Link to={HOME_PATH} className="absolute top-8 left-8 text-gray-400 hover:text-blue-600 flex items-center gap-2 font-medium transition-colors text-sm">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
           Volver
         </Link>
@@ -111,6 +139,21 @@ const LoginProfesional = () => {
               </div>
             </div>
 
+            <div className="flex items-center justify-between">
+              <label className="flex items-center text-xs text-gray-500 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="mr-2 rounded border-gray-300 text-blue-600 focus:ring-blue-600"
+                />
+                Recordarme
+              </label>
+              <Link to={PROFESIONAL_PATHS.recuperarPassword} className="text-xs font-bold text-blue-700 hover:underline">
+                ¿Olvidaste tu contraseña?
+              </Link>
+            </div>
+
             <button
               type="submit"
               disabled={loading}
@@ -127,7 +170,7 @@ const LoginProfesional = () => {
             </p>
             
             <Link 
-              to="/registro-profesional" 
+              to={PROFESIONAL_PATHS.registro} 
               className="flex items-center justify-center w-full px-6 py-4 bg-blue-50 text-blue-700 font-black text-lg rounded-2xl hover:bg-blue-100 transition-colors border border-blue-200"
             >
               Registrarme como Profesional

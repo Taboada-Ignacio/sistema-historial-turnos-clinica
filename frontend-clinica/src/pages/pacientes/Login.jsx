@@ -1,17 +1,33 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import clienteAxios from '../../api/axiosConfig';
 import loginPacientesBg from '../../assets/images/login-pacientes.webp';
+import {
+  savePortalSession,
+  getUserEmailFromToken,
+  hasActiveSession,
+  getSessionPortal,
+  getDashboardRouteByPortal
+} from '../../utils/auth';
+import { PACIENTE_PATHS } from '../../utils/portalPaths';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
-  
+
+  // Redirección automática si ya hay una sesión activa en el portal de pacientes
+  useEffect(() => {
+    if (hasActiveSession() && getSessionPortal() === 'paciente') {
+      navigate(getDashboardRouteByPortal('paciente'));
+    }
+  }, [navigate]);
+
   const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
@@ -24,8 +40,17 @@ const Login = () => {
       });
 
       if (response.data && response.data.token) {
-        localStorage.setItem('token', response.data.token);
-        navigate('/dashboard');
+        const token = response.data.token;
+        const emailFromToken = getUserEmailFromToken(token) || email;
+        
+        savePortalSession({
+          token,
+          portal: 'paciente',
+          rememberMe,
+          email: emailFromToken,
+        });
+        
+        navigate(getDashboardRouteByPortal('paciente'));
       } else {
         setError('Error en el formato de respuesta del servidor.');
       }
@@ -125,12 +150,17 @@ const Login = () => {
 
             <div className="flex items-center justify-between px-1">
               <label className="flex items-center text-xs text-gray-500 cursor-pointer group">
-                <input type="checkbox" className="mr-2 rounded text-clinica-dark focus:ring-clinica-dark border-gray-300" />
+                <input 
+                  type="checkbox" 
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="mr-2 rounded text-clinica-dark focus:ring-clinica-dark border-gray-300" 
+                />
                 <span className="group-hover:text-clinica-dark transition-colors">Recordarme</span>
               </label>
-              <a href="#" className="text-xs text-clinica-dark hover:underline font-bold">
+              <Link to={PACIENTE_PATHS.recuperarPassword} className="text-xs text-clinica-dark hover:underline font-bold">
                 ¿Olvidaste tu contraseña?
-              </a>
+              </Link>
             </div>
 
             <button
@@ -146,7 +176,7 @@ const Login = () => {
         <div className="bg-white/55 p-6 text-center border-t border-gray-200">
           <p className="text-sm text-gray-600">
             ¿No tenés una cuenta?{' '}
-            <Link to="/registro" className="text-clinica-dark font-bold hover:underline ml-1">
+            <Link to={PACIENTE_PATHS.registro} className="text-clinica-dark font-bold hover:underline ml-1">
               Registrate aquí
             </Link>
           </p>

@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import clienteAxios from '../../api/axiosConfig';
 import { getUserEmailFromToken, saveAdminSession, clearSession } from '../../utils/auth';
-import { ADMIN_PATHS } from '../../utils/adminPaths';
+import { ADMIN_PATHS, HOME_PATH } from '../../utils/portalPaths';
 
 const LoginAdministrador = () => {
   const navigate = useNavigate();
@@ -31,7 +31,9 @@ const LoginAdministrador = () => {
         return;
       }
 
+      // Seteo temporal para la petición de validación de rol
       localStorage.setItem('token', token);
+      
       const adminsResponse = await clienteAxios.get('/usuarios/api/administradores');
       const isAdmin = (adminsResponse.data || []).some((admin) => admin.email === emailFromToken);
 
@@ -57,8 +59,19 @@ const LoginAdministrador = () => {
       <div className="bg-white w-full max-w-md rounded-2xl border border-slate-200 shadow-lg p-8">
         <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Administración</p>
         <h2 className="text-2xl font-black text-slate-900 mb-6">Ingreso de administradores</h2>
+        
+        <Link
+          to={HOME_PATH}
+          className="inline-block mb-4 text-sm font-semibold text-slate-600 hover:text-slate-900 underline"
+        >
+          Ir al inicio
+        </Link>
 
-        {error && <div className="mb-4 p-3 rounded-lg bg-red-50 text-red-700 text-sm">{error}</div>}
+        {error && (
+          <div className="mb-4 p-3 rounded-lg bg-red-50 text-red-700 text-sm">
+            {error}
+          </div>
+        )}
 
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
@@ -68,7 +81,7 @@ const LoginAdministrador = () => {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full mt-1 border border-slate-300 rounded-lg px-3 py-2"
+              className="w-full mt-1 border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-slate-900 focus:outline-none"
               placeholder="admin@clinica.com"
             />
           </div>
@@ -79,14 +92,14 @@ const LoginAdministrador = () => {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full mt-1 border border-slate-300 rounded-lg px-3 py-2"
+              className="w-full mt-1 border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-slate-900 focus:outline-none"
               placeholder="********"
             />
           </div>
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-slate-900 text-white py-2.5 rounded-lg font-bold hover:bg-slate-800 disabled:opacity-70"
+            className="w-full bg-slate-900 text-white py-2.5 rounded-lg font-bold hover:bg-slate-800 disabled:opacity-70 transition-opacity"
           >
             {loading ? 'Validando...' : 'Ingresar'}
           </button>

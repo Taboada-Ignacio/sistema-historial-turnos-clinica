@@ -112,6 +112,47 @@ public class EmailServiceImpl implements EmailService {
         }
     }
 
+    @Override
+    @Async
+    public void enviarEmailRecuperacionPassword(Usuario usuario, String linkRecuperacion, String tipoPortal) {
+        try {
+            MimeMessage mimeMessage = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, "utf-8");
+
+            boolean esProfesional = "profesional".equalsIgnoreCase(tipoPortal);
+            String color = esProfesional ? "#2563eb" : "#15803d";
+            String titulo = esProfesional ? "Recuperación de acceso profesional" : "Recuperación de acceso paciente";
+            String boton = esProfesional ? "Confirmar recuperación profesional" : "Confirmar recuperación de cuenta";
+
+            String htmlMsg = String.format(
+                    "<div style='font-family: Arial, sans-serif; padding: 20px; border: 1px solid %s; max-width: 600px; margin: auto; border-radius: 8px;'>" +
+                            "<h2 style='color: %s; text-align: center;'>%s</h2>" +
+                            "<p>Hola <strong>%s</strong>,</p>" +
+                            "<p>Recibimos una solicitud para cambiar tu contraseña.</p>" +
+                            "<p>Si fuiste vos, confirmá el proceso desde el siguiente botón:</p>" +
+                            "<div style='text-align: center; margin: 30px 0;'>" +
+                            "  <a href='%s' style='background-color: %s; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;'>%s</a>" +
+                            "</div>" +
+                            "<p style='font-size: 0.9em; color: #555;'>Si no solicitaste este cambio, ignorá este correo.</p>" +
+                            "<p style='word-break: break-all; color: #3498db; font-size: 0.85em;'>%s</p>" +
+                            "<hr style='border: 0; border-top: 1px solid #ecf0f1; margin-top: 30px;'>" +
+                            "<p style='font-size: 0.8em; color: #777; text-align: center;'>Este enlace tiene validez limitada por seguridad.</p>" +
+                            "</div>",
+                    color, color, titulo, usuario.getNombre(), linkRecuperacion, color, boton, linkRecuperacion
+            );
+
+            helper.setText(htmlMsg, true);
+            helper.setTo(usuario.getEmail());
+            helper.setSubject("Recuperación de contraseña - Clínica UTN");
+            helper.setFrom(sender);
+
+            mailSender.send(mimeMessage);
+            log.info("Email de recuperación enviado a: {}", usuario.getEmail());
+        } catch (MessagingException e) {
+            log.error("Error al enviar email de recuperación a {}: {}", usuario.getEmail(), e.getMessage());
+        }
+    }
+
     private String generarEmailProfesional(Usuario usuario, String linkConfirmacion) {
         return String.format(
             "<div style='font-family: Arial, sans-serif; padding: 20px; border: 1px solid #3498db; max-width: 600px; margin: auto; border-radius: 8px;'>" +
