@@ -7,8 +7,7 @@ import com.clinica.usuarios.model.Rol; // Importante importar Rol
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
-import java.util.Set;
-import java.util.stream.Collectors;
+
 
 @Mapper(componentModel = "spring")
 public interface PacienteMapper {

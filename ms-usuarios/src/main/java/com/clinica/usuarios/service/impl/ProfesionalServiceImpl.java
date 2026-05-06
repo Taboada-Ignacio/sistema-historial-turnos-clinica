@@ -144,6 +144,17 @@ public class ProfesionalServiceImpl implements ProfesionalService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<ProfesionalResponseDTO> obtenerProfesionalesConMembresiaInactiva() {
+        Membresia membresiaInactiva = membresiaRepository.findByNombre("INACTIVA")
+                .orElseThrow(() -> new RecursoNoEncontradoException("Membresía INACTIVA no encontrada"));
+        
+        return profesionalRepository.findByMembresiaActual(membresiaInactiva).stream()
+                .map(profesionalMapper::toResponseDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Override
     @Transactional
     public ProfesionalResponseDTO actualizarProfesional(Long id, ProfesionalUpdateDTO dto) {
         Profesional profesional = buscarProfesional(id);
@@ -194,7 +205,12 @@ public class ProfesionalServiceImpl implements ProfesionalService {
         Membresia membresiaInactiva = membresiaRepository.findByNombre("INACTIVA")
                 .orElseThrow(() -> new ReglaDeNegocioException("Membresía INACTIVA no encontrada"));
 
-        actualizarMembresia(profesional, membresiaInactiva, null);
+        // Solo enviar email si el cambio de membresía es real
+        if (!profesional.getMembresiaActual().equals(membresiaInactiva)) {
+            actualizarMembresia(profesional, membresiaInactiva, null);
+            // Enviar email de aprobación
+            emailService.enviarEmailAprobacion(profesional);
+        }
     }
 
     @Override

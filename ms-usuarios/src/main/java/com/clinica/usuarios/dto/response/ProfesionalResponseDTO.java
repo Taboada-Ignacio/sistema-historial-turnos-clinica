@@ -7,11 +7,14 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDate;
 import java.util.Set;
 
+import jakarta.validation.constraints.NotNull;
+
 @Data
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
 public class ProfesionalResponseDTO {
+    @NotNull(message = "El ID del profesional es obligatorio")
     private Long idUsuario;
     private String nombre;
     private String apellido;
@@ -24,6 +27,7 @@ public class ProfesionalResponseDTO {
     private String nombreLocalidad;
     private String nombreProvincia;
     
+    @NotNull(message = "El estado actual es obligatorio")
     private String estadoActual; 
     
     // --- NUEVO CAMPO ---

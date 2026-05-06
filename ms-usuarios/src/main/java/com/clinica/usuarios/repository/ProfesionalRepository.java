@@ -1,6 +1,7 @@
 package com.clinica.usuarios.repository;
 
 import com.clinica.usuarios.model.Profesional;
+import com.clinica.usuarios.model.Membresia;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -15,4 +16,7 @@ public interface ProfesionalRepository extends JpaRepository<Profesional, Long> 
 
     // Buscar todos los profesionales que tengan una membresía específica (ej: listar los "SIN_VERIFICAR" para aprobarlos)
     List<Profesional> findByMembresiaActual_Nombre(String nombreMembresia);
+
+    // Buscar profesionales por objeto Membresia
+    List<Profesional> findByMembresiaActual(Membresia membresia);
 }

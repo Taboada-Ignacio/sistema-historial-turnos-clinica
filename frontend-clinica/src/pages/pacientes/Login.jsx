@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import clienteAxios from '../../api/axiosConfig';
+import loginPacientesBg from '../../assets/images/login-pacientes.webp';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -47,31 +48,31 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-clinica-light flex items-center justify-center p-6 font-sans">
-      
-      {/* 
-          CAMBIO CLAVE: Se usó 'max-w-md' (448px approx) 
-          Esto evita que la tarjeta se estire por toda la pantalla.
-      */}
-      <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden border border-gray-100">
-        
-        <div className="p-10">
+    <div
+      className="min-h-screen font-sans bg-cover bg-center bg-no-repeat"
+      style={{ backgroundImage: `url(${loginPacientesBg})` }}
+    >
+      <div className="min-h-screen max-w-7xl mx-auto px-4 sm:px-8 lg:px-10 flex items-center justify-center lg:justify-end">
+        <div className="w-full max-w-md rounded-3xl overflow-hidden border border-white/70 bg-white/85 backdrop-blur-md shadow-[0_20px_70px_rgba(0,0,0,0.3)]">
+          <div className="p-10">
           {/* Cabecera / Logo */}
-          <div className="text-center mb-10">
-            <div className="flex justify-center items-center gap-3 mb-3 text-clinica-dark">
-              <svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
-              </svg>
-              <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="currentColor" className="mt-1">
+          <div className="text-center mb-8">
+            <div className="inline-flex justify-center items-center gap-2 mb-3 text-clinica-dark">
+              <div className="h-12 w-12 rounded-xl bg-clinica-light flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+                </svg>
+              </div>
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" className="mt-1">
                 <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path>
               </svg>
             </div>
-            <h1 className="text-4xl font-extrabold text-clinica-dark tracking-tight">Salud</h1>
-            <p className="text-gray-500 mt-2 text-sm font-medium">Ingresá a tu portal médico</p>
+            <h1 className="text-4xl font-extrabold text-clinica-dark tracking-tight">Portal Paciente</h1>
+            <p className="text-gray-600 mt-2 text-sm font-medium">Ingresá para gestionar turnos y seguimientos</p>
           </div>
 
           {error && (
-            <div className={`p-4 rounded-xl text-sm mb-6 text-center border animate-pulse ${
+            <div className={`p-4 rounded-xl text-sm mb-6 text-center border ${
               error.includes("activada") 
                 ? "bg-amber-50 text-amber-700 border-amber-200" 
                 : "bg-red-50 text-red-600 border-red-100"
@@ -90,7 +91,7 @@ const Login = () => {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-5 py-3.5 rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-clinica-dark focus:border-transparent transition-all bg-gray-50/50"
+                className="w-full px-5 py-3.5 rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-clinica-dark focus:border-transparent transition-all bg-white/80"
                 placeholder="ejemplo@correo.com"
               />
             </div>
@@ -105,7 +106,7 @@ const Login = () => {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-5 py-3.5 rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-clinica-dark focus:border-transparent transition-all bg-gray-50/50"
+                  className="w-full px-5 py-3.5 rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-clinica-dark focus:border-transparent transition-all bg-white/80"
                   placeholder="••••••••"
                 />
                 <button
@@ -135,15 +136,15 @@ const Login = () => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-clinica-dark text-white font-bold py-4 rounded-2xl hover:bg-clinica-hover transition-all shadow-lg shadow-clinica-dark/20 disabled:opacity-70 flex justify-center items-center mt-4"
+              className="w-full bg-clinica-dark text-white font-bold py-4 rounded-2xl hover:bg-clinica-hover transition-all shadow-lg shadow-clinica-dark/20 disabled:opacity-70 flex justify-center items-center mt-4 hover:-translate-y-0.5"
             >
               {loading ? "Verificando..." : "Ingresar"}
             </button>
           </form>
         </div>
         
-        <div className="bg-gray-50/80 p-6 text-center border-t border-gray-100">
-          <p className="text-sm text-gray-500">
+        <div className="bg-white/55 p-6 text-center border-t border-gray-200">
+          <p className="text-sm text-gray-600">
             ¿No tenés una cuenta?{' '}
             <Link to="/registro" className="text-clinica-dark font-bold hover:underline ml-1">
               Registrate aquí
@@ -151,6 +152,7 @@ const Login = () => {
           </p>
         </div>
 
+        </div>
       </div>
     </div>
   );

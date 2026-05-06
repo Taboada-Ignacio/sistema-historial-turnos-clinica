@@ -7,12 +7,16 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDate;
 import java.util.Set;
 
+import jakarta.validation.constraints.NotNull;
+
 @Data
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
 public class AdministradorResponseDTO {
+    @NotNull(message = "El ID del usuario es obligatorio")
     private Long idUsuario;
+    
     private String nombre;
     private String apellido;
     private Integer dni;

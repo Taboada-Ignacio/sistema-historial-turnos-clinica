@@ -11,6 +11,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.view.RedirectView;
 
 import java.util.List;
 import java.util.Map;
@@ -37,12 +38,13 @@ public class ProfesionalController {
 
     /**
      * Endpoint público para la confirmación de identidad vía email.
-     * Cambia el estado del profesional a 'ACTIVO'.
+     * Redirecciona a la página de aprobación pendiente después de confirmar.
      */
     @GetMapping("/confirmar")
-    public ResponseEntity<String> confirmar(@RequestParam("token") String token) {
+    public RedirectView confirmar(@RequestParam("token") String token) {
         profesionalService.confirmarCuenta(token);
-        return ResponseEntity.ok("Profesional confirmado con éxito. Ahora puede acceder al sistema.");
+        // Redirigir al frontend a la página de aprobación pendiente
+        return new RedirectView("http://localhost:5173/aprobacion-pendiente");
     }
 
     /**
@@ -71,6 +73,15 @@ public class ProfesionalController {
     @GetMapping("/{id}")
     public ResponseEntity<ProfesionalResponseDTO> obtenerPorId(@PathVariable Long id) {
         return ResponseEntity.ok(profesionalService.obtenerProfesionalPorId(id));
+    }
+
+    /**
+     * Obtiene todos los profesionales con membresía INACTIVA (aprobados por administración).
+     */
+    @GetMapping("/membresia/inactiva")
+    public ResponseEntity<List<ProfesionalResponseDTO>> obtenerProfesionalesConMembresiaInactiva() {
+        List<ProfesionalResponseDTO> profesionales = profesionalService.obtenerProfesionalesConMembresiaInactiva();
+        return ResponseEntity.ok(profesionales);
     }
 
     /**

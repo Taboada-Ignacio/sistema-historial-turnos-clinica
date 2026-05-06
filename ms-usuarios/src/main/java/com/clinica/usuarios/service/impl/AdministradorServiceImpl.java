@@ -53,8 +53,9 @@ public class AdministradorServiceImpl implements AdministradorService {
         validarUnicidadUsuario(dto.getEmail(), dto.getDni());
 
         // 3. Obtención de dependencias y Estado inicial
-        Rol rolAdmin = rolRepository.findByDescripcion("ROLE_ADMINISTRADOR")
-                .orElseThrow(() -> new RecursoNoEncontradoException("Rol ROLE_ADMINISTRADOR no encontrado"));
+        Rol rolAdmin = obtenerRolObligatorio("ROLE_ADMINISTRADOR");
+        Rol rolProfesional = obtenerRolObligatorio("ROLE_PROFESIONAL");
+        Rol rolPaciente = obtenerRolObligatorio("ROLE_PACIENTE");
         
         Localidad localidad = localidadRepository.findById(dto.getIdLocalidad())
                 .orElseThrow(() -> new RecursoNoEncontradoException("Localidad no encontrada con ID: " + dto.getIdLocalidad()));
@@ -64,7 +65,7 @@ public class AdministradorServiceImpl implements AdministradorService {
 
         // 4. Mapeo y Configuración
         Administrador admin = administradorMapper.toEntity(dto);
-        admin.setRoles(Set.of(rolAdmin)); 
+        admin.setRoles(Set.of(rolAdmin, rolProfesional, rolPaciente));
         admin.setLocalidad(localidad);
         admin.setPassword(passwordEncoder.encode(dto.getPassword()));
         admin.setEstadoActual(estadoPendiente); 
@@ -187,5 +188,10 @@ public class AdministradorServiceImpl implements AdministradorService {
         if (usuarioRepository.findByDni(dni).isPresent()) {
             throw new ReglaDeNegocioException("El DNI ya está registrado.");
         }
+    }
+
+    private Rol obtenerRolObligatorio(String descripcionRol) {
+        return rolRepository.findByDescripcion(descripcionRol)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Rol " + descripcionRol + " no encontrado"));
     }
 }

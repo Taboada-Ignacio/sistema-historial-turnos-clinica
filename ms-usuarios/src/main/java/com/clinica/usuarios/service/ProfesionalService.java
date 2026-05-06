@@ -13,6 +13,7 @@ public interface ProfesionalService {
     
     ProfesionalResponseDTO obtenerProfesionalPorId(Long id);
     List<ProfesionalResponseDTO> obtenerTodosLosProfesionales();
+    List<ProfesionalResponseDTO> obtenerProfesionalesConMembresiaInactiva();
     ProfesionalResponseDTO actualizarProfesional(Long id, ProfesionalUpdateDTO dto);
     void eliminarSoloProfesional(Long id);
     

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import clienteAxios from '../../api/axiosConfig';
+import { ADMIN_PATHS } from '../../utils/adminPaths';
 
 const AdminRegisterSecret = () => {
   const navigate = useNavigate();
@@ -76,21 +77,35 @@ const AdminRegisterSecret = () => {
 
   const handleRegister = async (e) => {
     e.preventDefault();
-    if (!isPasswordValid || !systemKey) return;
+    if (!isPasswordValid) {
+      setError('La contraseña no cumple los requisitos de seguridad.');
+      return;
+    }
+    if (!systemKey.trim()) {
+      setError('Debes ingresar la X-System-Key para continuar.');
+      return;
+    }
 
     setError('');
     setLoading(true);
 
     try {
+      const dni = Number(formData.dni);
+      const idLocalidad = Number(formData.idLocalidad);
+      if (!Number.isInteger(dni) || !Number.isInteger(idLocalidad)) {
+        setError('DNI o localidad inválidos.');
+        return;
+      }
+
       const payload = {
         ...formData,
-        dni: parseInt(formData.dni),
-        idLocalidad: parseInt(formData.idLocalidad)
+        dni,
+        idLocalidad
       };
 
       const response = await clienteAxios.post('/usuarios/api/administradores/registro', payload, {
         headers: { 
-          'X-System-Key': systemKey,
+          'X-System-Key': systemKey.trim(),
           'Content-Type': 'application/json'
         }
       });
@@ -99,7 +114,7 @@ const AdminRegisterSecret = () => {
       if (response.status === 201) {
         setSuccess(true);
         // Damos más tiempo (5s) para que el usuario lea la instrucción del mail
-        setTimeout(() => navigate('/'), 5000);
+        setTimeout(() => navigate(ADMIN_PATHS.login), 5000);
       }
     } catch (err) {
       if (err.response && err.response.status === 403) {

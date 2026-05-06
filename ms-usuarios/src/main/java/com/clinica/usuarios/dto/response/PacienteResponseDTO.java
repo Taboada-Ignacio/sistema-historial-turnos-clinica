@@ -7,11 +7,14 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDate;
 import java.util.Set;
 
+import jakarta.validation.constraints.NotNull;
+
 @Data
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
 public class PacienteResponseDTO {
+    @NotNull(message = "El ID del paciente es obligatorio")
     private Long idUsuario;
     private String nombre;
     private String apellido;
@@ -21,6 +24,7 @@ public class PacienteResponseDTO {
     private LocalDate fechaNacimiento;
     
     // Cambiado de Boolean a String
+    @NotNull(message = "El estado actual es obligatorio")
     private String estadoActual; 
     
     private String nombreObraSocial;

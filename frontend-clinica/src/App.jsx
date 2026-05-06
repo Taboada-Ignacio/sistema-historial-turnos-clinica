@@ -22,6 +22,16 @@ import LoginProfesional from './pages/profesionales/LoginProfesional';
 import RegistroProfesional from './pages/profesionales/RegistroProfesional';
 import VerificarEmailProfesional from './pages/profesionales/VerificarEmailProfesional';
 import AprobacionPendiente from './pages/profesionales/AprobacionPendiente';
+import LoginAdministrador from './pages/administracion/LoginAdministrador';
+import AdminRoute from './pages/administracion/AdminRoute';
+import AdminLayout from './pages/administracion/AdminLayout';
+import AdminDashboardHome from './pages/administracion/AdminDashboardHome';
+import ProfesionalesPendientesPage from './pages/administracion/ProfesionalesPendientesPage';
+import ProfesionalPendienteDetallePage from './pages/administracion/ProfesionalPendienteDetallePage';
+import AdministrarEntidadesPage from './pages/administracion/AdministrarEntidadesPage';
+import AdminTurnosPage from './pages/administracion/AdminTurnosPage';
+import AdminHistorialesClinicosPage from './pages/administracion/AdminHistorialesClinicosPage';
+import { ADMIN_PATHS } from './utils/adminPaths';
 
 function App() {
   return (
@@ -31,7 +41,7 @@ function App() {
         {/* --- GENERALES --- */}
         <Route path="/" element={<Landing />} />
         <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/secret-admin-setup" element={<AdminRegisterSecret />} />
+        <Route path={ADMIN_PATHS.setup} element={<AdminRegisterSecret />} />
         
         {/* --- PACIENTES --- */}
         <Route path="/login" element={<Login />} />
@@ -43,6 +53,19 @@ function App() {
         <Route path="/registro-profesional" element={<RegistroProfesional />} />
         <Route path="/verificar-email-profesional" element={<VerificarEmailProfesional />} />
         <Route path="/aprobacion-pendiente" element={<AprobacionPendiente />} />
+
+        {/* --- ADMINISTRACIÓN --- */}
+        <Route path={ADMIN_PATHS.login} element={<LoginAdministrador />} />
+        <Route element={<AdminRoute />}>
+          <Route path={ADMIN_PATHS.dashboard} element={<AdminLayout />}>
+            <Route index element={<AdminDashboardHome />} />
+            <Route path="profesionales-pendientes" element={<ProfesionalesPendientesPage />} />
+            <Route path="profesionales-pendientes/:idProfesional" element={<ProfesionalPendienteDetallePage />} />
+            <Route path="entidades" element={<AdministrarEntidadesPage />} />
+            <Route path="turnos" element={<AdminTurnosPage />} />
+            <Route path="historiales-clinicos" element={<AdminHistorialesClinicosPage />} />
+          </Route>
+        </Route>
 
       </Routes>
     </BrowserRouter>

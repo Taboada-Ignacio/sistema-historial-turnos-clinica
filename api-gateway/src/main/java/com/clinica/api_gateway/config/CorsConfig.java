@@ -1,4 +1,4 @@
-package com.clinica.gateway.config;
+package com.clinica.api_gateway.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -19,7 +19,16 @@ public class CorsConfig {
         corsConfig.setAllowedOrigins(Arrays.asList("http://localhost:5173", "http://localhost:3000")); 
         corsConfig.setMaxAge(3600L);
         corsConfig.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
-        corsConfig.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type"));
+        // Incluimos headers custom para preflight (ej: X-System-Key en registro admin)
+        corsConfig.setAllowedHeaders(Arrays.asList(
+                "Authorization",
+                "Content-Type",
+                "X-System-Key",
+                "x-system-key",
+                "Accept",
+                "Origin",
+                "X-Requested-With"
+        ));
         corsConfig.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

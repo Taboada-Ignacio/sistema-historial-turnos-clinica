@@ -18,7 +18,8 @@ public class ProfesionalUpdateDTO {
     private String email;
     private String telefono;
     private String matricula;
-    private String estadoActual; // <--- AGREGAR ESTO
+    @NotNull(message = "El estado actual es obligatorio")
+    private String estadoActual;
     private Long idLocalidad;
     private Long idEspecialidad;
     private Set<Long> rolesIds;
