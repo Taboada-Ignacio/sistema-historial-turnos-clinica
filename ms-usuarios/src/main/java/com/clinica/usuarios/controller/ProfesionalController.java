@@ -67,11 +67,16 @@ public class ProfesionalController {
 
     /**
      * Listado con todos los datos sensibles (interno): solo administrador.
+     * Query opcional {@code ?membresia=<NOMBRE>} filtra por membresía actual (nombre debe existir en catálogo, p. ej. {@code SIN_VERIFICAR}, {@code INACTIVA}).
      */
     @PreAuthorize("hasAuthority('ROLE_ADMINISTRADOR')")
     @GetMapping
-    public ResponseEntity<List<ProfesionalResponseDTO>> obtenerTodos() {
-        List<ProfesionalResponseDTO> profesionales = profesionalService.obtenerTodosLosProfesionales();
+    public ResponseEntity<List<ProfesionalResponseDTO>> obtenerTodos(
+            @RequestParam(required = false) String membresia) {
+        List<ProfesionalResponseDTO> profesionales =
+                (membresia != null && !membresia.isBlank())
+                        ? profesionalService.obtenerProfesionalesPorMembresiaNombre(membresia)
+                        : profesionalService.obtenerTodosLosProfesionales();
         return ResponseEntity.ok(profesionales);
     }
 

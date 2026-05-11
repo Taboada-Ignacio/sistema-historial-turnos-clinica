@@ -69,7 +69,7 @@ Este documento **complementa** OpenAPI con convenciones de **seguridad**, **cook
 | POST | `/registro` | Público | `multipart/form-data`: parte `datos` (JSON), opcional `foto`. |
 | GET | `/confirmar` | Público | Query `token`; redirect SPA. |
 | POST | `/reenviar-confirmacion` | Público | Query `email`. |
-| GET | `/` | ADMIN |
+| GET | `/` | ADMIN | Sin query: todos. Query **`membresia=<NOMBRE>`** (p. ej. `SIN_VERIFICAR`, `INACTIVA`, `ACTIVA`): filtra por membresía actual; el nombre se normaliza a mayúsculas y debe existir en catálogo → si no existe **404**. `membresia` vacío → **400**. |
 | GET | `/presentacion` | ADMIN, PACIENTE o PROFESIONAL | Catálogo reducido. |
 | GET | `/{id}/presentacion` | ADMIN, PACIENTE o PROFESIONAL | |
 | GET | `/{id}` | ADMIN o PROFESIONAL **y** mismo usuario |

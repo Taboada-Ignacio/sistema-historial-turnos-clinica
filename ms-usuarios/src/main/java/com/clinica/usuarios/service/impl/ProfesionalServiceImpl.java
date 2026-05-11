@@ -147,6 +147,21 @@ public class ProfesionalServiceImpl implements ProfesionalService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<ProfesionalResponseDTO> obtenerProfesionalesPorMembresiaNombre(String nombreMembresia) {
+        if (nombreMembresia == null || nombreMembresia.isBlank()) {
+            throw new ReglaDeNegocioException("El parámetro membresia no puede estar vacío.");
+        }
+        String normalized = nombreMembresia.trim().toUpperCase();
+        membresiaRepository.findByNombre(normalized)
+                .orElseThrow(() -> new RecursoNoEncontradoException(
+                        "No existe una membresía con nombre: " + normalized));
+        return profesionalRepository.findByMembresiaActual_Nombre(normalized).stream()
+                .map(profesionalMapper::toResponseDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<ProfesionalPresentacionDTO> listarParaPresentacion() {
         return profesionalRepository.findAllWithUbicacionAndEspecialidad().stream()
                 .filter(this::incluirEnCatalogoPresentacion)

@@ -14,6 +14,11 @@ public interface ProfesionalService {
     
     ProfesionalResponseDTO obtenerProfesionalPorId(Long id);
     List<ProfesionalResponseDTO> obtenerTodosLosProfesionales();
+
+    /**
+     * Listado admin filtrado por nombre de membresía actual (debe existir en catálogo, p. ej. SIN_VERIFICAR, INACTIVA, ACTIVA).
+     */
+    List<ProfesionalResponseDTO> obtenerProfesionalesPorMembresiaNombre(String nombreMembresia);
     List<ProfesionalPresentacionDTO> listarParaPresentacion();
     ProfesionalPresentacionDTO obtenerParaPresentacion(Long id);
     List<ProfesionalResponseDTO> obtenerProfesionalesConMembresiaInactiva();
