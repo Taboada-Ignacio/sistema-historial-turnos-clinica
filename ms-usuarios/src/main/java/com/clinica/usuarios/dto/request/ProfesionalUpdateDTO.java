@@ -16,6 +16,8 @@ public class ProfesionalUpdateDTO {
     private Integer dni;
     @NotBlank(message = "El email es obligatorio")
     private String email;
+    /** Calle y número (opcional). */
+    private String direccion;
     private String telefono;
     private String matricula;
     @NotNull(message = "El estado actual es obligatorio")

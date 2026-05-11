@@ -34,6 +34,9 @@ public class ProfesionalRegistroDTO {
     @NotNull(message = "La matrícula es obligatoria")
     private String matricula;
 
+    /** Calle y número (opcional); la vista pública concatena con localidad y provincia. */
+    private String direccion;
+
     @NotNull(message = "La localidad es obligatoria")
     private Long idLocalidad;
 

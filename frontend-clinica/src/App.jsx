@@ -6,7 +6,11 @@ import Landing from './pages/general/Landing';
 import AdminRegisterSecret from './pages/general/AdminRegisterSecret';
 import Login from './pages/pacientes/Login';
 import Register from './pages/pacientes/Register';
-import ConfirmAccount from './pages/pacientes/ConfirmAccount';
+import VerificarEmailPaciente from './pages/pacientes/VerificarEmailPaciente';
+import RegistroExitosoPaciente from './pages/pacientes/RegistroExitosoPaciente';
+import VerificarEmailAdmin from './pages/administracion/VerificarEmailAdmin';
+import RegistroExitosoAdmin from './pages/administracion/RegistroExitosoAdmin';
+import ConfirmacionError from './pages/general/ConfirmacionError';
 import SolicitarCambioPasswordPaciente from './pages/pacientes/SolicitarCambioPasswordPaciente';
 import CambiarPasswordPaciente from './pages/pacientes/CambiarPasswordPaciente';
 import PacienteRoute from './pages/pacientes/PacienteRoute';
@@ -44,7 +48,9 @@ function App() {
         {/* --- PACIENTES --- */}
         <Route path={PACIENTE_PATHS.login} element={<Login />} />
         <Route path={PACIENTE_PATHS.registro} element={<Register />} />
-        <Route path={PACIENTE_PATHS.confirmar} element={<ConfirmAccount />} />
+        <Route path={PACIENTE_PATHS.verificarEmail} element={<VerificarEmailPaciente />} />
+        <Route path={PACIENTE_PATHS.registroExitoso} element={<RegistroExitosoPaciente />} />
+        <Route path={PACIENTE_PATHS.confirmacionError} element={<ConfirmacionError />} />
         <Route path={PACIENTE_PATHS.recuperarPassword} element={<SolicitarCambioPasswordPaciente />} />
         <Route path={PACIENTE_PATHS.cambiarPassword} element={<CambiarPasswordPaciente />} />
         
@@ -67,6 +73,8 @@ function App() {
         </Route>
 
         {/* --- ADMINISTRACIÓN --- */}
+        <Route path={ADMIN_PATHS.verificarEmail} element={<VerificarEmailAdmin />} />
+        <Route path={ADMIN_PATHS.registroExitoso} element={<RegistroExitosoAdmin />} />
         <Route path={ADMIN_PATHS.login} element={<LoginAdministrador />} />
         <Route element={<AdminRoute />}>
           <Route path={ADMIN_PATHS.dashboard} element={<AdminLayout />}>

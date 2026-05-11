@@ -13,6 +13,8 @@ public interface PacienteService {
     PacienteResponseDTO actualizarPaciente(Long id, PacienteUpdateDTO dto);
     void eliminarSoloPaciente(Long id);
     
-    // Nuevo método para el Double Opt-In
+    // Double opt-in
     void confirmarCuenta(String token);
+
+    void reenviarCorreoConfirmacion(String email);
 }

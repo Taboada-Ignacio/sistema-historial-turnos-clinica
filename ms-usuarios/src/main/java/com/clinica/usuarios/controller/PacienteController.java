@@ -8,8 +8,14 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.view.RedirectView;
+
+import com.clinica.usuarios.web.AccountConfirmationRedirectHelper;
+
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/pacientes")
@@ -17,6 +23,7 @@ import java.util.List;
 public class PacienteController {
 
     private final PacienteService pacienteService;
+    private final AccountConfirmationRedirectHelper confirmRedirect;
 
     /**
      * Registra un nuevo paciente.
@@ -29,17 +36,33 @@ public class PacienteController {
     }
 
     /**
-     * Endpoint público para confirmar la cuenta mediante el token del correo.
+     * Confirmación vía enlace del correo: activa la cuenta y redirige a la SPA (registro exitoso → dashboard).
      */
     @GetMapping("/confirmar")
-    public ResponseEntity<String> confirmarCuenta(@RequestParam("token") String token) {
-        pacienteService.confirmarCuenta(token);
-        return ResponseEntity.ok("Cuenta confirmada con éxito. Ya podés iniciar sesión.");
+    public RedirectView confirmarCuenta(@RequestParam("token") String token) {
+        try {
+            pacienteService.confirmarCuenta(token);
+            return confirmRedirect.exitoPaciente();
+        } catch (Exception e) {
+            return confirmRedirect.errorConfirmacion("paciente", e);
+        }
+    }
+
+    /**
+     * Reenvía el correo de confirmación (pantalla “verificá tu correo”).
+     */
+    @PostMapping("/reenviar-confirmacion")
+    public ResponseEntity<?> reenviarConfirmacion(@RequestParam("email") String email) {
+        pacienteService.reenviarCorreoConfirmacion(email);
+        return ResponseEntity.ok().body(
+            Map.of("mensaje", "Si el correo existe y no está activado, se ha enviado un nuevo enlace de confirmación.")
+        );
     }
 
     /**
      * Obtiene un paciente por su ID.
      */
+    @PreAuthorize("hasAuthority('ROLE_ADMINISTRADOR') or (hasAuthority('ROLE_PACIENTE') and @authorizationRules.esMismoUsuario(#id))")
     @GetMapping("/{id}")
     public ResponseEntity<PacienteResponseDTO> obtenerPorId(@PathVariable Long id) {
         return ResponseEntity.ok(pacienteService.obtenerPacientePorId(id)); 
@@ -49,6 +72,7 @@ public class PacienteController {
      * Obtiene el listado completo de pacientes.
      * (Útil para el panel de administración de tu clínica).
      */
+    @PreAuthorize("hasAuthority('ROLE_ADMINISTRADOR')")
     @GetMapping
     public ResponseEntity<List<PacienteResponseDTO>> obtenerTodos() {
         List<PacienteResponseDTO> pacientes = pacienteService.obtenerTodosLosPacientes();
@@ -58,6 +82,7 @@ public class PacienteController {
     /**
      * Actualiza los datos de un paciente.
      */
+    @PreAuthorize("hasAuthority('ROLE_ADMINISTRADOR') or (hasAuthority('ROLE_PACIENTE') and @authorizationRules.esMismoUsuario(#id))")
     @PutMapping("/{id}")
     public ResponseEntity<PacienteResponseDTO> actualizar(
             @PathVariable Long id, 
@@ -68,6 +93,7 @@ public class PacienteController {
     /**
      * Elimina físicamente a un paciente si no tiene turnos asociados.
      */
+    @PreAuthorize("hasAuthority('ROLE_ADMINISTRADOR')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminar(@PathVariable Long id) {
         pacienteService.eliminarSoloPaciente(id);

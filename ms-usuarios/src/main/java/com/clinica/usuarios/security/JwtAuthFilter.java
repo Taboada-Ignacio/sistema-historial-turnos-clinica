@@ -1,6 +1,7 @@
 package com.clinica.usuarios.security;
 
 import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -36,9 +37,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         }
 
         // 2. Rutas de Auth, Registro y Confirmación (Cualquier método)
-        if (path.contains("/api/auth/") || 
-            path.contains("/registro") || 
-            path.contains("/confirmar")) {
+        if (path.contains("/api/auth/") ||
+            path.contains("/registro") ||
+            path.contains("/confirmar") ||
+            path.contains("/reenviar-confirmacion")) {
             return true;
         }
 
@@ -91,23 +93,42 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
 
         } catch (ExpiredJwtException e) {
-            // MEJORA 2: Manejo específico de token expirado para el Frontend
-            handleException(response, "El tiempo de sesión ha caducado. Por favor, inicie sesión nuevamente.", 401);
+            handleException(
+                    response,
+                    "El tiempo de sesión ha caducado. Por favor, inicie sesión nuevamente.",
+                    HttpServletResponse.SC_UNAUTHORIZED,
+                    "TOKEN_EXPIRED");
+        } catch (JwtException e) {
+            handleException(
+                    response,
+                    "Token inválido o firma incorrecta.",
+                    HttpServletResponse.SC_UNAUTHORIZED,
+                    "TOKEN_INVALID");
         } catch (Exception e) {
-            // Otros errores de seguridad (token mal formado, etc.)
-            handleException(response, "Error de autenticación: " + e.getMessage(), 403);
+            handleException(
+                    response,
+                    "Error de autenticación.",
+                    HttpServletResponse.SC_UNAUTHORIZED,
+                    "TOKEN_INVALID");
         }
     }
 
-    private void handleException(HttpServletResponse response, String message, int status) throws IOException {
+    private void handleException(HttpServletResponse response, String message, int status, String code)
+            throws IOException {
         response.setStatus(status);
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");
-        // Escribimos un JSON que el front pueda leer fácilmente
+        String safeMessage = jsonEscape(message);
         String jsonResponse = String.format(
-            "{\"status\": %d, \"error\": \"Unauthorized\", \"message\": \"%s\", \"code\": \"TOKEN_EXPIRED\"}", 
-            status, message
-        );
+                "{\"status\": %d, \"error\": \"Unauthorized\", \"message\": \"%s\", \"code\": \"%s\"}",
+                status, safeMessage, jsonEscape(code));
         response.getWriter().write(jsonResponse);
+    }
+
+    private static String jsonEscape(String s) {
+        if (s == null) {
+            return "";
+        }
+        return s.replace("\\", "\\\\").replace("\"", "\\\"").replace("\r", " ").replace("\n", " ");
     }
 }

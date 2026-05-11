@@ -6,6 +6,7 @@ import com.clinica.usuarios.dto.response.ProvinciaResponseDTO;
 import com.clinica.usuarios.service.ProvinciaService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -19,6 +20,7 @@ public class ProvinciaController {
 
     private final ProvinciaService provinciaService;
 
+    @PreAuthorize("hasAuthority('ROLE_ADMINISTRADOR')")
     @PostMapping("/registro")
     public ResponseEntity<ProvinciaResponseDTO> registrar(@Valid @RequestBody ProvinciaRegistroDTO dto) {
         ProvinciaResponseDTO nuevaProvincia = provinciaService.registrarProvincia(dto);
@@ -35,6 +37,7 @@ public class ProvinciaController {
         return ResponseEntity.ok(provinciaService.obtenerTodasLasProvincias());
     }
 
+    @PreAuthorize("hasAuthority('ROLE_ADMINISTRADOR')")
     @PutMapping("/{id}")
     public ResponseEntity<ProvinciaResponseDTO> actualizar(
             @PathVariable Long id, 
@@ -42,6 +45,7 @@ public class ProvinciaController {
         return ResponseEntity.ok(provinciaService.actualizarProvincia(id, dto));
     }
 
+    @PreAuthorize("hasAuthority('ROLE_ADMINISTRADOR')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminar(@PathVariable Long id) {
         provinciaService.eliminarProvincia(id);

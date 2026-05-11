@@ -3,6 +3,8 @@ package com.clinica.usuarios.repository;
 import com.clinica.usuarios.model.Profesional;
 import com.clinica.usuarios.model.Membresia;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -19,4 +21,23 @@ public interface ProfesionalRepository extends JpaRepository<Profesional, Long> 
 
     // Buscar profesionales por objeto Membresia
     List<Profesional> findByMembresiaActual(Membresia membresia);
+
+    @Query("""
+            SELECT DISTINCT p FROM Profesional p
+            LEFT JOIN FETCH p.localidad loc
+            LEFT JOIN FETCH loc.provincia
+            JOIN FETCH p.especialidad
+            JOIN FETCH p.estadoActual
+            """)
+    List<Profesional> findAllWithUbicacionAndEspecialidad();
+
+    @Query("""
+            SELECT p FROM Profesional p
+            LEFT JOIN FETCH p.localidad loc
+            LEFT JOIN FETCH loc.provincia
+            JOIN FETCH p.especialidad
+            JOIN FETCH p.estadoActual
+            WHERE p.idUsuario = :id
+            """)
+    Optional<Profesional> findWithUbicacionById(@Param("id") Long id);
 }

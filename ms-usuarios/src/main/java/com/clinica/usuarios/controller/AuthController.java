@@ -23,12 +23,18 @@ import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.http.ResponseCookie;
+import org.springframework.web.bind.annotation.CookieValue;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.view.RedirectView;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -44,28 +50,102 @@ public class AuthController {
     private final VerificationTokenRepository verificationTokenRepository;
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
+    private final com.clinica.usuarios.service.impl.RefreshTokenService refreshTokenService;
 
     @Value("${app.url}")
     private String appUrl;
 
     @Value("${app.frontend-url:http://localhost:5173}")
     private String frontendUrl;
+    
+    @Value("${jwt.refreshExpiration:604800000}")
+    private long refreshExpirationMs;
+    
+    @Value("${app.cookie.secure:false}")
+    private boolean cookieSecure;
+    
+    @Value("${app.allowed-origins:}")
+    private String allowedOriginsCsv;
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody AuthRequestDTO request) {
+    public ResponseEntity<?> login(@RequestBody AuthRequestDTO request, HttpServletResponse response, HttpServletRequest requestHttp) {
         try {
-            // 1. Spring Security valida email, contraseña y el campo 'enabled' (Estado ACTIVO)
+            if (request.getPortal() == null || request.getPortal().isBlank()) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(Map.of(
+                                "error", "Solicitud inválida",
+                                "message", "Debe indicar el portal: paciente, profesional o admin.",
+                                "code", "PORTAL_REQUERIDO"));
+            }
+
+            String portalNormalizado = request.getPortal().trim().toLowerCase();
+            if (!List.of("paciente", "profesional", "admin").contains(portalNormalizado)) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(Map.of(
+                                "error", "Solicitud inválida",
+                                "message", "El portal debe ser: paciente, profesional o admin.",
+                                "code", "PORTAL_INVALIDO"));
+            }
+
+            // Origin/Referer validation to mitigate CSRF for browser-based login when cookies or sensitive flows are used.
+            String allowed = allowedOriginsCsv == null ? "" : allowedOriginsCsv.trim();
+            if (!allowed.isEmpty()) {
+                String origin = requestHttp.getHeader("Origin");
+                boolean originOk = false;
+                if (origin != null && !origin.isBlank()) {
+                    for (String o : allowed.split(",")) {
+                        if (origin.equalsIgnoreCase(o.trim())) {
+                            originOk = true;
+                            break;
+                        }
+                    }
+                } else {
+                    String referer = requestHttp.getHeader("Referer");
+                    if (referer != null && !referer.isBlank()) {
+                        for (String o : allowed.split(",")) {
+                            if (referer.startsWith(o.trim())) {
+                                originOk = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+                if (!originOk) {
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                            .body(Map.of("error", "Origen no permitido", "code", "INVALID_ORIGIN"));
+                }
+            }
+
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
             );
 
-            // 2. Si las credenciales son correctas y el usuario está ACTIVO, cargamos los datos
             final UserDetails userDetails = userDetailsService.loadUserByUsername(request.getEmail());
 
-            // 3. Generamos el token JWT
+            if (!tieneAccesoAlPortal(userDetails, portalNormalizado)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(Map.of(
+                                "error", "Acceso denegado",
+                                "message", "Esta cuenta no tiene acceso a este portal.",
+                                "code", "PORTAL_NO_PERMITIDO"));
+            }
+
             final String jwt = jwtUtil.generateToken(userDetails);
 
-            // 4. Lo devolvemos en formato JSON
+            // Create refresh token (rotating, stored in DB) and set as HttpOnly cookie
+            Usuario usuario = usuarioRepository.findByEmail(request.getEmail())
+                    .orElseThrow(() -> new RecursoNoEncontradoException("Usuario no encontrado"));
+            com.clinica.usuarios.model.RefreshToken refreshToken = refreshTokenService.createRefreshToken(usuario);
+
+            ResponseCookie cookie = ResponseCookie.from("refreshToken", refreshToken.getToken())
+                    .httpOnly(true)
+                    .secure(cookieSecure)
+                    .path("/")
+                    .maxAge(refreshExpirationMs / 1000)
+                    .sameSite("Lax")
+                    .build();
+            response.addHeader("Set-Cookie", cookie.toString());
+
             return ResponseEntity.ok(Collections.singletonMap("token", jwt));
 
         } catch (DisabledException e) {
@@ -104,6 +184,8 @@ public class AuthController {
 
             usuario.setPassword(passwordEncoder.encode(request.getPasswordNueva()));
             usuarioRepository.save(usuario);
+            // Revoke refresh tokens for the user after password change
+            refreshTokenService.revokeAllForUser(usuario);
 
             return ResponseEntity.ok(Map.of("message", "Contraseña actualizada correctamente."));
         } catch (BadCredentialsException e) {
@@ -116,6 +198,69 @@ public class AuthController {
     @PostMapping("/solicitar-cambio-password/paciente")
     public ResponseEntity<?> solicitarCambioPasswordPaciente(@Valid @RequestBody SolicitarCambioPasswordDTO request) {
         return solicitarCambioPasswordPorTipo(request.getEmail(), "ROLE_PACIENTE", "paciente");
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<?> refreshToken(
+            @CookieValue(value = "refreshToken", required = false) String refreshTokenCookie,
+            HttpServletResponse response,
+            HttpServletRequest request) {
+        if (refreshTokenCookie == null || refreshTokenCookie.isBlank()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Refresh token no proporcionado", "code", "REFRESH_TOKEN_MISSING"));
+        }
+        try {
+            // Origin/Referer validation to mitigate CSRF when using cookies for refresh
+            String allowed = allowedOriginsCsv == null ? "" : allowedOriginsCsv.trim();
+            if (!allowed.isEmpty()) {
+                String origin = request.getHeader("Origin");
+                boolean originOk = false;
+                if (origin != null && !origin.isBlank()) {
+                    for (String o : allowed.split(",")) {
+                        if (origin.equalsIgnoreCase(o.trim())) {
+                            originOk = true;
+                            break;
+                        }
+                    }
+                } else {
+                    // Fallback to Referer check (less strict): compare host
+                    String referer = request.getHeader("Referer");
+                    if (referer != null && !referer.isBlank()) {
+                        for (String o : allowed.split(",")) {
+                            if (referer.startsWith(o.trim())) {
+                                originOk = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+                if (!originOk) {
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                            .body(Map.of("error", "Origen no permitido", "code", "INVALID_ORIGIN"));
+                }
+            }
+            com.clinica.usuarios.model.RefreshToken newRefresh = refreshTokenService.verifyAndRotate(refreshTokenCookie);
+            Usuario usuario = newRefresh.getUsuario();
+            final UserDetails userDetails = userDetailsService.loadUserByUsername(usuario.getEmail());
+            final String newJwt = jwtUtil.generateToken(userDetails);
+
+            ResponseCookie cookie = ResponseCookie.from("refreshToken", newRefresh.getToken())
+                    .httpOnly(true)
+                    .secure(cookieSecure)
+                    .path("/")
+                    .maxAge(refreshExpirationMs / 1000)
+                    .sameSite("Lax")
+                    .build();
+            response.addHeader("Set-Cookie", cookie.toString());
+
+            return ResponseEntity.ok(Collections.singletonMap("token", newJwt));
+        } catch (RecursoNoEncontradoException ex) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Refresh token inválido o expirado", "code", "REFRESH_TOKEN_INVALID"));
+        } catch (Exception ex) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "No se pudo procesar refresh token", "code", "REFRESH_TOKEN_INVALID"));
+        }
     }
 
     @PostMapping("/solicitar-cambio-password/profesional")
@@ -195,6 +340,8 @@ public class AuthController {
         usuario.setPassword(passwordEncoder.encode(request.getPasswordNueva()));
         usuarioRepository.save(usuario);
         verificationTokenRepository.delete(verificationToken);
+        // Revoke refresh tokens after a password reset via token
+        refreshTokenService.revokeAllForUser(usuario);
 
         return ResponseEntity.ok(Map.of("message", "Contraseña actualizada correctamente."));
     }
@@ -204,5 +351,20 @@ public class AuthController {
         if (!cumple) {
             throw new ReglaDeNegocioException("La cuenta no corresponde al portal solicitado.");
         }
+    }
+
+    private boolean tieneAccesoAlPortal(UserDetails userDetails, String portal) {
+        String requiredAuthority = switch (portal) {
+            case "paciente" -> "ROLE_PACIENTE";
+            case "profesional" -> "ROLE_PROFESIONAL";
+            case "admin" -> "ROLE_ADMINISTRADOR";
+            default -> null;
+        };
+        if (requiredAuthority == null) {
+            return false;
+        }
+        return userDetails.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .anyMatch(requiredAuthority::equals);
     }
 }

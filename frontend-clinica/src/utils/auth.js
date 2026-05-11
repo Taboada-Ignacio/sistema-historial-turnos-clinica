@@ -60,6 +60,17 @@ export const getSessionToken = () => {
   return localStorage.getItem(STORAGE_KEYS.token) || sessionStorage.getItem(STORAGE_KEYS.token);
 };
 
+/** Actualiza solo el access token tras un refresh (misma sesión / mismo storage que ya tenía token). */
+export const updateSessionToken = (token) => {
+  if (localStorage.getItem(STORAGE_KEYS.token) != null) {
+    localStorage.setItem(STORAGE_KEYS.token, token);
+  } else if (sessionStorage.getItem(STORAGE_KEYS.token) != null) {
+    sessionStorage.setItem(STORAGE_KEYS.token, token);
+  } else {
+    sessionStorage.setItem(STORAGE_KEYS.token, token);
+  }
+};
+
 export const getSessionPortal = () => {
   return localStorage.getItem(STORAGE_KEYS.portal) || sessionStorage.getItem(STORAGE_KEYS.portal);
 };

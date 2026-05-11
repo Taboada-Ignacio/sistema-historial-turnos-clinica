@@ -36,7 +36,8 @@ const Login = () => {
     try {
       const response = await clienteAxios.post('/usuarios/api/auth/login', {
         email,
-        password
+        password,
+        portal: 'paciente',
       });
 
       if (response.data && response.data.token) {
@@ -56,8 +57,12 @@ const Login = () => {
       }
     } catch (err) {
       if (err.response) {
-        const serverMessage = err.response.data?.message || "";
-        if (serverMessage.toLowerCase().includes("activada") || serverMessage.toLowerCase().includes("confirme")) {
+        const data = err.response.data || {};
+        const serverMessage = data.message || data.mensaje || '';
+        const code = data.code;
+        if (code === 'PORTAL_NO_PERMITIDO') {
+          setError(serverMessage || 'Esta cuenta no tiene acceso al portal de pacientes.');
+        } else if (serverMessage.toLowerCase().includes('activada') || serverMessage.toLowerCase().includes('confirme')) {
           setError(serverMessage);
         } else if (err.response.status === 401) {
           setError('Credenciales inválidas. Verificá tu email y contraseña.');

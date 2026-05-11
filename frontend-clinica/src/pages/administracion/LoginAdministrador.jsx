@@ -17,7 +17,11 @@ const LoginAdministrador = () => {
     setLoading(true);
 
     try {
-      const loginResponse = await clienteAxios.post('/usuarios/api/auth/login', { email, password });
+      const loginResponse = await clienteAxios.post('/usuarios/api/auth/login', {
+        email,
+        password,
+        portal: 'admin',
+      });
       const token = loginResponse?.data?.token;
 
       if (!token) {
@@ -31,23 +35,12 @@ const LoginAdministrador = () => {
         return;
       }
 
-      // Seteo temporal para la petición de validación de rol
-      localStorage.setItem('token', token);
-      
-      const adminsResponse = await clienteAxios.get('/usuarios/api/administradores');
-      const isAdmin = (adminsResponse.data || []).some((admin) => admin.email === emailFromToken);
-
-      if (!isAdmin) {
-        clearSession();
-        setError('Acceso denegado: esta cuenta no pertenece al rol administrador.');
-        return;
-      }
-
       saveAdminSession(token, emailFromToken);
       navigate(ADMIN_PATHS.profesionalesPendientes);
     } catch (err) {
       clearSession();
-      const message = err.response?.data?.message || 'No se pudo iniciar sesión.';
+      const data = err.response?.data || {};
+      const message = data.message || data.mensaje || 'No se pudo iniciar sesión.';
       setError(message);
     } finally {
       setLoading(false);

@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import clienteAxios from "../../api/axiosConfig";
+import { PACIENTE_PATHS } from '../../utils/portalPaths';
 const Register = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false); // Estado para el flujo de mail
-  
   const [showPassword, setShowPassword] = useState(false);
   const [provincias, setProvincias] = useState([]);
   const [localidades, setLocalidades] = useState([]);
@@ -86,12 +85,8 @@ const Register = () => {
         rolesIds: [2] 
       };
 
-      const response = await clienteAxios.post('/usuarios/api/pacientes/registro', payload);
-
-      if (response.status === 201 || response.status === 200) {
-        setSuccess(true);
-        // No redirigimos inmediatamente para que el usuario lea la instrucción del mail
-      }
+      await clienteAxios.post('/usuarios/api/pacientes/registro', payload);
+      navigate(PACIENTE_PATHS.verificarEmail, { state: { email: formData.email } });
     } catch (err) {
        setError(err.response?.data?.message || 'Error al registrar el usuario.');
     } finally {
@@ -124,20 +119,6 @@ const Register = () => {
              </div>
           )}
 
-          {/* VISTA DE ÉXITO (MAIL ENVIADO) */}
-          {success ? (
-            <div className="text-center py-10 animate-fade-in">
-              <div className="bg-green-100 text-green-700 p-6 rounded-2xl mb-6">
-                <svg className="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                </svg>
-                <h2 className="text-xl font-bold mb-2">¡Casi listo!</h2>
-                <p>Enviamos un enlace de activación a <strong>{formData.email}</strong>.</p>
-                <p className="text-sm mt-2 opacity-80">Por favor, verificá tu correo para activar tu cuenta y poder ingresar.</p>
-              </div>
-              <Link to="/" className="text-clinica-dark font-bold hover:underline">Volver al Inicio</Link>
-            </div>
-          ) : (
             <form onSubmit={handleRegister} className="space-y-5">
               {/* DATOS PERSONALES */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -203,16 +184,13 @@ const Register = () => {
                 {loading ? <span className="animate-pulse">Registrando...</span> : "Confirmar Registro"}
               </button>
             </form>
-          )}
         </div>
         
-        {!success && (
           <div className="bg-gray-50 p-6 text-center border-t border-gray-100">
             <p className="text-sm text-gray-600">
-              ¿Ya tenés una cuenta? <Link to="/" className="text-clinica-dark font-semibold hover:underline">Iniciá sesión</Link>
+              ¿Ya tenés una cuenta? <Link to={PACIENTE_PATHS.login} className="text-clinica-dark font-semibold hover:underline">Iniciá sesión</Link>
             </p>
           </div>
-        )}
 
       </div>
     </div>

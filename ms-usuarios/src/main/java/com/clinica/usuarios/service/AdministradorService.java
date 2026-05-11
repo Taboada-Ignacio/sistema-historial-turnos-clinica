@@ -18,6 +18,7 @@ public interface AdministradorService {
 
     void eliminarAdministrador(Long id);
 
-    // Método para activar la cuenta mediante el link del correo
     void confirmarCuenta(String token);
+
+    void reenviarCorreoConfirmacion(String email);
 }

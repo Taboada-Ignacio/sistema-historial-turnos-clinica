@@ -1,16 +1,44 @@
-# React + Vite
+# Frontend Clínica (React + Vite)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Aplicación web con tres portales: **paciente**, **profesional** y **administración interna**.
 
-Currently, two official plugins are available:
+## Requisitos
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Node.js 18+ (recomendado LTS)
+- npm
 
-## React Compiler
+## Configuración
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+1. Copiá el ejemplo de entorno:
 
-## Expanding the ESLint configuration
+   ```bash
+   cp .env.example .env
+   ```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+2. Editá **`.env`** y definí la URL base del API (gateway o microservicio):
+
+   ```env
+   VITE_API_BASE_URL=http://localhost:8080
+   ```
+
+   Sin barra final. En desarrollo suele ser el **gateway**; si llamás directo a `ms-usuarios`, usá su puerto (p. ej. `8081` según `application.yml`).
+
+## Scripts
+
+| Comando | Descripción |
+|---------|-------------|
+| `npm run dev` | Servidor de desarrollo (Vite) |
+| `npm run build` | Build de producción |
+| `npm run preview` | Vista previa del build |
+| `npm run lint` | ESLint (tras `npm install`) |
+
+## Autenticación
+
+- **Login:** cada pantalla envía `portal`: `paciente`, `profesional` o `admin` junto con email y contraseña (`POST .../api/auth/login`).
+- **Access token:** se guarda en `localStorage` o `sessionStorage` según “recordarme”.
+- **Refresh token:** cookie **HttpOnly**; el cliente usa **`withCredentials: true`** en Axios.
+- Si una petición devuelve **401**, el interceptor intenta **`POST .../api/auth/refresh`** y reintenta la petición una vez.
+
+## Documentación del proyecto
+
+Ver el README en la raíz del repositorio: política de seguridad, variables de entorno y CI.

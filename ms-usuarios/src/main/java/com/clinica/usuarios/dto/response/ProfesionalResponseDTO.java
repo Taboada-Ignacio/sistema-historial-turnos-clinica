@@ -18,6 +18,8 @@ public class ProfesionalResponseDTO {
     private Long idUsuario;
     private String nombre;
     private String apellido;
+    /** Calle y número (si se cargó en registro/edición). */
+    private String direccion;
     private Integer dni;               
     private String email;
     private String telefono;

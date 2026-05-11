@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -19,6 +20,7 @@ import org.springframework.http.HttpMethod;
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
 
@@ -59,8 +61,9 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/pacientes/confirmar/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/profesionales/confirmar/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/administradores/confirmar/**").permitAll()
-                // NUEVO: Endpoint para reenviar el correo
                 .requestMatchers(HttpMethod.POST, "/api/profesionales/reenviar-confirmacion").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/pacientes/reenviar-confirmacion").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/administradores/reenviar-confirmacion").permitAll()
 
                 // --- DATOS MAESTROS (Públicos para los formularios de registro) ---
                 .requestMatchers(HttpMethod.GET, "/api/obras-sociales/**").permitAll()

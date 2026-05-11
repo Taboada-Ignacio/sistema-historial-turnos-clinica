@@ -110,6 +110,26 @@ public class PacienteServiceImpl implements PacienteService {
     }
 
     @Override
+    @Transactional
+    public void reenviarCorreoConfirmacion(String email) {
+        Usuario usuario = usuarioRepository.findByEmail(email)
+                .orElseThrow(() -> new RecursoNoEncontradoException(
+                        "No se encontró un usuario registrado con el email: " + email));
+
+        if (!(usuario instanceof Paciente)) {
+            throw new ReglaDeNegocioException("El correo no corresponde a un paciente registrado.");
+        }
+
+        if ("ACTIVO".equalsIgnoreCase(usuario.getEstadoActual().getNombre())) {
+            throw new ReglaDeNegocioException("La cuenta ya se encuentra activa. No es necesario reenviar el correo.");
+        }
+
+        tokenRepository.deleteByUsuario(usuario);
+        String nuevoToken = generarToken(usuario);
+        emailService.enviarEmailConfirmacion(usuario, nuevoToken);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public PacienteResponseDTO obtenerPacientePorId(Long id) {
         Paciente paciente = pacienteRepository.findById(id)

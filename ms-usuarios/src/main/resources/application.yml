@@ -52,6 +52,15 @@ system:
     # ignaciotaboada5@hotmail.com
 
 
-# --- URL DEL GATEWAY PARA LINKS ---
+# --- URL DEL GATEWAY PARA LINKS EN EMAILS (API) ---
+# --- URL DE LA SPA (Vite) PARA REDIRECCIONES TRAS CONFIRMAR CUENTA ---
 app:
   url: ${APP_URL:http://localhost:8080}
+  frontend-url: ${APP_FRONTEND_URL:http://localhost:5173}
+  # Cookie settings: control via environment variable APP_COOKIE_SECURE (true in production with HTTPS)
+  cookie:
+    secure: ${APP_COOKIE_SECURE:false}
+  # Comma-separated list of allowed origins for cookie-based endpoints (refresh). Override via APP_ALLOWED_ORIGINS
+  # TEMPORARY: Default only allows localhost for development. 
+  # IMPORTANT: remove localhost and set to your production frontend origin(s) before deploying to prod.
+  allowed-origins: ${APP_ALLOWED_ORIGINS:http://localhost:5173}

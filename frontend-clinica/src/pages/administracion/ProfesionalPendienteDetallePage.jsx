@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import clienteAxios from '../../api/axiosConfig';
+import { API_BASE_URL } from '../../config/env';
 import { ADMIN_PATHS } from '../../utils/portalPaths';
 
 const ProfesionalPendienteDetallePage = () => {
@@ -58,7 +59,7 @@ const ProfesionalPendienteDetallePage = () => {
     );
   }
 
-  const fotoUrl = profesional.fotoPerfil ? `http://localhost:8080${profesional.fotoPerfil}` : null;
+  const fotoUrl = profesional.fotoPerfil ? `${API_BASE_URL}${profesional.fotoPerfil}` : null;
   const isSinVerificar = profesional.membresiaActual === 'SIN_VERIFICAR';
 
   return (

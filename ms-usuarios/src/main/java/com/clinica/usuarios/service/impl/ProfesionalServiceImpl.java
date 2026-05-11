@@ -2,6 +2,7 @@ package com.clinica.usuarios.service.impl;
 
 import com.clinica.usuarios.dto.request.ProfesionalRegistroDTO;
 import com.clinica.usuarios.dto.request.ProfesionalUpdateDTO;
+import com.clinica.usuarios.dto.response.ProfesionalPresentacionDTO;
 import com.clinica.usuarios.dto.response.ProfesionalResponseDTO;
 import com.clinica.usuarios.exception.RecursoNoEncontradoException;
 import com.clinica.usuarios.exception.ReglaDeNegocioException;
@@ -17,6 +18,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -145,6 +147,64 @@ public class ProfesionalServiceImpl implements ProfesionalService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<ProfesionalPresentacionDTO> listarParaPresentacion() {
+        return profesionalRepository.findAllWithUbicacionAndEspecialidad().stream()
+                .filter(this::incluirEnCatalogoPresentacion)
+                .map(this::toPresentacionDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ProfesionalPresentacionDTO obtenerParaPresentacion(Long id) {
+        Profesional profesional = profesionalRepository.findWithUbicacionById(id)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Profesional no encontrado con ID: " + id));
+        if (!incluirEnCatalogoPresentacion(profesional)) {
+            throw new RecursoNoEncontradoException("Profesional no encontrado con ID: " + id);
+        }
+        return toPresentacionDTO(profesional);
+    }
+
+    /**
+     * Catálogo público: solo cuenta ACTIVA y sin rol de administrador (cuentas admin no se listan).
+     */
+    private boolean incluirEnCatalogoPresentacion(Profesional p) {
+        if (p.getRoles().stream().anyMatch(r -> "ROLE_ADMINISTRADOR".equals(r.getDescripcion()))) {
+            return false;
+        }
+        return p.getEstadoActual() != null
+                && "ACTIVO".equalsIgnoreCase(p.getEstadoActual().getNombre());
+    }
+
+    private ProfesionalPresentacionDTO toPresentacionDTO(Profesional p) {
+        return ProfesionalPresentacionDTO.builder()
+                .idUsuario(p.getIdUsuario())
+                .nombre(p.getNombre())
+                .apellido(p.getApellido())
+                .especialidad(p.getEspecialidad() != null ? p.getEspecialidad().getDescripcion() : null)
+                .direccion(formatDireccionPresentacion(p))
+                .fotoPerfil(p.getFotoPerfil())
+                .build();
+    }
+
+    private String formatDireccionPresentacion(Usuario u) {
+        List<String> partes = new ArrayList<>();
+        if (u.getDireccion() != null && !u.getDireccion().isBlank()) {
+            partes.add(u.getDireccion().trim());
+        }
+        if (u.getLocalidad() != null && u.getLocalidad().getNombre() != null && !u.getLocalidad().getNombre().isBlank()) {
+            partes.add(u.getLocalidad().getNombre().trim());
+        }
+        if (u.getLocalidad() != null && u.getLocalidad().getProvincia() != null
+                && u.getLocalidad().getProvincia().getNombre() != null
+                && !u.getLocalidad().getProvincia().getNombre().isBlank()) {
+            partes.add(u.getLocalidad().getProvincia().getNombre().trim());
+        }
+        return String.join(" - ", partes);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<ProfesionalResponseDTO> obtenerProfesionalesConMembresiaInactiva() {
         Membresia membresiaInactiva = membresiaRepository.findByNombre("INACTIVA")
                 .orElseThrow(() -> new RecursoNoEncontradoException("Membresía INACTIVA no encontrada"));
@@ -165,6 +225,9 @@ public class ProfesionalServiceImpl implements ProfesionalService {
         profesional.setEmail(dto.getEmail()); 
         profesional.setTelefono(dto.getTelefono());
         profesional.setMatricula(dto.getMatricula());
+        if (dto.getDireccion() != null) {
+            profesional.setDireccion(dto.getDireccion().isBlank() ? null : dto.getDireccion().trim());
+        }
 
         // Actualización de estado si viene en el DTO
         if (dto.getEstadoActual() != null) {

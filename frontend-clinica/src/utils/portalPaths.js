@@ -5,7 +5,9 @@ export const HOME_PATH = '/';
 export const PACIENTE_PATHS = {
   login: '/login',
   registro: '/registro',
-  confirmar: '/confirmar-cuenta',
+  verificarEmail: '/verificar-email-paciente',
+  registroExitoso: '/registro-exitoso-paciente',
+  confirmacionError: '/confirmacion-error',
   recuperarPassword: '/recuperar-password/paciente',
   cambiarPassword: '/cambiar-password/paciente',
   dashboard: '/dashboard-paciente',
@@ -31,6 +33,8 @@ export const PROFESIONAL_PATHS = {
 // Rutas del Panel de Administración
 export const ADMIN_PATHS = {
   setup: '/internal/admin/bootstrap-setup',
+  verificarEmail: '/verificar-email-admin',
+  registroExitoso: '/registro-exitoso-admin',
   login: '/internal/admin/auth',
   dashboard: '/internal/admin/panel',
   profesionalesPendientes: '/internal/admin/panel/profesionales-pendientes',

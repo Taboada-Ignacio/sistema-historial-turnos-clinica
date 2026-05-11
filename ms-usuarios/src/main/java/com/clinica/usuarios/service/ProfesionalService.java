@@ -2,6 +2,7 @@ package com.clinica.usuarios.service;
 
 import com.clinica.usuarios.dto.request.ProfesionalRegistroDTO;
 import com.clinica.usuarios.dto.request.ProfesionalUpdateDTO;
+import com.clinica.usuarios.dto.response.ProfesionalPresentacionDTO;
 import com.clinica.usuarios.dto.response.ProfesionalResponseDTO;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -13,6 +14,8 @@ public interface ProfesionalService {
     
     ProfesionalResponseDTO obtenerProfesionalPorId(Long id);
     List<ProfesionalResponseDTO> obtenerTodosLosProfesionales();
+    List<ProfesionalPresentacionDTO> listarParaPresentacion();
+    ProfesionalPresentacionDTO obtenerParaPresentacion(Long id);
     List<ProfesionalResponseDTO> obtenerProfesionalesConMembresiaInactiva();
     ProfesionalResponseDTO actualizarProfesional(Long id, ProfesionalUpdateDTO dto);
     void eliminarSoloProfesional(Long id);

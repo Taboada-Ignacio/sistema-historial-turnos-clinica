@@ -6,6 +6,7 @@ import com.clinica.usuarios.dto.response.RolResponseDTO;
 import com.clinica.usuarios.service.RolService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -19,6 +20,7 @@ public class RolController {
 
     private final RolService rolService;
 
+    @PreAuthorize("hasAuthority('ROLE_ADMINISTRADOR')")
     @PostMapping("/registro")
     public ResponseEntity<RolResponseDTO> registrar(@Valid @RequestBody RolRegistroDTO dto) {
         RolResponseDTO nuevoRol = rolService.registrarRol(dto);
@@ -35,6 +37,7 @@ public class RolController {
         return ResponseEntity.ok(rolService.obtenerTodosLosRoles());
     }
 
+    @PreAuthorize("hasAuthority('ROLE_ADMINISTRADOR')")
     @PutMapping("/{id}")
     public ResponseEntity<RolResponseDTO> actualizar(
             @PathVariable Long id, 
@@ -42,6 +45,7 @@ public class RolController {
         return ResponseEntity.ok(rolService.actualizarRol(id, dto));
     }
 
+    @PreAuthorize("hasAuthority('ROLE_ADMINISTRADOR')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminar(@PathVariable Long id) {
         rolService.eliminarRol(id);

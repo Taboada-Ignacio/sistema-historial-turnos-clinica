@@ -6,6 +6,7 @@ import com.clinica.usuarios.dto.response.LocalidadResponseDTO;
 import com.clinica.usuarios.service.LocalidadService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -19,6 +20,7 @@ public class LocalidadController {
 
     private final LocalidadService localidadService;
 
+    @PreAuthorize("hasAuthority('ROLE_ADMINISTRADOR')")
     @PostMapping("/registro")
     public ResponseEntity<LocalidadResponseDTO> registrar(@Valid @RequestBody LocalidadRegistroDTO dto) {
         return new ResponseEntity<>(localidadService.registrarLocalidad(dto), HttpStatus.CREATED);
@@ -34,11 +36,13 @@ public class LocalidadController {
         return ResponseEntity.ok(localidadService.obtenerTodasLasLocalidades());
     }
 
+    @PreAuthorize("hasAuthority('ROLE_ADMINISTRADOR')")
     @PutMapping("/{id}")
     public ResponseEntity<LocalidadResponseDTO> actualizar(@PathVariable Long id, @Valid @RequestBody LocalidadUpdateDTO dto) {
         return ResponseEntity.ok(localidadService.actualizarLocalidad(id, dto));
     }
 
+    @PreAuthorize("hasAuthority('ROLE_ADMINISTRADOR')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminar(@PathVariable Long id) {
         localidadService.eliminarLocalidad(id);

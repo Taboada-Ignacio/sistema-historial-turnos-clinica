@@ -1,0 +1,82 @@
+# Runs production startup checks (StartupChecks) against a real PostgreSQL with seed data.
+# Requires: init.sql applied so roles/estados/membresías exist; Hibernate adds missing tables (e.g. refresh_tokens).
+
+name: ms-usuarios startup checks
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+    paths:
+      - 'ms-usuarios/**'
+      - '.github/workflows/ms-usuarios-startup-check.yml'
+  pull_request:
+    branches: [main, master]
+    paths:
+      - 'ms-usuarios/**'
+      - '.github/workflows/ms-usuarios-startup-check.yml'
+
+jobs:
+  startup-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: clinica_ci
+          POSTGRES_PASSWORD: clinica_ci_secret
+          POSTGRES_DB: db_clinica_usuarios
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U clinica_ci -d db_clinica_usuarios"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=12
+
+    env:
+      # Strict prod checks (see StartupChecks.java)
+      SPRING_PROFILES_ACTIVE: prod
+      APP_COOKIE_SECURE: 'true'
+      APP_ALLOWED_ORIGINS: https://example.com
+      APP_STARTUP_STRICT: 'true'
+      # CI-only JWT: long enough, not the banned placeholder from application.yml
+      JWT_SECRET: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+      SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/db_clinica_usuarios
+      SPRING_DATASOURCE_USERNAME: clinica_ci
+      SPRING_DATASOURCE_PASSWORD: clinica_ci_secret
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Apply database seed (init.sql)
+        run: |
+          PGPASSWORD="$SPRING_DATASOURCE_PASSWORD" psql \
+            -h localhost -U "$SPRING_DATASOURCE_USERNAME" -d db_clinica_usuarios \
+            -v ON_ERROR_STOP=1 \
+            -f ms-usuarios/init.sql
+
+      - name: Package ms-usuarios (skip tests)
+        working-directory: ms-usuarios
+        run: mvn -B -q -DskipTests package
+
+      - name: Run startup checks (non-web context, then exit)
+        working-directory: ms-usuarios
+        run: |
+          JAR=$(ls target/ms-usuarios-*.jar | head -1)
+          java -Dspring.main.web-application-type=none \
+            -Dspring.profiles.active=prod \
+            -jar "$JAR"

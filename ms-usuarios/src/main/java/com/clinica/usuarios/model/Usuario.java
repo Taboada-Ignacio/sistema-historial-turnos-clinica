@@ -64,6 +64,10 @@ public class Usuario {
     )
     private Set<Rol> roles;
 
+    /** Calle y número (opcional); para vista pública se concatena con localidad y provincia. */
+    @Column(length = 255)
+    private String direccion;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_localidad", nullable = false)
     private Localidad localidad;

@@ -7,7 +7,6 @@ const AdminRegisterSecret = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
   
   const [systemKey, setSystemKey] = useState('');
   const [showSystemKey, setShowSystemKey] = useState(false);
@@ -110,11 +109,8 @@ const AdminRegisterSecret = () => {
         }
       });
 
-      // El backend devuelve 201 y dispara el mail de verificación
       if (response.status === 201) {
-        setSuccess(true);
-        // Damos más tiempo (5s) para que el usuario lea la instrucción del mail
-        setTimeout(() => navigate(ADMIN_PATHS.login), 5000);
+        navigate(ADMIN_PATHS.verificarEmail, { state: { email: formData.email } });
       }
     } catch (err) {
       if (err.response && err.response.status === 403) {
@@ -151,15 +147,7 @@ const AdminRegisterSecret = () => {
             </div>
           )}
           
-          {success && (
-            <div className="bg-green-50 text-green-700 p-4 rounded-lg text-sm mb-4 border border-green-200 text-center">
-              <p className="font-bold">¡Registro exitoso!</p>
-              <p className="mt-1">Hemos enviado un enlace de activación a <strong>{formData.email}</strong>.</p>
-              <p className="text-xs mt-2 italic">Debés confirmar tu cuenta antes de poder iniciar sesión.</p>
-            </div>
-          )}
-
-          <form onSubmit={handleRegister} className={`space-y-4 ${success ? 'opacity-50 pointer-events-none' : ''}`}>
+          <form onSubmit={handleRegister} className="space-y-4">
             
             {/* SECCIÓN X-SYSTEM-KEY (Ingreso manual solicitado) */}
             <div className="bg-gray-100 p-4 rounded-lg border border-gray-300">
@@ -249,7 +237,7 @@ const AdminRegisterSecret = () => {
 
             <button
               type="submit"
-              disabled={loading || !isPasswordValid || !systemKey || success}
+              disabled={loading || !isPasswordValid || !systemKey}
               className="w-full bg-red-600 text-white font-bold py-3 mt-4 rounded hover:bg-red-700 transition-colors disabled:opacity-50 uppercase tracking-wide"
             >
               {loading ? "Sincronizando..." : "Ejecutar Alta Administrativa"}

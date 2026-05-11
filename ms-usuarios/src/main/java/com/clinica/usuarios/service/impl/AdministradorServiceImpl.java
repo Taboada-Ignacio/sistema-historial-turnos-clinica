@@ -105,6 +105,32 @@ public class AdministradorServiceImpl implements AdministradorService {
     }
 
     @Override
+    @Transactional
+    public void reenviarCorreoConfirmacion(String email) {
+        Usuario usuario = usuarioRepository.findByEmail(email)
+                .orElseThrow(() -> new RecursoNoEncontradoException(
+                        "No se encontró un usuario registrado con el email: " + email));
+
+        if (!(usuario instanceof Administrador)) {
+            throw new ReglaDeNegocioException("El correo no corresponde a un administrador registrado.");
+        }
+
+        boolean esAdmin = usuario.getRoles().stream()
+                .anyMatch(r -> "ROLE_ADMINISTRADOR".equals(r.getDescripcion()));
+        if (!esAdmin) {
+            throw new ReglaDeNegocioException("El correo no corresponde a un administrador registrado.");
+        }
+
+        if ("ACTIVO".equalsIgnoreCase(usuario.getEstadoActual().getNombre())) {
+            throw new ReglaDeNegocioException("La cuenta ya se encuentra activa. No es necesario reenviar el correo.");
+        }
+
+        tokenRepository.deleteByUsuario(usuario);
+        String nuevoToken = generarTokenVerificacion(usuario);
+        emailService.enviarEmailConfirmacion(usuario, nuevoToken);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public AdministradorResponseDTO obtenerAdministradorPorId(Long id) {
         Administrador admin = administradorRepository.findById(id)

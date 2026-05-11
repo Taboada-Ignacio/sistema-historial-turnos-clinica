@@ -37,7 +37,8 @@ const LoginProfesional = () => {
     try {
       const response = await clienteAxios.post('/usuarios/api/auth/login', {
         email,
-        password
+        password,
+        portal: 'profesional',
       });
 
       if (response.data && response.data.token) {
@@ -54,8 +55,18 @@ const LoginProfesional = () => {
         navigate(getDashboardRouteByPortal('profesional'));
       }
     } catch (err) {
-      const msg = err.response?.data?.message || "Error de conexión.";
-      setError(msg.toLowerCase().includes("activada") ? msg : 'Credenciales de profesional inválidas.');
+      const data = err.response?.data || {};
+      const msg = data.message || data.mensaje || 'Error de conexión.';
+      const code = data.code;
+      if (code === 'PORTAL_NO_PERMITIDO') {
+        setError(msg || 'Esta cuenta no tiene acceso al portal profesional.');
+      } else if (msg.toLowerCase().includes('activada')) {
+        setError(msg);
+      } else if (err.response?.status === 401) {
+        setError('Credenciales de profesional inválidas.');
+      } else {
+        setError(msg);
+      }
     } finally {
       setLoading(false);
     }

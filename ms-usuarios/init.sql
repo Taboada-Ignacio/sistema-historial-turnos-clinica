@@ -57,6 +57,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
     dni INTEGER UNIQUE NOT NULL, -- INTEGER según tu entidad Java
     telefono VARCHAR(20) NOT NULL,
     fecha_nacimiento DATE,
+    direccion VARCHAR(255),
     id_localidad BIGINT NOT NULL REFERENCES localidades(id_localidad),
     id_estado_actual BIGINT NOT NULL REFERENCES estados(id_estado)
 );
