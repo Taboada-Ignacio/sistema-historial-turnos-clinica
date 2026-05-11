@@ -119,10 +119,17 @@ public class EmailServiceImpl implements EmailService {
             MimeMessage mimeMessage = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, "utf-8");
 
-            boolean esProfesional = "profesional".equalsIgnoreCase(tipoPortal);
-            String color = esProfesional ? "#2563eb" : "#15803d";
-            String titulo = esProfesional ? "Recuperación de acceso profesional" : "Recuperación de acceso paciente";
-            String boton = esProfesional ? "Confirmar recuperación profesional" : "Confirmar recuperación de cuenta";
+            String tipoNormalizado = tipoPortal == null ? "" : tipoPortal.trim().toLowerCase();
+            boolean esProfesional = "profesional".equalsIgnoreCase(tipoNormalizado);
+            boolean esAdmin = "admin".equalsIgnoreCase(tipoNormalizado);
+
+            String color = esAdmin ? "#e11d48" : (esProfesional ? "#2563eb" : "#15803d");
+            String titulo = esAdmin
+                    ? "Recuperación de acceso de administrador"
+                    : (esProfesional ? "Recuperación de acceso profesional" : "Recuperación de acceso paciente");
+            String boton = esAdmin
+                    ? "Confirmar recuperación de administrador"
+                    : (esProfesional ? "Confirmar recuperación profesional" : "Confirmar recuperación de cuenta");
 
             String htmlMsg = String.format(
                     "<div style='font-family: Arial, sans-serif; padding: 20px; border: 1px solid %s; max-width: 600px; margin: auto; border-radius: 8px;'>" +

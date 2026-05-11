@@ -95,6 +95,13 @@ const LoginAdministrador = () => {
               <PasswordVisibilityToggle visible={showPassword} onToggle={() => setShowPassword(!showPassword)} />
             </div>
           </div>
+
+          <div className="flex justify-end">
+            <Link to={ADMIN_PATHS.recuperarPassword} className="text-xs font-bold text-slate-600 hover:underline">
+              ¿Olvidaste tu contraseña?
+            </Link>
+          </div>
+
           <button
             type="submit"
             disabled={loading}

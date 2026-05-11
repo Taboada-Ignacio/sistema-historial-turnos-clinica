@@ -24,6 +24,8 @@ import CambiarPasswordProfesional from './pages/profesionales/CambiarPasswordPro
 import ProfesionalRoute from './pages/profesionales/ProfesionalRoute';
 import DashboardProfesional from './pages/profesionales/DashboardProfesional';
 import LoginAdministrador from './pages/administracion/LoginAdministrador';
+import SolicitarCambioPasswordAdmin from './pages/administracion/SolicitarCambioPasswordAdmin';
+import CambiarPasswordAdmin from './pages/administracion/CambiarPasswordAdmin';
 import AdminRoute from './pages/administracion/AdminRoute';
 import AdminLayout from './pages/administracion/AdminLayout';
 import AdminDashboardHome from './pages/administracion/AdminDashboardHome';
@@ -78,6 +80,8 @@ function App() {
         <Route path={ADMIN_PATHS.verificarEmail} element={<VerificarEmailAdmin />} />
         <Route path={ADMIN_PATHS.registroExitoso} element={<RegistroExitosoAdmin />} />
         <Route path={ADMIN_PATHS.login} element={<LoginAdministrador />} />
+        <Route path={ADMIN_PATHS.recuperarPassword} element={<SolicitarCambioPasswordAdmin />} />
+        <Route path={ADMIN_PATHS.cambiarPassword} element={<CambiarPasswordAdmin />} />
         <Route element={<AdminRoute />}>
           <Route path={ADMIN_PATHS.dashboard} element={<AdminLayout />}>
             <Route index element={<AdminDashboardHome />} />

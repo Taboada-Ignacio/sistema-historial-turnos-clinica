@@ -8,11 +8,26 @@ const clienteAxios = axios.create({
   withCredentials: true,
 });
 
-/** Sin interceptores: evita bucles al refrescar el access token (cookie HttpOnly). */
+/** Sin interceptores: refresh manual y flujos 100% públicos (sin Bearer). */
 const axiosSinInterceptores = axios.create({
   baseURL: API_BASE_URL,
   withCredentials: true,
 });
+
+/**
+ * Cliente para rutas públicas (recuperación de contraseña, etc.): no envía JWT ni reintenta refresh en 401.
+ */
+export const clienteAxiosPublic = axiosSinInterceptores;
+
+/** Resuelve path completo para matchear con URLs relativas o absolutas según versión de Axios. */
+function requestFullPath(config) {
+  if (!config) return '';
+  const url = config.url || '';
+  if (url.startsWith('http')) return url;
+  const base = (config.baseURL || '').replace(/\/$/, '');
+  const path = url.startsWith('/') ? url : `/${url}`;
+  return `${base}${path}`;
+}
 
 const SKIP_REFRESH_ON_401 = [
   '/api/auth/login',
@@ -25,6 +40,14 @@ const SKIP_REFRESH_ON_401 = [
 ];
 
 const MODAL_SKIP_ON_401 = SKIP_REFRESH_ON_401;
+
+function shouldSkipAuthRecoveryHandling(config) {
+  const p = requestFullPath(config);
+  return (
+    p.includes('/api/auth/solicitar-cambio-password') ||
+    p.includes('/api/auth/cambiar-password-con-token')
+  );
+}
 
 // 1. INTERCEPTOR DE PETICIONES
 clienteAxios.interceptors.request.use(
@@ -46,10 +69,10 @@ clienteAxios.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
     const status = error.response?.status;
-    const requestUrl = originalRequest?.url || '';
+    const requestUrl = requestFullPath(originalRequest);
 
     if (status !== 401 || !originalRequest) {
-      if (error.response?.status === 400) {
+      if (error.response?.status === 400 && !shouldSkipAuthRecoveryHandling(originalRequest)) {
         console.error('Error 400 - Detalles:', error.response.data);
       }
       return Promise.reject(error);

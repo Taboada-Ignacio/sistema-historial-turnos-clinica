@@ -1,25 +1,29 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import clienteAxios from '../../api/axiosConfig';
+import { clienteAxiosPublic } from '../../api/axiosConfig';
 
 const SolicitarCambioPasswordPaciente = () => {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const submittingRef = useRef(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (loading || submittingRef.current) return;
     setError('');
     setSuccess('');
+    submittingRef.current = true;
     setLoading(true);
     try {
-      const response = await clienteAxios.post('/usuarios/api/auth/solicitar-cambio-password/paciente', { email });
+      const response = await clienteAxiosPublic.post('/usuarios/api/auth/solicitar-cambio-password/paciente', { email });
       setSuccess(response.data?.message || 'Revisá tu correo para continuar.');
     } catch (err) {
       setError(err.response?.data?.message || err.response?.data?.mensaje || 'No se pudo procesar la solicitud.');
     } finally {
       setLoading(false);
+      submittingRef.current = false;
     }
   };
 

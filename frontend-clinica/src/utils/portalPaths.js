@@ -33,6 +33,8 @@ export const PROFESIONAL_PATHS = {
 // Rutas del Panel de Administración
 export const ADMIN_PATHS = {
   setup: '/internal/admin/bootstrap-setup',
+  recuperarPassword: '/recuperar-password/admin',
+  cambiarPassword: '/cambiar-password/admin',
   verificarEmail: '/verificar-email-admin',
   registroExitoso: '/registro-exitoso-admin',
   login: '/internal/admin/auth',

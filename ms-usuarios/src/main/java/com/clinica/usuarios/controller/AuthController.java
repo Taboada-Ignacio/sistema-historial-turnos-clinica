@@ -200,6 +200,11 @@ public class AuthController {
         return solicitarCambioPasswordPorTipo(request.getEmail(), "ROLE_PACIENTE", "paciente");
     }
 
+    @PostMapping("/solicitar-cambio-password/admin")
+    public ResponseEntity<?> solicitarCambioPasswordAdmin(@Valid @RequestBody SolicitarCambioPasswordDTO request) {
+        return solicitarCambioPasswordPorTipo(request.getEmail(), "ROLE_ADMINISTRADOR", "admin");
+    }
+
     @PostMapping("/refresh")
     public ResponseEntity<?> refreshToken(
             @CookieValue(value = "refreshToken", required = false) String refreshTokenCookie,
@@ -278,12 +283,19 @@ public class AuthController {
         }
 
         Usuario usuario = verificationToken.getUsuario();
-        String roleEsperado = "profesional".equalsIgnoreCase(tipo) ? "ROLE_PROFESIONAL" : "ROLE_PACIENTE";
+        String tipoNormalizado = tipo == null ? "" : tipo.trim().toLowerCase();
+        String roleEsperado = switch (tipoNormalizado) {
+            case "profesional" -> "ROLE_PROFESIONAL";
+            case "admin" -> "ROLE_ADMINISTRADOR";
+            default -> "ROLE_PACIENTE";
+        };
         validarRolUsuario(usuario, roleEsperado);
 
-        String rutaFrontend = "profesional".equalsIgnoreCase(tipo)
-                ? "/cambiar-password/profesional"
-                : "/cambiar-password/paciente";
+        String rutaFrontend = switch (tipoNormalizado) {
+            case "profesional" -> "/cambiar-password/profesional";
+            case "admin" -> "/cambiar-password/admin";
+            default -> "/cambiar-password/paciente";
+        };
 
         return new RedirectView(frontendUrl + rutaFrontend + "?token=" + token);
     }
@@ -296,6 +308,11 @@ public class AuthController {
     @PostMapping("/cambiar-password-con-token/profesional")
     public ResponseEntity<?> cambiarPasswordConTokenProfesional(@Valid @RequestBody CambiarPasswordConTokenDTO request) {
         return cambiarPasswordConTokenPorTipo(request, "ROLE_PROFESIONAL");
+    }
+
+    @PostMapping("/cambiar-password-con-token/admin")
+    public ResponseEntity<?> cambiarPasswordConTokenAdmin(@Valid @RequestBody CambiarPasswordConTokenDTO request) {
+        return cambiarPasswordConTokenPorTipo(request, "ROLE_ADMINISTRADOR");
     }
 
     private ResponseEntity<?> solicitarCambioPasswordPorTipo(String email, String roleEsperado, String tipoPortal) {

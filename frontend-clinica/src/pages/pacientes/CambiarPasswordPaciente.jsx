@@ -1,6 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import clienteAxios from '../../api/axiosConfig';
+import { clienteAxiosPublic } from '../../api/axiosConfig';
 import PasswordVisibilityToggle from '../../components/PasswordVisibilityToggle';
 
 const CambiarPasswordPaciente = () => {
@@ -14,9 +14,11 @@ const CambiarPasswordPaciente = () => {
   const [success, setSuccess] = useState('');
   const [showNueva, setShowNueva] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const submittingRef = useRef(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (loading || submittingRef.current) return;
     setError('');
     setSuccess('');
     if (!token) {
@@ -28,9 +30,10 @@ const CambiarPasswordPaciente = () => {
       return;
     }
 
+    submittingRef.current = true;
     setLoading(true);
     try {
-      const response = await clienteAxios.post('/usuarios/api/auth/cambiar-password-con-token/paciente', {
+      const response = await clienteAxiosPublic.post('/usuarios/api/auth/cambiar-password-con-token/paciente', {
         token,
         passwordNueva,
       });
@@ -40,6 +43,7 @@ const CambiarPasswordPaciente = () => {
       setError(err.response?.data?.message || err.response?.data?.mensaje || 'No se pudo cambiar la contraseña.');
     } finally {
       setLoading(false);
+      submittingRef.current = false;
     }
   };
 

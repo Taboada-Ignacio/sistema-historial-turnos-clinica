@@ -2,16 +2,20 @@ import React, { useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { clienteAxiosPublic } from '../../api/axiosConfig';
 import PasswordVisibilityToggle from '../../components/PasswordVisibilityToggle';
+import { ADMIN_PATHS } from '../../utils/portalPaths';
 
-const CambiarPasswordProfesional = () => {
+const CambiarPasswordAdmin = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const token = useMemo(() => searchParams.get('token') || '', [searchParams]);
+
   const [passwordNueva, setPasswordNueva] = useState('');
   const [confirmPasswordNueva, setConfirmPasswordNueva] = useState('');
   const [loading, setLoading] = useState(false);
+
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
   const [showNueva, setShowNueva] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const submittingRef = useRef(false);
@@ -19,12 +23,15 @@ const CambiarPasswordProfesional = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (loading || submittingRef.current) return;
+
     setError('');
     setSuccess('');
+
     if (!token) {
       setError('Token inválido o ausente.');
       return;
     }
+
     if (passwordNueva !== confirmPasswordNueva) {
       setError('La confirmación de contraseña no coincide.');
       return;
@@ -33,12 +40,12 @@ const CambiarPasswordProfesional = () => {
     submittingRef.current = true;
     setLoading(true);
     try {
-      const response = await clienteAxiosPublic.post('/usuarios/api/auth/cambiar-password-con-token/profesional', {
+      const response = await clienteAxiosPublic.post('/usuarios/api/auth/cambiar-password-con-token/admin', {
         token,
         passwordNueva,
       });
       setSuccess(response.data?.message || 'Contraseña actualizada correctamente.');
-      setTimeout(() => navigate('/login-profesional'), 1500);
+      setTimeout(() => navigate(ADMIN_PATHS.login), 1500);
     } catch (err) {
       setError(err.response?.data?.message || err.response?.data?.mensaje || 'No se pudo cambiar la contraseña.');
     } finally {
@@ -48,10 +55,10 @@ const CambiarPasswordProfesional = () => {
   };
 
   return (
-    <div className="min-h-screen bg-blue-50 flex items-center justify-center p-6">
-      <div className="w-full max-w-md bg-white border border-blue-200 rounded-2xl shadow-lg p-8">
-        <h1 className="text-2xl font-black text-blue-800 mb-2">Nueva contraseña profesional</h1>
-        <p className="text-sm text-blue-700 mb-6">Definí una nueva contraseña para tu portal profesional.</p>
+    <div className="min-h-screen bg-red-50 flex items-center justify-center p-6">
+      <div className="w-full max-w-md bg-white border border-red-200 rounded-2xl shadow-lg p-8">
+        <h1 className="text-2xl font-black text-red-900 mb-2">Nueva contraseña administrador</h1>
+        <p className="text-sm text-red-700 mb-6">Definí una nueva contraseña para el panel de administración.</p>
 
         {error && <div className="mb-4 p-3 rounded-lg bg-red-50 text-red-700 text-sm">{error}</div>}
         {success && <div className="mb-4 p-3 rounded-lg bg-green-50 text-green-700 text-sm">{success}</div>}
@@ -70,6 +77,7 @@ const CambiarPasswordProfesional = () => {
               <PasswordVisibilityToggle visible={showNueva} onToggle={() => setShowNueva((v) => !v)} />
             </div>
           </div>
+
           <div>
             <label className="text-sm font-semibold text-gray-700">Confirmar contraseña</label>
             <div className="relative mt-1">
@@ -87,18 +95,19 @@ const CambiarPasswordProfesional = () => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-700 text-white py-2.5 rounded-lg font-bold hover:bg-blue-600 disabled:opacity-70"
+            className="w-full bg-red-700 text-white py-2.5 rounded-lg font-bold hover:bg-red-600 disabled:opacity-70"
           >
             {loading ? 'Guardando...' : 'Guardar nueva contraseña'}
           </button>
         </form>
 
-        <Link to="/login-profesional" className="inline-block mt-4 text-sm text-gray-600 hover:text-gray-900">
-          Volver al login profesional
+        <Link to={ADMIN_PATHS.login} className="inline-block mt-4 text-sm text-gray-600 hover:text-gray-900">
+          Volver al login de administración
         </Link>
       </div>
     </div>
   );
 };
 
-export default CambiarPasswordProfesional;
+export default CambiarPasswordAdmin;
+
