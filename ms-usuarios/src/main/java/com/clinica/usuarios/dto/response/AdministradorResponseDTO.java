@@ -28,5 +28,7 @@ public class AdministradorResponseDTO {
     private String estadoActual; 
     
     private String nombreLocalidad;
+    /** Texto de la dirección tipificada (catálogo). */
+    private String direccion;
     private Set<String> roles;
 }

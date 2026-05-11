@@ -26,7 +26,8 @@ const AdminRegisterSecret = () => {
     password: '',
     telefono: '',
     fechaNacimiento: '',
-    idLocalidad: ''
+    idLocalidad: '',
+    direccion: ''
   });
 
   useEffect(() => {
@@ -58,12 +59,17 @@ const AdminRegisterSecret = () => {
   }, [provinciaSeleccionada]);
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+      ...(name === 'idLocalidad' ? { direccion: '' } : {})
+    }));
   };
 
   const handleProvinciaChange = (e) => {
     setProvinciaSeleccionada(e.target.value);
-    setFormData({ ...formData, idLocalidad: '' });
+    setFormData((prev) => ({ ...prev, idLocalidad: '', direccion: '' }));
   };
 
   const validaciones = {
@@ -97,15 +103,16 @@ const AdminRegisterSecret = () => {
     try {
       const dni = Number(formData.dni);
       const idLocalidad = Number(formData.idLocalidad);
-      if (!Number.isInteger(dni) || !Number.isInteger(idLocalidad)) {
-        setError('DNI o localidad inválidos.');
+      if (!Number.isInteger(dni) || !Number.isInteger(idLocalidad) || !formData.direccion?.trim()) {
+        setError('DNI, localidad o dirección inválidos.');
         return;
       }
 
       const payload = {
         ...formData,
         dni,
-        idLocalidad
+        idLocalidad,
+        direccion: formData.direccion.trim()
       };
 
       const response = await clienteAxios.post('/usuarios/api/administradores/registro', payload, {
@@ -195,6 +202,17 @@ const AdminRegisterSecret = () => {
                 <option value="">Localidad</option>
                 {localidades.map(l => <option key={l.idLocalidad} value={l.idLocalidad}>{l.nombre}</option>)}
               </select>
+              <input
+                type="text"
+                name="direccion"
+                value={formData.direccion}
+                onChange={handleChange}
+                required
+                disabled={!formData.idLocalidad}
+                maxLength={500}
+                placeholder="Calle, número, piso/depto"
+                className="px-3 py-2 border rounded outline-none bg-white disabled:bg-gray-100 md:col-span-2"
+              />
             </div>
 
             <div className="bg-gray-50 p-4 rounded-lg border">
@@ -223,7 +241,7 @@ const AdminRegisterSecret = () => {
 
             <button
               type="submit"
-              disabled={loading || !isPasswordValid || !systemKey}
+              disabled={loading || !isPasswordValid || !systemKey || !formData.idLocalidad || !formData.direccion?.trim()}
               className="w-full bg-red-600 text-white font-bold py-3 mt-4 rounded hover:bg-red-700 transition-colors disabled:opacity-50 uppercase tracking-wide"
             >
               {loading ? "Sincronizando..." : "Ejecutar Alta Administrativa"}

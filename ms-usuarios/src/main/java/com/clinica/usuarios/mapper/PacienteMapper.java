@@ -17,6 +17,7 @@ public interface PacienteMapper {
     @Mapping(target = "localidad", ignore = true)
     @Mapping(target = "obraSocial", ignore = true)
     @Mapping(target = "estadoActual", ignore = true) // El Service asignará "PENDIENTE"
+    @Mapping(target = "direccion", ignore = true)
     @Mapping(target = "historialEstados", ignore = true)
     Paciente toEntity(PacienteRegistroDTO dto);
 
@@ -24,6 +25,7 @@ public interface PacienteMapper {
     @Mapping(source = "localidad.nombre", target = "nombreLocalidad")
     @Mapping(source = "localidad.provincia.nombre", target = "nombreProvincia")
     @Mapping(source = "estadoActual.nombre", target = "estadoActual") // Aplanamos el estado
+    @Mapping(source = "direccion.nombre", target = "direccion")
     PacienteResponseDTO toResponseDTO(Paciente entity);
 
     default String mapRolToString(Rol rol) {

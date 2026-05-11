@@ -49,6 +49,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         if (request.getMethod().equals(HttpMethod.GET.name())) {
             return path.contains("/api/provincias") || 
                 path.contains("/api/localidades") || 
+                path.contains("/api/direcciones") || 
                 path.contains("/api/especialidades") || 
                 path.contains("/api/roles") || 
                 path.contains("/api/obras-sociales");

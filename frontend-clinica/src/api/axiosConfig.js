@@ -21,6 +21,7 @@ const SKIP_REFRESH_ON_401 = [
   '/api/auth/solicitar-cambio-password',
   '/api/auth/cambiar-password-con-token',
   '/api/auth/confirmar-cambio-password',
+  '/api/seguridad/verificar-password-actual',
 ];
 
 const MODAL_SKIP_ON_401 = SKIP_REFRESH_ON_401;

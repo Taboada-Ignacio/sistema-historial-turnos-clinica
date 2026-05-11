@@ -19,7 +19,8 @@ public interface ProfesionalMapper {
     // --- NUEVOS CAMPOS IGNORADOS (Se manejan en el Service) ---
     @Mapping(target = "membresiaActual", ignore = true)
     @Mapping(target = "historialMembresias", ignore = true)
-    @Mapping(target = "fotoPerfil", ignore = true) 
+    @Mapping(target = "fotoPerfil", ignore = true)
+    @Mapping(target = "direccion", ignore = true)
     Profesional toEntity(ProfesionalRegistroDTO dto);
 
     @Mapping(source = "especialidad.descripcion", target = "especialidad")
@@ -28,6 +29,7 @@ public interface ProfesionalMapper {
     @Mapping(source = "estadoActual.nombre", target = "estadoActual")
     // --- NUEVO CAMPO MAPEADO ---
     @Mapping(source = "membresiaActual.nombre", target = "membresiaActual")
+    @Mapping(source = "direccion.nombre", target = "direccion")
     // Nota: fotoPerfil se mapea solo (Entity.fotoPerfil -> DTO.fotoPerfil)
     ProfesionalResponseDTO toResponseDTO(Profesional entity);
 

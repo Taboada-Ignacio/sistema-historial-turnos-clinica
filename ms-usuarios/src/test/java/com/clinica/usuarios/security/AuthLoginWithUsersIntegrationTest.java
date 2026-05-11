@@ -62,6 +62,9 @@ class AuthLoginWithUsersIntegrationTest {
     LocalidadRepository localidadRepository;
 
     @Autowired
+    DireccionRepository direccionRepository;
+
+    @Autowired
     ObraSocialRepository obraSocialRepository;
 
     @Autowired
@@ -80,10 +83,11 @@ class AuthLoginWithUsersIntegrationTest {
 
         Provincia prov = provinciaRepository.save(Provincia.builder().nombre("ProvAuthTest").build());
         Localidad loc = localidadRepository.save(Localidad.builder().nombre("LocAuthTest").provincia(prov).build());
+        Direccion dir = direccionRepository.save(Direccion.builder().nombre("Calle Test 1").localidad(loc).build());
         ObraSocial os = obraSocialRepository.save(ObraSocial.builder().descripcion("ObraAuthTest").build());
 
-        Paciente a = buildPaciente(EMAIL_A, 91234501, activo, rolPaciente, loc, os);
-        Paciente b = buildPaciente(EMAIL_B, 91234502, activo, rolPaciente, loc, os);
+        Paciente a = buildPaciente(EMAIL_A, 91234501, activo, rolPaciente, loc, dir, os);
+        Paciente b = buildPaciente(EMAIL_B, 91234502, activo, rolPaciente, loc, dir, os);
         idPacienteA = pacienteRepository.save(a).getIdUsuario();
         idPacienteB = pacienteRepository.save(b).getIdUsuario();
     }
@@ -94,6 +98,7 @@ class AuthLoginWithUsersIntegrationTest {
             Estado estado,
             Rol rol,
             Localidad loc,
+            Direccion dir,
             ObraSocial os) {
         Paciente p = new Paciente();
         p.setEmail(email);
@@ -106,6 +111,7 @@ class AuthLoginWithUsersIntegrationTest {
         p.setEstadoActual(estado);
         p.setRoles(Set.of(rol));
         p.setLocalidad(loc);
+        p.setDireccion(dir);
         p.setObraSocial(os);
         return p;
     }

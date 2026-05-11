@@ -3,6 +3,7 @@ package com.clinica.usuarios.repository;
 import com.clinica.usuarios.model.Profesional;
 import com.clinica.usuarios.model.Membresia;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -26,6 +27,7 @@ public interface ProfesionalRepository extends JpaRepository<Profesional, Long> 
             SELECT DISTINCT p FROM Profesional p
             LEFT JOIN FETCH p.localidad loc
             LEFT JOIN FETCH loc.provincia
+            LEFT JOIN FETCH p.direccion
             JOIN FETCH p.especialidad
             JOIN FETCH p.estadoActual
             """)
@@ -35,9 +37,14 @@ public interface ProfesionalRepository extends JpaRepository<Profesional, Long> 
             SELECT p FROM Profesional p
             LEFT JOIN FETCH p.localidad loc
             LEFT JOIN FETCH loc.provincia
+            LEFT JOIN FETCH p.direccion
             JOIN FETCH p.especialidad
             JOIN FETCH p.estadoActual
             WHERE p.idUsuario = :id
             """)
     Optional<Profesional> findWithUbicacionById(@Param("id") Long id);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE Profesional p SET p.especialidad.idEspecialidad = :sentinelId WHERE p.especialidad.idEspecialidad = :oldId")
+    int reasignarEspecialidad(@Param("oldId") Long oldId, @Param("sentinelId") Long sentinelId);
 }

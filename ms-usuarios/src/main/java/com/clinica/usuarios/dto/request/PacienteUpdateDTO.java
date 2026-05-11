@@ -2,6 +2,7 @@ package com.clinica.usuarios.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
 import java.time.LocalDate;
 import java.util.Set;
@@ -21,6 +22,10 @@ public class PacienteUpdateDTO {
     private String numeroAfiliado;
     private String estadoActual; // <--- AGREGAR ESTO
     private Long idLocalidad;
+
+    @Size(max = 500, message = "La dirección no puede superar los 500 caracteres")
+    private String direccion;
+
     private Long idObraSocial;
     private Set<Long> rolesIds;
 }

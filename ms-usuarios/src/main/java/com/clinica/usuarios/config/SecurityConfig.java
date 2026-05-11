@@ -71,6 +71,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/especialidades/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/provincias/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/localidades/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/direcciones/**").permitAll()
 
                 // --- RECURSOS ESTÁTICOS ---
                 .requestMatchers(HttpMethod.GET, "/fotosPerfilProfesionales/**").permitAll()

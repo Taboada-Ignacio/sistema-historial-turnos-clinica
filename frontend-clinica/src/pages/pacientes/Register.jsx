@@ -21,7 +21,9 @@ const Register = () => {
     telefono: '',
     fechaNacimiento: '',
     password: '',
-    idLocalidad: ''
+    idLocalidad: '',
+    direccion: '',
+    idObraSocial: ''
   });
 
   useEffect(() => {
@@ -34,6 +36,23 @@ const Register = () => {
       }
     };
     fetchProvincias();
+  }, []);
+
+  useEffect(() => {
+    const fetchObras = async () => {
+      try {
+        const response = await clienteAxios.get('/usuarios/api/obras-sociales');
+        const obras = response.data || [];
+        const noPosee = obras.find((o) => o.descripcion === 'NO POSEE');
+        setFormData((prev) => ({
+          ...prev,
+          idObraSocial: noPosee ? String(noPosee.idObraSocial) : prev.idObraSocial
+        }));
+      } catch {
+        setError('No se pudieron cargar las obras sociales.');
+      }
+    };
+    fetchObras();
   }, []);
 
   useEffect(() => {
@@ -53,12 +72,17 @@ const Register = () => {
   }, [provinciaSeleccionada]);
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+      ...(name === 'idLocalidad' ? { direccion: '' } : {})
+    }));
   };
 
   const handleProvinciaChange = (e) => {
     setProvinciaSeleccionada(e.target.value);
-    setFormData({ ...formData, idLocalidad: '' }); 
+    setFormData((prev) => ({ ...prev, idLocalidad: '', direccion: '' }));
   };
 
   const validacionesPassword = {
@@ -74,7 +98,7 @@ const Register = () => {
   const handleRegister = async (e) => {
     e.preventDefault();
     
-    if (!isPasswordValid || !formData.idLocalidad) return;
+    if (!isPasswordValid || !formData.idLocalidad || !formData.direccion?.trim() || !formData.idObraSocial) return;
     if (!isAtLeastAge(formData.fechaNacimiento)) {
       setError('Debés ser mayor de 18 años para registrarte.');
       return;
@@ -86,9 +110,11 @@ const Register = () => {
     try {
       const payload = {
         ...formData,
-        dni: parseInt(formData.dni),
-        idLocalidad: parseInt(formData.idLocalidad),
-        rolesIds: [2] 
+        dni: parseInt(formData.dni, 10),
+        idLocalidad: parseInt(formData.idLocalidad, 10),
+        direccion: formData.direccion.trim(),
+        idObraSocial: parseInt(formData.idObraSocial, 10),
+        rolesIds: [2]
       };
 
       await clienteAxios.post('/usuarios/api/pacientes/registro', payload);
@@ -153,6 +179,17 @@ const Register = () => {
                   <option value="">Localidad</option>
                   {localidades.map(l => <option key={l.idLocalidad} value={l.idLocalidad}>{l.nombre}</option>)}
                 </select>
+                <input
+                  type="text"
+                  name="direccion"
+                  value={formData.direccion}
+                  onChange={handleChange}
+                  required
+                  disabled={!formData.idLocalidad}
+                  maxLength={500}
+                  placeholder="Calle, número, piso/depto (según la localidad elegida)"
+                  className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-clinica-dark outline-none bg-white disabled:bg-gray-100 md:col-span-2"
+                />
               </div>
 
               {/* CONTRASEÑA CON OJO Y CHECKLIST */}
@@ -179,7 +216,7 @@ const Register = () => {
 
               <button
                 type="submit"
-                disabled={loading || !isPasswordValid || !formData.idLocalidad}
+                disabled={loading || !isPasswordValid || !formData.idLocalidad || !formData.direccion?.trim() || !formData.idObraSocial}
                 className="w-full bg-clinica-dark text-white font-semibold py-3 mt-2 rounded-xl hover:bg-clinica-hover transition-all shadow-lg disabled:opacity-50 flex justify-center items-center"
               >
                 {loading ? <span className="animate-pulse">Registrando...</span> : "Confirmar Registro"}

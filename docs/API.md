@@ -97,7 +97,7 @@ Este documento **complementa** OpenAPI con convenciones de **seguridad**, **cook
 
 ## Catálogos y maestros
 
-Rutas base: **`/api/provincias`**, **`/api/localidades`**, **`/api/especialidades`**, **`/api/obras-sociales`**, **`/api/roles`**.
+Rutas base: **`/api/provincias`**, **`/api/localidades`**, **`/api/direcciones`**, **`/api/especialidades`**, **`/api/obras-sociales`**, **`/api/roles`**.
 
 Patrón habitual:
 
@@ -105,6 +105,15 @@ Patrón habitual:
 - **POST /registro**, **PUT /{id}**, **DELETE /{id}**: **`ROLE_ADMINISTRADOR`**.
 
 **Localidades:** además **`GET /api/localidades/provincia/{provinciaId}`** (GET público).
+
+**Direcciones (catálogo por localidad):**
+
+| Método | Ruta | Acceso |
+|--------|------|--------|
+| GET | `/api/direcciones/localidad/{idLocalidad}` | Público | Listado de direcciones ya registradas en esa localidad (p. ej. administración o reutilización). |
+| POST | `/api/direcciones/registro` | ADMIN | Body JSON: `nombre`, `idLocalidad`. Único `(nombre, localidad)`. |
+
+Los **registros** de paciente, profesional y administrador incluyen **`direccion`** (texto, obligatorio, máx. 500 caracteres) junto con **`idLocalidad`**. El backend **crea o reutiliza** una fila en `direcciones` con ese texto en esa localidad, de modo que el catálogo crece solo con direcciones realmente usadas.
 
 ---
 

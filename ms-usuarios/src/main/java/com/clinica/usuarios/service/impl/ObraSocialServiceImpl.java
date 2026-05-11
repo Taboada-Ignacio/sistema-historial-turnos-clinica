@@ -3,14 +3,15 @@ package com.clinica.usuarios.service.impl;
 import com.clinica.usuarios.dto.request.ObraSocialRegistroDTO;
 import com.clinica.usuarios.dto.request.ObraSocialUpdateDTO;
 import com.clinica.usuarios.dto.response.ObraSocialResponseDTO;
+import com.clinica.usuarios.constants.CatalogoSentinelConstants;
 import com.clinica.usuarios.exception.RecursoNoEncontradoException;
 import com.clinica.usuarios.exception.ReglaDeNegocioException;
 import com.clinica.usuarios.mapper.ObraSocialMapper;
 import com.clinica.usuarios.model.ObraSocial;
 import com.clinica.usuarios.repository.ObraSocialRepository;
+import com.clinica.usuarios.repository.PacienteRepository;
 import com.clinica.usuarios.service.ObraSocialService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +23,7 @@ import java.util.stream.Collectors;
 public class ObraSocialServiceImpl implements ObraSocialService {
 
     private final ObraSocialRepository obraSocialRepository;
+    private final PacienteRepository pacienteRepository;
     private final ObraSocialMapper obraSocialMapper;
 
     @Override
@@ -65,6 +67,10 @@ public class ObraSocialServiceImpl implements ObraSocialService {
         ObraSocial obraSocial = obraSocialRepository.findById(id)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Obra Social no encontrada con ID: " + id));
 
+        if (CatalogoSentinelConstants.esSentinelNombreODescripcion(obraSocial.getDescripcion())) {
+            throw new ReglaDeNegocioException("No se puede modificar el registro reservado del sistema.");
+        }
+
         String nuevaDescripcion = dto.getDescripcion().toUpperCase();
 
         obraSocialRepository.findByDescripcion(nuevaDescripcion).ifPresent(existente -> {
@@ -82,16 +88,18 @@ public class ObraSocialServiceImpl implements ObraSocialService {
     @Override
     @Transactional
     public void eliminarObraSocial(Long id) {
-        if (!obraSocialRepository.existsById(id)) {
-            throw new RecursoNoEncontradoException("La Obra Social con ID " + id + " no fue encontrada.");
+        ObraSocial obra = obraSocialRepository.findById(id)
+                .orElseThrow(() -> new RecursoNoEncontradoException("La Obra Social con ID " + id + " no fue encontrada."));
+        if (CatalogoSentinelConstants.esSentinelNombreODescripcion(obra.getDescripcion())) {
+            throw new ReglaDeNegocioException("No se puede eliminar el registro reservado del sistema.");
         }
-
-        try {
-            obraSocialRepository.deleteById(id);
-        } catch (DataIntegrityViolationException e) {
-            throw new ReglaDeNegocioException(
-                "No se puede eliminar la Obra Social porque ya hay pacientes asociados a ella."
-            );
+        ObraSocial sentinel = obraSocialRepository.findByDescripcion(CatalogoSentinelConstants.SIN_ESPECIFICAR)
+                .orElseThrow(() -> new ReglaDeNegocioException(
+                        "Falta la obra social reservada '" + CatalogoSentinelConstants.SIN_ESPECIFICAR + "' en la base de datos."));
+        if (sentinel.getIdObraSocial().equals(id)) {
+            throw new ReglaDeNegocioException("No se puede eliminar el registro reservado del sistema.");
         }
+        pacienteRepository.reasignarObraSocial(id, sentinel.getIdObraSocial());
+        obraSocialRepository.deleteById(id);
     }
 }

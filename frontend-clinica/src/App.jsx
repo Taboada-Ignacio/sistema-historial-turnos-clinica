@@ -30,6 +30,8 @@ import AdminDashboardHome from './pages/administracion/AdminDashboardHome';
 import ProfesionalesPendientesPage from './pages/administracion/ProfesionalesPendientesPage';
 import ProfesionalPendienteDetallePage from './pages/administracion/ProfesionalPendienteDetallePage';
 import AdministrarEntidadesPage from './pages/administracion/AdministrarEntidadesPage';
+import AdminCatalogoListaPage from './pages/administracion/AdminCatalogoListaPage';
+import AdminCatalogoEditPage from './pages/administracion/AdminCatalogoEditPage';
 import AdminTurnosPage from './pages/administracion/AdminTurnosPage';
 import AdminHistorialesClinicosPage from './pages/administracion/AdminHistorialesClinicosPage';
 
@@ -82,6 +84,8 @@ function App() {
             <Route path="profesionales-pendientes" element={<ProfesionalesPendientesPage />} />
             <Route path="profesionales-pendientes/:idProfesional" element={<ProfesionalPendienteDetallePage />} />
             <Route path="entidades" element={<AdministrarEntidadesPage />} />
+            <Route path="catalogo/:tipo" element={<AdminCatalogoListaPage />} />
+            <Route path="catalogo/:tipo/:id" element={<AdminCatalogoEditPage />} />
             <Route path="turnos" element={<AdminTurnosPage />} />
             <Route path="historiales-clinicos" element={<AdminHistorialesClinicosPage />} />
           </Route>

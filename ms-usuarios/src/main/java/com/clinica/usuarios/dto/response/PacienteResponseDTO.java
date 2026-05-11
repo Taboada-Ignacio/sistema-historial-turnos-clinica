@@ -31,5 +31,7 @@ public class PacienteResponseDTO {
     private String numeroAfiliado;
     private String nombreLocalidad;
     private String nombreProvincia;
+    /** Texto de la dirección tipificada (catálogo). */
+    private String direccion;
     private Set<String> roles;
 }

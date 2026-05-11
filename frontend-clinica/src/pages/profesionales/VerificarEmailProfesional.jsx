@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import clienteAxios from '../../api/axiosConfig';
 
 const VerificarEmailProfesional = () => {
   const location = useLocation();
-  const navigate = useNavigate();
   const email = location.state?.email || "";
   const [timeLeft, setTimeLeft] = useState(180); // 3 minutos = 180 segundos
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [cuentaConfirmada, setCuentaConfirmada] = useState(false);
 
   useEffect(() => {
     if (timeLeft > 0) {
@@ -18,14 +18,28 @@ const VerificarEmailProfesional = () => {
   }, [timeLeft]);
 
   const handleReenviar = async () => {
+    if (cuentaConfirmada) return;
+
+    if (!email) {
+      setMessage('✗ No hay correo en sesión. Volvé al registro e intentá de nuevo.');
+      return;
+    }
+
     try {
       setLoading(true);
       setMessage("");
-      await clienteAxios.post(`/usuarios/api/profesionales/reenviar-confirmacion?email=${email}`);
+      await clienteAxios.post(`/usuarios/api/profesionales/reenviar-confirmacion?email=${encodeURIComponent(email)}`);
       setTimeLeft(180); // Reinicia el contador a 3 minutos
       setMessage("✓ Enlace reenviado con éxito. Revisa tu bandeja de entrada.");
-    } catch (error) { 
-      setMessage("✗ Error al reenviar el email."); 
+    } catch (error) {
+      const backendMessage = error?.response?.data?.mensaje || '';
+      if (backendMessage.toLowerCase().includes('ya se encuentra activa')) {
+        setCuentaConfirmada(true);
+        setTimeLeft(0);
+        setMessage('✓ Este registro ya fue confirmado. Ya no es necesario verificarlo nuevamente.');
+      } else {
+        setMessage("✗ Error al reenviar el email.");
+      }
     } finally {
       setLoading(false);
     }
@@ -40,12 +54,14 @@ const VerificarEmailProfesional = () => {
           <p className="text-gray-500">Enviamos un enlace a <b>{email}</b></p>
         </div>
         
-        <div className="bg-blue-50 border-2 border-blue-200 p-6 rounded-2xl mb-6">
-          <p className="text-sm text-gray-600 mb-3">Tiempo para reenviar:</p>
-          <span className="text-4xl font-mono font-black text-blue-600">
-            {Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, '0')}
-          </span>
-        </div>
+        {!cuentaConfirmada && (
+          <div className="bg-blue-50 border-2 border-blue-200 p-6 rounded-2xl mb-6">
+            <p className="text-sm text-gray-600 mb-3">Tiempo para reenviar:</p>
+            <span className="text-4xl font-mono font-black text-blue-600">
+              {Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, '0')}
+            </span>
+          </div>
+        )}
 
         <div className="mb-6 text-sm text-gray-600">
           <p>Una vez confirmado, tu solicitud será revisada por nuestro equipo de Administración.</p>
@@ -62,10 +78,10 @@ const VerificarEmailProfesional = () => {
 
         <button 
           onClick={handleReenviar} 
-          disabled={timeLeft > 0 || loading}
+          disabled={cuentaConfirmada || timeLeft > 0 || loading}
           className="w-full py-3 rounded-xl font-bold border-2 border-blue-600 text-blue-600 hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
         >
-          {loading ? "Reenviando..." : timeLeft > 0 ? `Reenviar en ${Math.floor(timeLeft / 60)}:${String(timeLeft % 60).padStart(2, '0')}` : "Reenviar correo"}
+          {loading ? "Reenviando..." : cuentaConfirmada ? "Registro ya confirmado" : timeLeft > 0 ? `Reenviar en ${Math.floor(timeLeft / 60)}:${String(timeLeft % 60).padStart(2, '0')}` : "Reenviar correo"}
         </button>
       </div>
     </div>

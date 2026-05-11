@@ -14,5 +14,9 @@ public class LocalidadResponseDTO {
     private Long idLocalidad;
 
     private String nombre;
+
+    /** ID de provincia (útil para formularios de edición). */
+    private Long idProvincia;
+
     private String nombreProvincia; // Nombre de la provincia aplanado para el frontend
 }

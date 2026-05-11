@@ -9,6 +9,7 @@ import com.clinica.usuarios.exception.ReglaDeNegocioException;
 import com.clinica.usuarios.mapper.ProfesionalMapper;
 import com.clinica.usuarios.model.*;
 import com.clinica.usuarios.repository.*;
+import com.clinica.usuarios.service.DireccionService;
 import com.clinica.usuarios.service.EmailService;
 import com.clinica.usuarios.service.ProfesionalService;
 import lombok.RequiredArgsConstructor;
@@ -54,6 +55,7 @@ public class ProfesionalServiceImpl implements ProfesionalService {
     // --- UTILIDADES ---
     private final ProfesionalMapper profesionalMapper;
     private final PasswordEncoder passwordEncoder;
+    private final DireccionService direccionService;
 
     // Directorio local para guardar las imágenes
     private final String DIRECTORIO_FOTOS = "fotosPerfilProfesionales";
@@ -82,6 +84,7 @@ public class ProfesionalServiceImpl implements ProfesionalService {
         Profesional profesional = profesionalMapper.toEntity(dto);
         profesional.setRoles(rolesAsignados);
         profesional.setLocalidad(localidad);
+        profesional.setDireccion(direccionService.obtenerOCrearPorTextoYLocalidad(dto.getDireccion(), localidad));
         profesional.setEspecialidad(especialidad);
         // Hasheamos el password antes de guardar
         profesional.setPassword(passwordEncoder.encode(dto.getPassword()));
@@ -204,8 +207,8 @@ public class ProfesionalServiceImpl implements ProfesionalService {
 
     private String formatDireccionPresentacion(Usuario u) {
         List<String> partes = new ArrayList<>();
-        if (u.getDireccion() != null && !u.getDireccion().isBlank()) {
-            partes.add(u.getDireccion().trim());
+        if (u.getDireccion() != null && u.getDireccion().getNombre() != null && !u.getDireccion().getNombre().isBlank()) {
+            partes.add(u.getDireccion().getNombre().trim());
         }
         if (u.getLocalidad() != null && u.getLocalidad().getNombre() != null && !u.getLocalidad().getNombre().isBlank()) {
             partes.add(u.getLocalidad().getNombre().trim());
@@ -240,8 +243,23 @@ public class ProfesionalServiceImpl implements ProfesionalService {
         profesional.setEmail(dto.getEmail()); 
         profesional.setTelefono(dto.getTelefono());
         profesional.setMatricula(dto.getMatricula());
-        if (dto.getDireccion() != null) {
-            profesional.setDireccion(dto.getDireccion().isBlank() ? null : dto.getDireccion().trim());
+
+        Localidad localidadObjetivo = profesional.getLocalidad();
+        if (dto.getIdLocalidad() != null) {
+            localidadObjetivo = localidadRepository.findById(dto.getIdLocalidad())
+                    .orElseThrow(() -> new RecursoNoEncontradoException("Localidad no encontrada"));
+        }
+        if (dto.getDireccion() != null && !dto.getDireccion().isBlank()) {
+            profesional.setDireccion(direccionService.obtenerOCrearPorTextoYLocalidad(dto.getDireccion(), localidadObjetivo));
+        } else if (dto.getIdLocalidad() != null
+                && profesional.getDireccion() != null
+                && profesional.getDireccion().getLocalidad() != null
+                && !profesional.getDireccion().getLocalidad().getIdLocalidad().equals(localidadObjetivo.getIdLocalidad())) {
+            throw new ReglaDeNegocioException(
+                    "Si cambiás la localidad, enviá la dirección en texto para esa localidad (o no cambies la localidad).");
+        }
+        if (dto.getIdLocalidad() != null) {
+            profesional.setLocalidad(localidadObjetivo);
         }
 
         // Actualización de estado si viene en el DTO

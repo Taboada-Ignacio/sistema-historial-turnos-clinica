@@ -18,11 +18,13 @@ public interface AdministradorMapper {
     @Mapping(target = "roles", ignore = true)
     @Mapping(target = "localidad", ignore = true)
     @Mapping(target = "estadoActual", ignore = true) // El Service asignará el objeto Estado "ACTIVO"
+    @Mapping(target = "direccion", ignore = true)
     @Mapping(target = "historialEstados", ignore = true)
     Administrador toEntity(AdministradorRegistroDTO dto);
 
     @Mapping(target = "nombreLocalidad", source = "localidad.nombre")
     @Mapping(target = "estadoActual", source = "estadoActual.nombre") // Mapea el nombre del estado al String del DTO
+    @Mapping(source = "direccion.nombre", target = "direccion")
     @Mapping(target = "roles", source = "roles", qualifiedByName = "mapRolesToStrings")
     AdministradorResponseDTO toResponseDTO(Administrador admin);
 

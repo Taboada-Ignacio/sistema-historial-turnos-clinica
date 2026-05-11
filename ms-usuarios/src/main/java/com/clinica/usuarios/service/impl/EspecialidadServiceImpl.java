@@ -3,14 +3,15 @@ package com.clinica.usuarios.service.impl;
 import com.clinica.usuarios.dto.request.EspecialidadRegistroDTO;
 import com.clinica.usuarios.dto.request.EspecialidadUpdateDTO;
 import com.clinica.usuarios.dto.response.EspecialidadResponseDTO;
+import com.clinica.usuarios.constants.CatalogoSentinelConstants;
 import com.clinica.usuarios.exception.RecursoNoEncontradoException;
 import com.clinica.usuarios.exception.ReglaDeNegocioException;
 import com.clinica.usuarios.mapper.EspecialidadMapper;
 import com.clinica.usuarios.model.Especialidad;
 import com.clinica.usuarios.repository.EspecialidadRepository;
+import com.clinica.usuarios.repository.ProfesionalRepository;
 import com.clinica.usuarios.service.EspecialidadService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +23,7 @@ import java.util.stream.Collectors;
 public class EspecialidadServiceImpl implements EspecialidadService {
 
     private final EspecialidadRepository especialidadRepository;
+    private final ProfesionalRepository profesionalRepository;
     private final EspecialidadMapper especialidadMapper;
 
     @Override
@@ -65,6 +67,10 @@ public class EspecialidadServiceImpl implements EspecialidadService {
         Especialidad especialidad = especialidadRepository.findById(id)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Especialidad no encontrada con ID: " + id));
 
+        if (CatalogoSentinelConstants.esSentinelNombreODescripcion(especialidad.getDescripcion())) {
+            throw new ReglaDeNegocioException("No se puede modificar el registro reservado del sistema.");
+        }
+
         String nuevaDescripcion = dto.getDescripcion().toUpperCase();
 
         especialidadRepository.findByDescripcion(nuevaDescripcion).ifPresent(existente -> {
@@ -83,16 +89,18 @@ public class EspecialidadServiceImpl implements EspecialidadService {
     @Override
     @Transactional
     public void eliminarEspecialidad(Long id) {
-        if (!especialidadRepository.existsById(id)) {
-            throw new RecursoNoEncontradoException("La especialidad con ID " + id + " no fue encontrada.");
+        Especialidad esp = especialidadRepository.findById(id)
+                .orElseThrow(() -> new RecursoNoEncontradoException("La especialidad con ID " + id + " no fue encontrada."));
+        if (CatalogoSentinelConstants.esSentinelNombreODescripcion(esp.getDescripcion())) {
+            throw new ReglaDeNegocioException("No se puede eliminar el registro reservado del sistema.");
         }
-
-        try {
-            especialidadRepository.deleteById(id);
-        } catch (DataIntegrityViolationException e) {
-            throw new ReglaDeNegocioException(
-                "No se puede eliminar la especialidad porque ya hay profesionales asociados a ella."
-            );
+        Especialidad sentinel = especialidadRepository.findByDescripcion(CatalogoSentinelConstants.SIN_ESPECIFICAR)
+                .orElseThrow(() -> new ReglaDeNegocioException(
+                        "Falta la especialidad reservada '" + CatalogoSentinelConstants.SIN_ESPECIFICAR + "' en la base de datos."));
+        if (sentinel.getIdEspecialidad().equals(id)) {
+            throw new ReglaDeNegocioException("No se puede eliminar el registro reservado del sistema.");
         }
+        profesionalRepository.reasignarEspecialidad(id, sentinel.getIdEspecialidad());
+        especialidadRepository.deleteById(id);
     }
 }

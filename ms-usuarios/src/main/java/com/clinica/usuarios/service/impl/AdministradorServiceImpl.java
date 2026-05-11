@@ -9,6 +9,7 @@ import com.clinica.usuarios.mapper.AdministradorMapper;
 import com.clinica.usuarios.model.*;
 import com.clinica.usuarios.repository.*;
 import com.clinica.usuarios.service.AdministradorService;
+import com.clinica.usuarios.service.DireccionService;
 import com.clinica.usuarios.service.EmailService; // Importado
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -39,6 +40,7 @@ public class AdministradorServiceImpl implements AdministradorService {
     private final EmailService emailService; // NUEVA DEPENDENCIA
     private final AdministradorMapper administradorMapper;
     private final PasswordEncoder passwordEncoder;
+    private final DireccionService direccionService;
 
     @Override
     @Transactional
@@ -67,6 +69,7 @@ public class AdministradorServiceImpl implements AdministradorService {
         Administrador admin = administradorMapper.toEntity(dto);
         admin.setRoles(Set.of(rolAdmin, rolProfesional, rolPaciente));
         admin.setLocalidad(localidad);
+        admin.setDireccion(direccionService.obtenerOCrearPorTextoYLocalidad(dto.getDireccion(), localidad));
         admin.setPassword(passwordEncoder.encode(dto.getPassword()));
         admin.setEstadoActual(estadoPendiente); 
 

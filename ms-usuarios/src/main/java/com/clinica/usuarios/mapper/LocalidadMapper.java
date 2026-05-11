@@ -13,6 +13,7 @@ public interface LocalidadMapper {
     @Mapping(target = "provincia", ignore = true) // Se asigna manualmente en el Service
     Localidad toEntity(LocalidadRegistroDTO dto);
 
+    @Mapping(source = "provincia.idProvincia", target = "idProvincia")
     @Mapping(source = "provincia.nombre", target = "nombreProvincia")
     LocalidadResponseDTO toResponseDTO(Localidad entity);
 }

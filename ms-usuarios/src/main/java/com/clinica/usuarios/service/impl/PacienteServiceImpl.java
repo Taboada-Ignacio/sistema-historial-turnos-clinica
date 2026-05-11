@@ -8,6 +8,7 @@ import com.clinica.usuarios.exception.ReglaDeNegocioException;
 import com.clinica.usuarios.mapper.PacienteMapper;
 import com.clinica.usuarios.model.*;
 import com.clinica.usuarios.repository.*;
+import com.clinica.usuarios.service.DireccionService;
 import com.clinica.usuarios.service.EmailService;
 import com.clinica.usuarios.service.PacienteService;
 import lombok.RequiredArgsConstructor;
@@ -32,7 +33,7 @@ public class PacienteServiceImpl implements PacienteService {
     private final LocalidadRepository localidadRepository;
     private final ObraSocialRepository obraSocialRepository;
     
-    // Nuevas dependencias para el flujo de estados y confirmación
+    // Nuevas dependencias para el flujo de estados y confirmaci?n
     private final EstadoRepository estadoRepository;
     private final CambioEstadoRepository cambioEstadoRepository;
     private final VerificationTokenRepository tokenRepository;
@@ -40,6 +41,7 @@ public class PacienteServiceImpl implements PacienteService {
     
     private final PacienteMapper pacienteMapper;
     private final PasswordEncoder passwordEncoder;
+    private final DireccionService direccionService;
 
     @Override
     @Transactional
@@ -48,23 +50,24 @@ public class PacienteServiceImpl implements PacienteService {
         // 1. Validaciones de Identidad
         validarUnicidad(dto.getEmail(), dto.getDni());
 
-        // 2. Obtención de dependencias
+        // 2. Obtenci?n de dependencias
         Set<Rol> rolesAsignados = buscarRoles(dto.getRolesIds());
         
         Localidad localidad = localidadRepository.findById(dto.getIdLocalidad())
-                .orElseThrow(() -> new RecursoNoEncontradoException("No se encontró la localidad con ID: " + dto.getIdLocalidad()));
+                .orElseThrow(() -> new RecursoNoEncontradoException("No se encontr? la localidad con ID: " + dto.getIdLocalidad()));
 
         ObraSocial obraSocial = obraSocialRepository.findById(dto.getIdObraSocial())
-                .orElseThrow(() -> new RecursoNoEncontradoException("No se encontró la Obra Social con ID: " + dto.getIdObraSocial()));
+                .orElseThrow(() -> new RecursoNoEncontradoException("No se encontr? la Obra Social con ID: " + dto.getIdObraSocial()));
 
         // 3. Buscar el estado inicial "PENDIENTE"
         Estado estadoPendiente = estadoRepository.findByNombre("PENDIENTE")
-                .orElseThrow(() -> new ReglaDeNegocioException("El estado inicial PENDIENTE no está configurado en la base de datos."));
+                .orElseThrow(() -> new ReglaDeNegocioException("El estado inicial PENDIENTE no est? configurado en la base de datos."));
 
-        // 4. Mapeo y Configuración Extra
+        // 4. Mapeo y Configuraci?n Extra
         Paciente paciente = pacienteMapper.toEntity(dto);
         paciente.setRoles(rolesAsignados);
         paciente.setLocalidad(localidad);
+        paciente.setDireccion(direccionService.obtenerOCrearPorTextoYLocalidad(dto.getDireccion(), localidad));
         paciente.setObraSocial(obraSocial);
         paciente.setPassword(passwordEncoder.encode(dto.getPassword()));
         paciente.setEstadoActual(estadoPendiente); // Seteamos el objeto Estado
@@ -72,7 +75,7 @@ public class PacienteServiceImpl implements PacienteService {
         // 5. Guardado del Paciente
         Paciente pacienteGuardado = pacienteRepository.save(paciente);
 
-        // 6. Registrar Auditoría de Estado
+        // 6. Registrar Auditor?a de Estado
         registrarCambioEstado(pacienteGuardado, estadoPendiente);
 
         // 7. Generar Token y Enviar Correo
@@ -87,15 +90,15 @@ public class PacienteServiceImpl implements PacienteService {
     public void confirmarCuenta(String token) {
         // 1. Validar el token
         VerificationToken vToken = tokenRepository.findByToken(token)
-                .orElseThrow(() -> new RecursoNoEncontradoException("Token de confirmación inválido o expirado."));
+                .orElseThrow(() -> new RecursoNoEncontradoException("Token de confirmaci?n inv?lido o expirado."));
 
         if (vToken.getFechaExpiracion().isBefore(LocalDateTime.now())) {
-            throw new ReglaDeNegocioException("El link de confirmación ha expirado. Por favor, solicita uno nuevo.");
+            throw new ReglaDeNegocioException("El link de confirmaci?n ha expirado. Por favor, solicita uno nuevo.");
         }
 
         // 2. Obtener el estado "ACTIVO"
         Estado estadoActivo = estadoRepository.findByNombre("ACTIVO")
-                .orElseThrow(() -> new ReglaDeNegocioException("El estado ACTIVO no está configurado."));
+                .orElseThrow(() -> new ReglaDeNegocioException("El estado ACTIVO no est? configurado."));
 
         // 3. Actualizar el usuario
         Usuario usuario = vToken.getUsuario();
@@ -114,7 +117,7 @@ public class PacienteServiceImpl implements PacienteService {
     public void reenviarCorreoConfirmacion(String email) {
         Usuario usuario = usuarioRepository.findByEmail(email)
                 .orElseThrow(() -> new RecursoNoEncontradoException(
-                        "No se encontró un usuario registrado con el email: " + email));
+                        "No se encontr? un usuario registrado con el email: " + email));
 
         if (!(usuario instanceof Paciente)) {
             throw new ReglaDeNegocioException("El correo no corresponde a un paciente registrado.");
@@ -133,7 +136,7 @@ public class PacienteServiceImpl implements PacienteService {
     @Transactional(readOnly = true)
     public PacienteResponseDTO obtenerPacientePorId(Long id) {
         Paciente paciente = pacienteRepository.findById(id)
-                .orElseThrow(() -> new RecursoNoEncontradoException("No se encontró el paciente con ID: " + id));
+                .orElseThrow(() -> new RecursoNoEncontradoException("No se encontr? el paciente con ID: " + id));
         return pacienteMapper.toResponseDTO(paciente);
     }
 
@@ -151,7 +154,7 @@ public class PacienteServiceImpl implements PacienteService {
         Paciente paciente = pacienteRepository.findById(id)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Paciente no encontrado con ID: " + id));
 
-        // Actualizamos datos básicos
+        // Actualizamos datos b?sicos
         paciente.setNombre(dto.getNombre());
         paciente.setApellido(dto.getApellido());
         paciente.setDni(dto.getDni());
@@ -163,7 +166,7 @@ public class PacienteServiceImpl implements PacienteService {
         // Manejo del Cambio de Estado (si viene en el DTO)
         if (dto.getEstadoActual() != null) {
             Estado nuevoEstado = estadoRepository.findByNombre(dto.getEstadoActual())
-                    .orElseThrow(() -> new RecursoNoEncontradoException("Estado no válido: " + dto.getEstadoActual()));
+                    .orElseThrow(() -> new RecursoNoEncontradoException("Estado no v?lido: " + dto.getEstadoActual()));
             
             if (!paciente.getEstadoActual().equals(nuevoEstado)) {
                 paciente.setEstadoActual(nuevoEstado);
@@ -171,13 +174,30 @@ public class PacienteServiceImpl implements PacienteService {
             }
         }
 
-        // Actualización de Relaciones
+        // Actualizaci?n de Relaciones
         if (dto.getRolesIds() != null) {
             paciente.setRoles(buscarRoles(dto.getRolesIds()));
         }
 
-        paciente.setLocalidad(localidadRepository.findById(dto.getIdLocalidad())
-                .orElseThrow(() -> new RecursoNoEncontradoException("Localidad no encontrada")));
+        Localidad localidadObjetivo = paciente.getLocalidad();
+        if (dto.getIdLocalidad() != null) {
+            localidadObjetivo = localidadRepository.findById(dto.getIdLocalidad())
+                    .orElseThrow(() -> new RecursoNoEncontradoException("Localidad no encontrada"));
+        }
+
+        if (dto.getDireccion() != null && !dto.getDireccion().isBlank()) {
+            paciente.setDireccion(direccionService.obtenerOCrearPorTextoYLocalidad(dto.getDireccion(), localidadObjetivo));
+        } else if (dto.getIdLocalidad() != null
+                && paciente.getDireccion() != null
+                && paciente.getDireccion().getLocalidad() != null
+                && !paciente.getDireccion().getLocalidad().getIdLocalidad().equals(localidadObjetivo.getIdLocalidad())) {
+            throw new ReglaDeNegocioException(
+                    "Si cambi?s la localidad, envi? la direcci?n en texto para esa localidad (o no cambies la localidad).");
+        }
+
+        if (dto.getIdLocalidad() != null) {
+            paciente.setLocalidad(localidadObjetivo);
+        }
 
         paciente.setObraSocial(obraSocialRepository.findById(dto.getIdObraSocial())
                 .orElseThrow(() -> new RecursoNoEncontradoException("Obra Social no encontrada")));
@@ -198,14 +218,14 @@ public class PacienteServiceImpl implements PacienteService {
         }
     }
 
-    // --- MÉTODOS PRIVADOS DE APOYO ---
+    // --- METODOS PRIVADOS DE APOYO ---
 
     private void validarUnicidad(String email, Integer dni) {
         if (usuarioRepository.findByEmail(email).isPresent()) {
-            throw new ReglaDeNegocioException("El correo " + email + " ya está en uso.");
+            throw new ReglaDeNegocioException("El correo " + email + " ya esta en uso.");
         }
         if (usuarioRepository.findByDni(dni).isPresent()) {
-            throw new ReglaDeNegocioException("El DNI " + dni + " ya está registrado.");
+            throw new ReglaDeNegocioException("El DNI " + dni + " ya esta registrado.");
         }
     }
 

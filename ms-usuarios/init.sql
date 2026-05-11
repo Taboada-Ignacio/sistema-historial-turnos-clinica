@@ -44,6 +44,14 @@ CREATE TABLE IF NOT EXISTS localidades (
     UNIQUE(nombre, id_provincia)
 );
 
+-- Catálogo de direcciones por localidad (tipificación)
+CREATE TABLE IF NOT EXISTS direcciones (
+    id_direccion BIGSERIAL PRIMARY KEY,
+    nombre VARCHAR(500) NOT NULL,
+    id_localidad BIGINT NOT NULL REFERENCES localidades(id_localidad),
+    UNIQUE(nombre, id_localidad)
+);
+
 -- ==========================================
 -- NIVEL 3: Tabla Padre (Herencia JOINED)
 -- ==========================================
@@ -57,7 +65,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
     dni INTEGER UNIQUE NOT NULL, -- INTEGER según tu entidad Java
     telefono VARCHAR(20) NOT NULL,
     fecha_nacimiento DATE,
-    direccion VARCHAR(255),
+    id_direccion BIGINT NOT NULL REFERENCES direcciones(id_direccion),
     id_localidad BIGINT NOT NULL REFERENCES localidades(id_localidad),
     id_estado_actual BIGINT NOT NULL REFERENCES estados(id_estado)
 );
@@ -124,12 +132,22 @@ CREATE TABLE IF NOT EXISTS cambios_membresia (
 
 INSERT INTO estados (nombre) VALUES ('PENDIENTE'), ('ACTIVO'), ('BLOQUEADO') ON CONFLICT (nombre) DO NOTHING;
 INSERT INTO roles (descripcion) VALUES ('ROLE_PROFESIONAL'), ('ROLE_PACIENTE'), ('ROLE_ADMINISTRADOR') ON CONFLICT (descripcion) DO NOTHING;
+
 INSERT INTO especialidades (descripcion) VALUES ('MÉDICO'), ('COSMIATRA'), ('ODÓNTOLOGO'), ('PSICÓLOGO'), ('SIN CARGAR') ON CONFLICT (descripcion) DO NOTHING;
 INSERT INTO obras_sociales (descripcion) VALUES ('LA CAJA'), ('OSDE'), ('NO POSEE') ON CONFLICT (descripcion) DO NOTHING;
 INSERT INTO provincias (nombre) VALUES ('CORDOBA'), ('SANTA CRUZ'), ('SIN CARGAR') ON CONFLICT (nombre) DO NOTHING;
 
 -- CARGA INICIAL DE MEMBRESÍAS
 INSERT INTO membresias (nombre) VALUES ('SIN_VERIFICAR'), ('INACTIVA'), ('ACTIVA'), ('ACCESO_INDEFINIDO') ON CONFLICT (nombre) DO NOTHING;
+
+-- -------------------------------------------------------------------------
+-- Catálogo reservado SIN ESPECIFICAR (integridad al borrar / reasignar FK).
+-- Idempotente (ON CONFLICT). Incluye lo que antes estaba en migration-sentinel-sin-especificar.sql.
+-- Orden: provincia sentinel → localidad sentinel depende de esa provincia.
+-- -------------------------------------------------------------------------
+INSERT INTO especialidades (descripcion) VALUES ('SIN ESPECIFICAR') ON CONFLICT (descripcion) DO NOTHING;
+INSERT INTO obras_sociales (descripcion) VALUES ('SIN ESPECIFICAR') ON CONFLICT (descripcion) DO NOTHING;
+INSERT INTO provincias (nombre) VALUES ('SIN ESPECIFICAR') ON CONFLICT (nombre) DO NOTHING;
 
 INSERT INTO localidades (nombre, id_provincia) 
 VALUES 
@@ -139,3 +157,11 @@ VALUES
     ('PUERTO SAN JULIÁN', (SELECT id_provincia FROM provincias WHERE nombre = 'SANTA CRUZ')),
     ('SIN CARGAR', (SELECT id_provincia FROM provincias WHERE nombre = 'SIN CARGAR'))
 ON CONFLICT (nombre, id_provincia) DO NOTHING;
+
+INSERT INTO localidades (nombre, id_provincia)
+SELECT 'SIN ESPECIFICAR', p.id_provincia
+FROM provincias p
+WHERE p.nombre = 'SIN ESPECIFICAR'
+ON CONFLICT (nombre, id_provincia) DO NOTHING;
+
+-- direcciones: sin datos iniciales; se crean al registrar usuarios (texto libre por localidad) o por POST /api/direcciones/registro (admin).

@@ -2,6 +2,7 @@ package com.clinica.usuarios.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
 import java.util.Set;
 
@@ -15,7 +16,7 @@ public class ProfesionalUpdateDTO {
     private Integer dni;
     @NotBlank(message = "El email es obligatorio")
     private String email;
-    /** Calle y número (opcional). */
+    @Size(max = 500, message = "La dirección no puede superar los 500 caracteres")
     private String direccion;
     private String telefono;
     private String matricula;

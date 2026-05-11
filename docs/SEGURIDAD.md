@@ -36,8 +36,8 @@
 
 | Pieza | Función |
 |-------|---------|
-| **`SecurityConfig`** | Cadena stateless, JWT filter, rutas públicas (auth, registro, confirmaciones, GET maestros, etc.). |
-| **`JwtAuthFilter`** | Lee `Authorization: Bearer`; si falta, continúa (anon); si hay token, valida firma/exp y rellena `SecurityContext`. Respuestas JSON con códigos **`TOKEN_EXPIRED`** / **`TOKEN_INVALID`** cuando aplica. Rutas `/api/auth/*`, `registro`, `confirmar`, `reenviar-confirmacion` **no** pasan por validación JWT obligatoria (filtro omitido). |
+| **`SecurityConfig`** | Cadena stateless, JWT filter, rutas públicas (auth, registro, confirmaciones, GET maestros, **GET `/api/direcciones/**`**, etc.). |
+| **`JwtAuthFilter`** | Lee `Authorization: Bearer`; si falta, continúa (anon); si hay token, valida firma/exp y rellena `SecurityContext`. Respuestas JSON con códigos **`TOKEN_EXPIRED`** / **`TOKEN_INVALID`** cuando aplica. Rutas `/api/auth/*`, `registro`, `confirmar`, `reenviar-confirmacion` **no** pasan por validación JWT obligatoria (filtro omitido). **POST** a maestros (p. ej. `POST /api/direcciones/registro`) **sí** requiere JWT con rol adecuado (`@PreAuthorize`). |
 | **`JwtUtil`** | Firma HS256, claims `authorities`, expiración desde config. |
 | **`UserDetailsServiceImpl`** | Carga usuario por email; rechaza estado **`PENDIENTE`** (`DisabledException`); mapea roles a `GrantedAuthority`. |
 | **`@EnableMethodSecurity` + `@PreAuthorize`** | Autorización fina en controladores (ADMIN, ownership con `@authorizationRules.esMismoUsuario(#id)`). |

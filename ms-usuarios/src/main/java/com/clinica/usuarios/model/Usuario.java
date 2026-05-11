@@ -64,9 +64,10 @@ public class Usuario {
     )
     private Set<Rol> roles;
 
-    /** Calle y número (opcional); para vista pública se concatena con localidad y provincia. */
-    @Column(length = 255)
-    private String direccion;
+    /** Dirección tipificada del catálogo; debe pertenecer a la misma {@link #localidad}. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_direccion", nullable = false)
+    private Direccion direccion;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_localidad", nullable = false)

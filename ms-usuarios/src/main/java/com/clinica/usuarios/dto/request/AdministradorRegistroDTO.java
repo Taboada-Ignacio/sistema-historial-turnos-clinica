@@ -39,4 +39,8 @@ public class AdministradorRegistroDTO {
 
     @NotNull(message = "La localidad es obligatoria")
     private Long idLocalidad;
+
+    @NotBlank(message = "La dirección es obligatoria")
+    @Size(max = 500, message = "La dirección no puede superar los 500 caracteres")
+    private String direccion;
 }

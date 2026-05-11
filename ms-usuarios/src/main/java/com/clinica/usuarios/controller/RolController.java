@@ -1,31 +1,25 @@
 package com.clinica.usuarios.controller;
 
-import com.clinica.usuarios.dto.request.RolRegistroDTO;
-import com.clinica.usuarios.dto.request.RolUpdateDTO;
 import com.clinica.usuarios.dto.response.RolResponseDTO;
 import com.clinica.usuarios.service.RolService;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
+/**
+ * Catálogo de roles: solo lectura pública (listado / por id). La mutación vía API está deshabilitada.
+ */
 @RestController
 @RequestMapping("/api/roles")
 @RequiredArgsConstructor
 public class RolController {
 
     private final RolService rolService;
-
-    @PreAuthorize("hasAuthority('ROLE_ADMINISTRADOR')")
-    @PostMapping("/registro")
-    public ResponseEntity<RolResponseDTO> registrar(@Valid @RequestBody RolRegistroDTO dto) {
-        RolResponseDTO nuevoRol = rolService.registrarRol(dto);
-        return new ResponseEntity<>(nuevoRol, HttpStatus.CREATED);
-    }
 
     @GetMapping("/{id}")
     public ResponseEntity<RolResponseDTO> obtenerPorId(@PathVariable Long id) {
@@ -35,20 +29,5 @@ public class RolController {
     @GetMapping
     public ResponseEntity<List<RolResponseDTO>> obtenerTodos() {
         return ResponseEntity.ok(rolService.obtenerTodosLosRoles());
-    }
-
-    @PreAuthorize("hasAuthority('ROLE_ADMINISTRADOR')")
-    @PutMapping("/{id}")
-    public ResponseEntity<RolResponseDTO> actualizar(
-            @PathVariable Long id, 
-            @Valid @RequestBody RolUpdateDTO dto) {
-        return ResponseEntity.ok(rolService.actualizarRol(id, dto));
-    }
-
-    @PreAuthorize("hasAuthority('ROLE_ADMINISTRADOR')")
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> eliminar(@PathVariable Long id) {
-        rolService.eliminarRol(id);
-        return ResponseEntity.noContent().build();
     }
 }

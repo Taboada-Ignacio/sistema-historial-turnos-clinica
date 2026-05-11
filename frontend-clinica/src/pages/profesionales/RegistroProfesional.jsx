@@ -15,7 +15,7 @@ const RegistroProfesional = () => {
 
   const [formData, setFormData] = useState({
     nombre: '', apellido: '', dni: '', telefono: '', fechaNacimiento: '',
-    provincia: '', localidad: '', especialidad: '', matricula: '',
+    provincia: '', localidad: '', direccion: '', especialidad: '', matricula: '',
     email: '', password: '', confirmarPassword: '', foto: null
   });
 
@@ -62,6 +62,8 @@ const RegistroProfesional = () => {
       clienteAxios.get(`/usuarios/api/localidades/provincia/${formData.provincia}`)
         .then(res => setLocalidades(res.data))
         .catch(err => console.error("[DEBUG] Error cargando localidades:", err));
+    } else {
+      setLocalidades([]);
     }
   }, [formData.provincia]);
 
@@ -70,7 +72,8 @@ const RegistroProfesional = () => {
     setFormData(prev => ({ 
       ...prev, 
       [name]: value,
-      ...(name === 'provincia' && { localidad: '' }) 
+      ...(name === 'provincia' && { localidad: '', direccion: '' }),
+      ...(name === 'localidad' && { direccion: '' })
     }));
   };
 
@@ -121,7 +124,17 @@ const RegistroProfesional = () => {
   const nextStep = () => setStep(step + 1);
   const prevStep = () => setStep(step - 1);
 
-  const isFormValid = isPasswordValid && passwordsMatch && formData.foto && formData.fechaNacimiento && isAtLeastAge(formData.fechaNacimiento);
+  const isFormValid = isPasswordValid && passwordsMatch && formData.foto && formData.fechaNacimiento && isAtLeastAge(formData.fechaNacimiento)
+    && formData.localidad && formData.direccion?.trim();
+
+  const handleStepAdvance = (e) => {
+    e.preventDefault();
+    if (step === 1 && (!formData.localidad || !formData.direccion?.trim())) {
+      alert('Seleccioná localidad e ingresá tu dirección.');
+      return;
+    }
+    nextStep();
+  };
 
   // 4. ENVÍO
   const handleSubmit = async (e) => {
@@ -146,6 +159,7 @@ const RegistroProfesional = () => {
         fechaNacimiento: formData.fechaNacimiento,
         matricula: formData.matricula,
         idLocalidad: Number(formData.localidad),
+        direccion: formData.direccion.trim(),
         idEspecialidad: Number(formData.especialidad),
         rolesIds: rolesIds
       };
@@ -202,7 +216,7 @@ const RegistroProfesional = () => {
           </div>
         </div>
 
-        <form onSubmit={step === 3 ? handleSubmit : (e) => { e.preventDefault(); nextStep(); }} className="p-8">
+        <form onSubmit={step === 3 ? handleSubmit : handleStepAdvance} className="p-8">
           
           {step === 1 && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fadeIn">
@@ -240,6 +254,20 @@ const RegistroProfesional = () => {
                   <option value="">Seleccione localidad</option>
                   {localidades.map(l => <option key={l.idLocalidad} value={l.idLocalidad}>{l.nombre}</option>)}
                 </select>
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Dirección</label>
+                <input
+                  type="text"
+                  name="direccion"
+                  required
+                  value={formData.direccion}
+                  onChange={handleChange}
+                  disabled={!formData.localidad}
+                  maxLength={500}
+                  placeholder="Calle, número, piso/depto"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50 disabled:opacity-50"
+                />
               </div>
             </div>
           )}
