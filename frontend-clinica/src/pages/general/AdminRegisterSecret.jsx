@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import clienteAxios from '../../api/axiosConfig';
+import PasswordVisibilityToggle from '../../components/PasswordVisibilityToggle';
+import { getMaxBirthDateString, isAtLeastAge } from '../../utils/ageValidation';
 import { ADMIN_PATHS } from '../../utils/portalPaths';
 
 const AdminRegisterSecret = () => {
@@ -84,6 +86,10 @@ const AdminRegisterSecret = () => {
       setError('Debes ingresar la X-System-Key para continuar.');
       return;
     }
+    if (!isAtLeastAge(formData.fechaNacimiento)) {
+      setError('Debés ser mayor de 18 años.');
+      return;
+    }
 
     setError('');
     setLoading(true);
@@ -158,20 +164,10 @@ const AdminRegisterSecret = () => {
                   required 
                   value={systemKey} 
                   onChange={(e) => setSystemKey(e.target.value)}
-                  className="w-full px-4 py-2 pr-10 rounded border border-gray-400 focus:ring-2 focus:ring-red-500 outline-none text-center font-mono"
+                  className="w-full px-4 py-2 pr-12 rounded border border-gray-400 focus:ring-2 focus:ring-red-500 outline-none text-center font-mono"
                   placeholder="Ingrese Clave Maestra"
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowSystemKey(!showSystemKey)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-600"
-                >
-                  {showSystemKey ? (
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
-                  ) : (
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                  )}
-                </button>
+                <PasswordVisibilityToggle visible={showSystemKey} onToggle={() => setShowSystemKey(!showSystemKey)} />
               </div>
             </div>
 
@@ -187,7 +183,7 @@ const AdminRegisterSecret = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <input type="email" name="email" placeholder="Email" required value={formData.email} onChange={handleChange} className="px-3 py-2 border rounded outline-none focus:border-gray-400" />
-              <input type="date" name="fechaNacimiento" required value={formData.fechaNacimiento} onChange={handleChange} className="px-3 py-2 border rounded outline-none text-gray-500" />
+              <input type="date" name="fechaNacimiento" required max={getMaxBirthDateString()} value={formData.fechaNacimiento} onChange={handleChange} className="px-3 py-2 border rounded outline-none text-gray-500" title="Mayor de 18 años" />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -210,20 +206,10 @@ const AdminRegisterSecret = () => {
                   required 
                   value={formData.password} 
                   onChange={handleChange}
-                  className="w-full px-3 py-2 pr-10 border rounded outline-none focus:border-red-500"
+                  className="w-full px-3 py-2 pr-12 border rounded outline-none focus:border-red-500"
                   placeholder="Defina su clave"
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-600"
-                >
-                  {showPassword ? (
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
-                  ) : (
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                  )}
-                </button>
+                <PasswordVisibilityToggle visible={showPassword} onToggle={() => setShowPassword(!showPassword)} />
               </div>
               
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">

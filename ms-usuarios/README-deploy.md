@@ -2,6 +2,8 @@ Deployment notes — cookies & refresh tokens
 =========================================
 
 Environment variables and properties
+- APP_GATEWAY_CORS_ALLOWED_ORIGIN — **api-gateway only**: single allowed browser origin for CORS (`Access-Control-Allow-Origin`). Default in YAML: `http://localhost:5173` (Vite). In production set to your SPA’s public HTTPS URL (same value you use in `APP_ALLOWED_ORIGINS` for `ms-usuarios`).
+- APP_ALLOWED_ORIGINS — comma-separated list for **ms-usuarios** Origin/Referer checks on cookie-based auth (`login`, `refresh`). For a single SPA origin, use one URL matching `APP_GATEWAY_CORS_ALLOWED_ORIGIN`.
 - APP_FRONTEND_URL — base URL of the React SPA (no trailing slash), used for HTTP redirects after email confirmation (`GET …/api/*/confirmar`). Maps to `app.frontend-url`. Example: `https://app.tuclinica.com` or `http://localhost:5173` in development.
 - APP_COOKIE_SECURE (boolean) — when true, refresh cookie is set with Secure flag (only sent over HTTPS).
   - Default: false (suitable for local development).

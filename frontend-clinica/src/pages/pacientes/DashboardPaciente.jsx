@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { clearSession } from '../../utils/auth';
-import { PACIENTE_PATHS } from '../../utils/portalPaths';
+import { HOME_PATH, PACIENTE_PATHS } from '../../utils/portalPaths';
 
 const DashboardPaciente = () => {
   const navigate = useNavigate();
@@ -26,12 +26,21 @@ const DashboardPaciente = () => {
           <span className="font-black text-xl tracking-tight">Portal Paciente</span>
         </div>
         
-        <button 
-          onClick={handleLogout}
-          className="px-4 py-2 text-sm font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors border border-red-100"
-        >
-          Cerrar Sesión
-        </button>
+        <div className="flex items-center gap-2">
+          <Link
+            to={HOME_PATH}
+            className="px-4 py-2 text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors border border-slate-200"
+          >
+            Volver al inicio
+          </Link>
+          <button 
+            type="button"
+            onClick={handleLogout}
+            className="px-4 py-2 text-sm font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors border border-red-100"
+          >
+            Cerrar Sesión
+          </button>
+        </div>
       </nav>
 
       {/* Contenido principal del Dashboard */}

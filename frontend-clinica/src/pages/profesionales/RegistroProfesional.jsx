@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import clienteAxios from '../../api/axiosConfig'; 
+import clienteAxios from '../../api/axiosConfig';
+import PasswordVisibilityToggle from '../../components/PasswordVisibilityToggle';
+import { getMaxBirthDateString, isAtLeastAge } from '../../utils/ageValidation';
 import imageCompression from 'browser-image-compression'; 
 
 const RegistroProfesional = () => {
@@ -119,11 +121,15 @@ const RegistroProfesional = () => {
   const nextStep = () => setStep(step + 1);
   const prevStep = () => setStep(step - 1);
 
-  const isFormValid = isPasswordValid && passwordsMatch && formData.foto && formData.fechaNacimiento;
+  const isFormValid = isPasswordValid && passwordsMatch && formData.foto && formData.fechaNacimiento && isAtLeastAge(formData.fechaNacimiento);
 
   // 4. ENVÍO
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!isAtLeastAge(formData.fechaNacimiento)) {
+      alert('Debés ser mayor de 18 años para registrarte.');
+      return;
+    }
     setLoading(true);
 
     console.log("%c[DEBUG] Iniciando envío de Form Data...", "color: purple; font-weight: bold;");
@@ -216,9 +222,10 @@ const RegistroProfesional = () => {
                 <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Teléfono</label>
                 <input type="tel" name="telefono" required value={formData.telefono} onChange={handleChange} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50 transition-all" />
               </div>
-              <div>
+              <div className="md:col-span-2">
                 <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Fecha de Nacimiento</label>
-                <input type="date" name="fechaNacimiento" required value={formData.fechaNacimiento} onChange={handleChange} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50 transition-all" />
+                <input type="date" name="fechaNacimiento" required max={getMaxBirthDateString()} value={formData.fechaNacimiento} onChange={handleChange} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50 transition-all" />
+                <p className="text-xs text-gray-500 mt-1">Mayor de 18 años.</p>
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Provincia</label>
@@ -271,9 +278,7 @@ const RegistroProfesional = () => {
                   <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Contraseña</label>
                   <div className="relative">
                     <input type={showPassword ? "text" : "password"} name="password" required value={formData.password} onChange={handleChange} className="w-full pl-4 pr-12 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50 transition-all" />
-                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-600 transition-colors">
-                      {showPassword ? "👁️‍🗨️" : "👁️"}
-                    </button>
+                    <PasswordVisibilityToggle visible={showPassword} onToggle={() => setShowPassword(!showPassword)} />
                   </div>
                   <div className="mt-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
                     <ul className="space-y-1">
@@ -288,9 +293,7 @@ const RegistroProfesional = () => {
                   <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Confirmar</label>
                   <div className="relative">
                     <input type={showConfirmPassword ? "text" : "password"} name="confirmarPassword" required value={formData.confirmarPassword} onChange={handleChange} className={`w-full pl-4 pr-12 py-3 rounded-xl border outline-none bg-gray-50 transition-all ${formData.confirmarPassword.length > 0 ? (passwordsMatch ? 'border-green-500' : 'border-red-500') : 'border-gray-200'}`} />
-                    <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-600 transition-colors">
-                      {showConfirmPassword ? "👁️‍🗨️" : "👁️"}
-                    </button>
+                    <PasswordVisibilityToggle visible={showConfirmPassword} onToggle={() => setShowConfirmPassword(!showConfirmPassword)} />
                   </div>
                 </div>
               </div>

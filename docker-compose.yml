@@ -31,6 +31,8 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db-usuarios:5432/db_clinica_usuarios
       SPRING_DATASOURCE_USERNAME: user_clinica
       SPRING_DATASOURCE_PASSWORD: password_clinica
+      # Mismo origen que el front (Vite) para validación Origin/Referer en login y refresh
+      APP_ALLOWED_ORIGINS: ${APP_ALLOWED_ORIGINS:-http://localhost:5173}
     depends_on:
       - db-usuarios
     networks:
@@ -45,7 +47,9 @@ services:
       context: ./api-gateway
     container_name: api-gateway
     ports:
-      - "8080:8080" 
+      - "8080:8080"
+    environment:
+      APP_GATEWAY_CORS_ALLOWED_ORIGIN: ${APP_GATEWAY_CORS_ALLOWED_ORIGIN:-http://localhost:5173}
     depends_on:
       - ms-usuarios
     networks:

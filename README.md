@@ -15,6 +15,14 @@ Tecnologías principales: Java 21, Spring Boot 3, Spring Security, JWT, React (V
 
 **Backlog y pendientes:** [COSAS-POR-HACER.md](COSAS-POR-HACER.md) (prioridades P0–P3).
 
+### Documentación técnica
+
+| Documento | Contenido |
+|-----------|-----------|
+| [docs/API.md](docs/API.md) | Rutas HTTP de `ms-usuarios`, prefijo gateway `/usuarios`, convenciones de acceso |
+| [docs/ENTIDADES.md](docs/ENTIDADES.md) | Modelo de datos y relaciones JPA |
+| [docs/SEGURIDAD.md](docs/SEGURIDAD.md) | Identidad centralizada en `ms-usuarios`, JWT, contrato con otros MS |
+
 ---
 
 ## Arranque rápido local
@@ -46,6 +54,8 @@ npm run dev
 ```
 
 Variable clave: **`VITE_API_BASE_URL`** (sin barra final), p. ej. `http://localhost:8080` si el front habla con el gateway.
+
+**CORS y credenciales:** el gateway usa **`APP_GATEWAY_CORS_ALLOWED_ORIGIN`** (un solo origen; por defecto `http://localhost:5173`). En **`ms-usuarios`**, **`APP_ALLOWED_ORIGINS`** debe coincidir con esa URL para que login y refresh validen el mismo `Origin`. En despliegue, ambas suelen apuntar a la URL HTTPS pública de la SPA. El `docker-compose.yml` raíz pasa ambas con el mismo default local.
 
 ---
 
@@ -122,9 +132,21 @@ Con perfil **`prod`** y **`app.startup.strict=true`** (por defecto), al iniciar 
 
 ---
 
+## Tests (`ms-usuarios`)
+
+Perfil **`test`** y **H2** en memoria (`ms-usuarios/src/test/resources/application-test.yml`):
+
+```bash
+cd ms-usuarios && mvn test
+```
+
+Cobertura principal: **`JwtUtil`** (claims y expiración), cadena de seguridad con **MockMvc** (rutas públicas vs protegidas, JWT inválido, login sin portal / portal inválido, refresh sin cookie, validación de **Origin**), **login real** con pacientes ACTIVOS creados vía repositorios (`AuthLoginWithUsersIntegrationTest`: token + cookie, `PORTAL_NO_PERMITIDO`, ownership `GET /api/pacientes/{id}`), y **`@PreAuthorize`** en listado de pacientes con **`@WithMockUser`** (`PacientesMethodSecurityIntegrationTest`).
+
+---
+
 ## CI (GitHub Actions)
 
-Workflow **`.github/workflows/ms-usuarios-startup-check.yml`**: levanta PostgreSQL, aplica `ms-usuarios/init.sql`, empaqueta el servicio y ejecuta la JVM en modo no-web con perfil `prod` para validar `StartupChecks`.
+Workflow **`.github/workflows/ms-usuarios-startup-check.yml`**: levanta PostgreSQL, aplica `ms-usuarios/init.sql`, empaqueta el servicio y ejecuta la JVM en modo no-web con perfil `prod` para validar `StartupChecks`. Para ejecutar también **`mvn test`** en CI, se puede añadir un job que use el perfil `test` y omita Postgres si solo corre los tests unitarios/integración ligeros.
 
 ---
 

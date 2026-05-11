@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import clienteAxios from '../../api/axiosConfig';
+import PasswordVisibilityToggle from '../../components/PasswordVisibilityToggle';
 import imgProfesionales from "../../assets/images/staff-medico.webp";
 import {
   savePortalSession,
@@ -75,35 +76,45 @@ const LoginProfesional = () => {
   return (
     <div className="min-h-screen bg-white flex flex-col lg:flex-row font-sans">
       
-      {/* LADO IZQUIERDO */}
-      <div className="hidden lg:flex lg:w-1/2 relative bg-gradient-to-br from-blue-50 via-white to-blue-100 items-center justify-center overflow-hidden">
+      {/* Ilustración staff — viewport completo, sin recortar la imagen */}
+      <div className="hidden lg:flex lg:w-1/2 lg:min-h-screen relative bg-gradient-to-br from-blue-50 via-white to-blue-100 items-center justify-center p-8 xl:p-12">
         <img 
           src={imgProfesionales} 
           alt="Staff Médico" 
-          className="w-full h-full object-contain drop-shadow-2xl" 
+          className="max-h-[min(92vh,920px)] w-full max-w-full object-contain object-center drop-shadow-2xl" 
         />
       </div>
 
-      <div className="w-full lg:w-1/2 flex flex-col justify-center px-8 sm:px-16 md:px-24 lg:px-32 py-12 h-screen overflow-y-auto relative">
+      {/* Franja compacta en móvil para que el “portal staff” también se vea */}
+      <div className="lg:hidden w-full bg-gradient-to-br from-blue-50 to-blue-100 border-b border-blue-100/80 px-4 pt-14 pb-4 flex justify-center">
+        <img
+          src={imgProfesionales}
+          alt=""
+          className="max-h-36 w-auto max-w-[85vw] object-contain object-bottom drop-shadow-md opacity-95"
+          aria-hidden
+        />
+      </div>
+
+      <div className="w-full lg:w-1/2 flex flex-col justify-center px-8 sm:px-16 md:px-24 lg:px-32 py-10 lg:py-12 min-h-0 lg:min-h-screen overflow-y-auto relative">
         
         {/* BOTÓN VOLVER USANDO RUTA CENTRALIZADA */}
-        <Link to={HOME_PATH} className="absolute top-8 left-8 text-gray-400 hover:text-blue-600 flex items-center gap-2 font-medium transition-colors text-sm">
+        <Link to={HOME_PATH} className="absolute top-4 left-4 sm:top-8 sm:left-8 z-10 text-gray-500 hover:text-blue-600 flex items-center gap-2 font-medium transition-colors text-sm bg-white/80 lg:bg-transparent backdrop-blur-sm lg:backdrop-blur-none px-2 py-1 rounded-lg lg:p-0">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
           Volver
         </Link>
 
-        <div className="max-w-md w-full mx-auto mt-8">
+        <div className="max-w-md w-full mx-auto mt-4 lg:mt-8">
           
-          <div className="mb-10">
-            <div className="flex items-center gap-2 text-blue-600 mb-3">
-               <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <div className="mb-8 lg:mb-10">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-blue-600 mb-3">
+               <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
                 <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
                 <circle cx="9" cy="7" r="4"></circle>
                 <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
               </svg>
-              <span className="font-black uppercase tracking-widest text-sm">Portal Staff</span>
+              <span className="font-black uppercase tracking-wider sm:tracking-widest text-sm whitespace-normal break-words">Portal Staff</span>
             </div>
-            <h3 className="text-4xl md:text-5xl font-black text-gray-900 leading-tight">Bienvenido, Profesional</h3>
+            <h3 className="text-3xl sm:text-4xl md:text-5xl font-black text-gray-900 leading-[1.15]">Bienvenido, Profesional</h3>
           </div>
 
           {error && (
@@ -133,20 +144,10 @@ const LoginProfesional = () => {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-5 py-4 rounded-2xl border border-gray-200 bg-gray-50/50 focus:bg-white focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+                  className="w-full px-5 py-4 pr-12 rounded-2xl border border-gray-200 bg-gray-50/50 focus:bg-white focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
                   placeholder="••••••••"
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-600 transition-colors"
-                >
-                  {showPassword ? (
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
-                  ) : (
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                  )}
-                </button>
+                <PasswordVisibilityToggle visible={showPassword} onToggle={() => setShowPassword(!showPassword)} />
               </div>
             </div>
 

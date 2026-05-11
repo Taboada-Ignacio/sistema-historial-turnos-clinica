@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import clienteAxios from "../../api/axiosConfig";
+import PasswordVisibilityToggle from '../../components/PasswordVisibilityToggle';
+import { getMaxBirthDateString, isAtLeastAge } from '../../utils/ageValidation';
 import { PACIENTE_PATHS } from '../../utils/portalPaths';
 const Register = () => {
   const navigate = useNavigate();
@@ -73,6 +75,10 @@ const Register = () => {
     e.preventDefault();
     
     if (!isPasswordValid || !formData.idLocalidad) return;
+    if (!isAtLeastAge(formData.fechaNacimiento)) {
+      setError('Debés ser mayor de 18 años para registrarte.');
+      return;
+    }
 
     setError('');
     setLoading(true);
@@ -128,7 +134,8 @@ const Register = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <input type="number" name="dni" placeholder="DNI" required value={formData.dni} onChange={handleChange} className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-clinica-dark outline-none transition-all" />
-                <input type="date" name="fechaNacimiento" required value={formData.fechaNacimiento} onChange={handleChange} className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-clinica-dark outline-none transition-all text-gray-500" />
+                <input type="date" name="fechaNacimiento" required max={getMaxBirthDateString()} value={formData.fechaNacimiento} onChange={handleChange} className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-clinica-dark outline-none transition-all text-gray-500" />
+                <p className="text-xs text-gray-500 mt-1 col-span-2">Tenés que tener al menos 18 años.</p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -155,16 +162,10 @@ const Register = () => {
                   <input 
                     type={showPassword ? "text" : "password"} 
                     name="password" required value={formData.password} onChange={handleChange} 
-                    className="w-full px-4 py-2 pr-10 rounded-xl border border-gray-200 focus:ring-2 focus:ring-clinica-dark outline-none transition-all" 
+                    className="w-full px-4 py-2 pr-12 rounded-xl border border-gray-200 focus:ring-2 focus:ring-clinica-dark outline-none transition-all" 
                     placeholder="Escribí tu clave..."
                   />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-clinica-dark">
-                    {showPassword ? (
-                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
-                    ) : (
-                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                    )}
-                  </button>
+                  <PasswordVisibilityToggle visible={showPassword} onToggle={() => setShowPassword(!showPassword)} />
                 </div>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 bg-white p-3 rounded-lg border border-gray-200">

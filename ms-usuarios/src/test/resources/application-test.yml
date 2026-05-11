@@ -1,0 +1,39 @@
+# Perfil activado con @ActiveProfiles("test")
+spring:
+  datasource:
+    url: jdbc:h2:mem:usuarios_test;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+        format_sql: false
+  mail:
+    host: localhost
+    port: 3025
+    username: test
+    password: test
+
+app:
+  startup:
+    strict: false
+  allowed-origins: ""
+  url: http://localhost:8080
+  frontend-url: http://localhost:5173
+  cookie:
+    secure: false
+
+jwt:
+  # Base64 de 32 bytes (HS256)
+  secret: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
+  expiration: 86400000
+  refreshExpiration: 604800000
+
+system:
+  registration:
+    secret: test_system_key_for_integration_tests

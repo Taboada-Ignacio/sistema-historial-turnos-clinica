@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import clienteAxios from '../../api/axiosConfig';
+import PasswordVisibilityToggle from '../../components/PasswordVisibilityToggle';
 
 const CambiarPassword = () => {
   const navigate = useNavigate();
@@ -10,7 +11,9 @@ const CambiarPassword = () => {
     passwordNueva: '',
     confirmPasswordNueva: '',
   });
-  const [showPasswords, setShowPasswords] = useState(false);
+  const [showActual, setShowActual] = useState(false);
+  const [showNueva, setShowNueva] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
@@ -72,49 +75,48 @@ const CambiarPassword = () => {
 
           <div>
             <label className="text-sm font-semibold text-slate-700">Contraseña actual</label>
-            <input
-              type={showPasswords ? 'text' : 'password'}
-              name="passwordActual"
-              required
-              value={formData.passwordActual}
-              onChange={handleChange}
-              className="w-full mt-1 border border-slate-300 rounded-lg px-3 py-2"
-            />
+            <div className="relative mt-1">
+              <input
+                type={showActual ? 'text' : 'password'}
+                name="passwordActual"
+                required
+                value={formData.passwordActual}
+                onChange={handleChange}
+                className="w-full border border-slate-300 rounded-lg pl-3 pr-12 py-2"
+              />
+              <PasswordVisibilityToggle visible={showActual} onToggle={() => setShowActual((v) => !v)} />
+            </div>
           </div>
 
           <div>
             <label className="text-sm font-semibold text-slate-700">Nueva contraseña</label>
-            <input
-              type={showPasswords ? 'text' : 'password'}
-              name="passwordNueva"
-              required
-              value={formData.passwordNueva}
-              onChange={handleChange}
-              className="w-full mt-1 border border-slate-300 rounded-lg px-3 py-2"
-            />
+            <div className="relative mt-1">
+              <input
+                type={showNueva ? 'text' : 'password'}
+                name="passwordNueva"
+                required
+                value={formData.passwordNueva}
+                onChange={handleChange}
+                className="w-full border border-slate-300 rounded-lg pl-3 pr-12 py-2"
+              />
+              <PasswordVisibilityToggle visible={showNueva} onToggle={() => setShowNueva((v) => !v)} />
+            </div>
           </div>
 
           <div>
             <label className="text-sm font-semibold text-slate-700">Confirmar nueva contraseña</label>
-            <input
-              type={showPasswords ? 'text' : 'password'}
-              name="confirmPasswordNueva"
-              required
-              value={formData.confirmPasswordNueva}
-              onChange={handleChange}
-              className="w-full mt-1 border border-slate-300 rounded-lg px-3 py-2"
-            />
+            <div className="relative mt-1">
+              <input
+                type={showConfirm ? 'text' : 'password'}
+                name="confirmPasswordNueva"
+                required
+                value={formData.confirmPasswordNueva}
+                onChange={handleChange}
+                className="w-full border border-slate-300 rounded-lg pl-3 pr-12 py-2"
+              />
+              <PasswordVisibilityToggle visible={showConfirm} onToggle={() => setShowConfirm((v) => !v)} />
+            </div>
           </div>
-
-          <label className="flex items-center text-sm text-slate-600">
-            <input
-              type="checkbox"
-              className="mr-2"
-              checked={showPasswords}
-              onChange={() => setShowPasswords((prev) => !prev)}
-            />
-            Mostrar contraseñas
-          </label>
 
           <button
             type="submit"

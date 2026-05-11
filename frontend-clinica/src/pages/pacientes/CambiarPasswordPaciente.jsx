@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import clienteAxios from '../../api/axiosConfig';
+import PasswordVisibilityToggle from '../../components/PasswordVisibilityToggle';
 
 const CambiarPasswordPaciente = () => {
   const navigate = useNavigate();
@@ -11,6 +12,8 @@ const CambiarPasswordPaciente = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [showNueva, setShowNueva] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -52,23 +55,29 @@ const CambiarPasswordPaciente = () => {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="text-sm font-semibold text-gray-700">Nueva contraseña</label>
-            <input
-              type="password"
-              required
-              value={passwordNueva}
-              onChange={(e) => setPasswordNueva(e.target.value)}
-              className="w-full mt-1 px-3 py-2 rounded-lg border border-gray-300"
-            />
+            <div className="relative mt-1">
+              <input
+                type={showNueva ? 'text' : 'password'}
+                required
+                value={passwordNueva}
+                onChange={(e) => setPasswordNueva(e.target.value)}
+                className="w-full pl-3 pr-12 py-2 rounded-lg border border-gray-300"
+              />
+              <PasswordVisibilityToggle visible={showNueva} onToggle={() => setShowNueva((v) => !v)} />
+            </div>
           </div>
           <div>
             <label className="text-sm font-semibold text-gray-700">Confirmar contraseña</label>
-            <input
-              type="password"
-              required
-              value={confirmPasswordNueva}
-              onChange={(e) => setConfirmPasswordNueva(e.target.value)}
-              className="w-full mt-1 px-3 py-2 rounded-lg border border-gray-300"
-            />
+            <div className="relative mt-1">
+              <input
+                type={showConfirm ? 'text' : 'password'}
+                required
+                value={confirmPasswordNueva}
+                onChange={(e) => setConfirmPasswordNueva(e.target.value)}
+                className="w-full pl-3 pr-12 py-2 rounded-lg border border-gray-300"
+              />
+              <PasswordVisibilityToggle visible={showConfirm} onToggle={() => setShowConfirm((v) => !v)} />
+            </div>
           </div>
 
           <button

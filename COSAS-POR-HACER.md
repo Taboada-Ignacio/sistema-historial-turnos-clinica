@@ -9,8 +9,8 @@ Lista priorizada de trabajo pendiente respecto a seguridad, integración front/g
 | Prioridad | Ítem | Detalle |
 |-----------|------|---------|
 | **P0** | ~~Confirmación de cuenta paciente~~ | Hecho: confirmación por email en `GET /api/{pacientes|profesionales|administradores}/confirmar` con redirect a la SPA (`app.frontend-url` / `APP_FRONTEND_URL`), flujo registro → verificar email → éxito → panel o login. |
-| **P0** | Tests de seguridad y auth en `ms-usuarios` | Hoy solo existe `MsUsuariosApplicationTests` (`contextLoads`). Falta cobertura de login, refresh, roles, rutas públicas vs protegidas y filtros JWT. |
-| **P0** | CORS + credenciales en el gateway | Revisar `api-gateway` (`globalcors`): con front en otro origen (p. ej. `5173`) y API en `8080`, las cookies HttpOnly suelen requerir **`allowCredentials: true`** y orígenes explícitos alineados con el front que usa `withCredentials`. |
+| **P0** | ~~Tests de seguridad y auth en `ms-usuarios`~~ | Cubierto en parte: `JwtUtilTest`, `SecurityAndAuthIntegrationTest`, `AuthLoginOriginIntegrationTest`, `AuthLoginWithUsersIntegrationTest`, `PacientesMethodSecurityIntegrationTest` (perfil `test` + H2). Pendiente opcional: CI con `mvn test`, login admin/profesional con fixtures, refresh con cookie rotación. |
+| **P0** | ~~CORS + credenciales en el gateway~~ | Hecho: `spring.cloud.gateway.globalcors` con **`allowCredentials: true`**, origen explícito vía **`APP_GATEWAY_CORS_ALLOWED_ORIGIN`** (default Vite `http://localhost:5173`); eliminado `CorsWebFilter` duplicado. Alinear en prod con **`APP_ALLOWED_ORIGINS`** en `ms-usuarios`. |
 
 ---
 
@@ -20,7 +20,7 @@ Lista priorizada de trabajo pendiente respecto a seguridad, integración front/g
 |-----------|------|---------|
 | **P1** | Catálogo público de profesionales | El backend expone `GET /api/profesionales/presentacion` (y por id). El front aún no consume esas rutas; cablear la UI al DTO de presentación y evitar datos sensibles en listados públicos. |
 | **P1** | Rate limiting | Proteger login y flujos de recuperación de contraseña frente a abuso (no hay implementación actual en el repo). |
-| **P1** | CI más amplio | Existe `.github/workflows/ms-usuarios-startup-check.yml`. Ampliar con `mvn test` cuando haya tests; opcionalmente build/lint del frontend. |
+| **P1** | CI más amplio | Existe `.github/workflows/ms-usuarios-startup-check.yml`. Añadir job **`mvn test`** (los tests activan el perfil Spring `test` / H2) en push/PR; opcionalmente build/lint del frontend. |
 | **P1** | Tests E2E o contrato | Validar rutas con prefijo `/usuarios`, cookies y refresh en escenario gateway + ms + navegador. |
 
 ---

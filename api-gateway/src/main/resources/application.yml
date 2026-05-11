@@ -6,21 +6,31 @@ spring:
     name: api-gateway
   cloud:
     gateway:
-      # Configuración global de CORS para que Vite (React) pueda comunicarse sin bloqueos
+      # CORS único (sin CorsWebFilter duplicado). Origen del front Vite vía APP_GATEWAY_CORS_ALLOWED_ORIGIN.
+      # Con withCredentials: true en el front hace falta allowCredentials + origen explícito (no "*").
       globalcors:
         corsConfigurations:
           '[/**]':
-            allowedOrigins: 
-              - "http://localhost:5173" # Puerto por defecto de Vite
+            allowedOrigins:
+              - "${APP_GATEWAY_CORS_ALLOWED_ORIGIN:http://localhost:5173}"
             allowedMethods:
               - GET
               - POST
               - PUT
               - DELETE
               - OPTIONS
-              - PATCH # Siempre es buena práctica agregar PATCH
-            allowedHeaders: "*"
-      
+              - PATCH
+            allowedHeaders:
+              - Authorization
+              - Content-Type
+              - X-System-Key
+              - x-system-key
+              - Accept
+              - Origin
+              - X-Requested-With
+            allowCredentials: true
+            maxAge: 3600
+
       # Definición de las rutas hacia tus microservicios
       routes:
         # --- RUTA 1: Microservicio de Usuarios (APIs y Fotos de Perfil) ---

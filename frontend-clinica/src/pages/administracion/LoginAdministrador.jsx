@@ -4,10 +4,13 @@ import clienteAxios from '../../api/axiosConfig';
 import { getUserEmailFromToken, saveAdminSession, clearSession } from '../../utils/auth';
 import { ADMIN_PATHS, HOME_PATH } from '../../utils/portalPaths';
 
+import PasswordVisibilityToggle from '../../components/PasswordVisibilityToggle';
+
 const LoginAdministrador = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -80,14 +83,17 @@ const LoginAdministrador = () => {
           </div>
           <div>
             <label className="text-sm font-semibold text-slate-700">Contraseña</label>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full mt-1 border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-slate-900 focus:outline-none"
-              placeholder="********"
-            />
+            <div className="relative mt-1">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full border border-slate-300 rounded-lg pl-3 pr-12 py-2 focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                placeholder="********"
+              />
+              <PasswordVisibilityToggle visible={showPassword} onToggle={() => setShowPassword(!showPassword)} />
+            </div>
           </div>
           <button
             type="submit"
