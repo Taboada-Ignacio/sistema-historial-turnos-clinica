@@ -231,7 +231,7 @@ public class ProfesionalServiceImpl implements ProfesionalService {
 
     @Override
     @Transactional
-    public ProfesionalResponseDTO actualizarProfesional(Long id, ProfesionalUpdateDTO dto) {
+    public ProfesionalResponseDTO actualizarProfesional(Long id, ProfesionalUpdateDTO dto, MultipartFile foto) {
         Profesional profesional = buscarProfesional(id);
 
         profesional.setNombre(dto.getNombre());
@@ -253,6 +253,13 @@ public class ProfesionalServiceImpl implements ProfesionalService {
                 profesional.setEstadoActual(nuevoEstado);
                 registrarHistorialEstado(profesional, nuevoEstado);
             }
+        }
+
+        if (foto != null && !foto.isEmpty()) {
+            String anterior = profesional.getFotoPerfil();
+            String nuevaRuta = guardarFotoLocalmente(foto);
+            borrarArchivoFotoSiExiste(anterior);
+            profesional.setFotoPerfil(nuevaRuta);
         }
 
         return profesionalMapper.toResponseDTO(profesionalRepository.save(profesional));
@@ -363,6 +370,21 @@ public class ProfesionalServiceImpl implements ProfesionalService {
     private Profesional buscarProfesional(Long id) {
         return profesionalRepository.findById(id)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Profesional no encontrado con ID: " + id));
+    }
+
+    private void borrarArchivoFotoSiExiste(String rutaPublica) {
+        if (rutaPublica == null || rutaPublica.isBlank()) {
+            return;
+        }
+        String rel = rutaPublica.startsWith("/") ? rutaPublica.substring(1) : rutaPublica;
+        if (!rel.startsWith(DIRECTORIO_FOTOS + "/")) {
+            return;
+        }
+        try {
+            Files.deleteIfExists(Paths.get(rel));
+        } catch (Exception ignored) {
+            // Evita fallar la actualización si el archivo ya no está en disco
+        }
     }
 
     private String guardarFotoLocalmente(MultipartFile foto) {

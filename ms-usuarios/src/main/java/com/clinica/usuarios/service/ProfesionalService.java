@@ -22,7 +22,7 @@ public interface ProfesionalService {
     List<ProfesionalPresentacionDTO> listarParaPresentacion();
     ProfesionalPresentacionDTO obtenerParaPresentacion(Long id);
     List<ProfesionalResponseDTO> obtenerProfesionalesConMembresiaInactiva();
-    ProfesionalResponseDTO actualizarProfesional(Long id, ProfesionalUpdateDTO dto);
+    ProfesionalResponseDTO actualizarProfesional(Long id, ProfesionalUpdateDTO dto, MultipartFile foto);
     void eliminarSoloProfesional(Long id);
     
     void confirmarCuenta(String token);

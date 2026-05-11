@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import clienteAxios from '../../api/axiosConfig';
-import { API_BASE_URL } from '../../config/env';
+import { profesionalFotoAbsoluteUrl } from '../../utils/profesionalFotoUrl';
 import { ADMIN_PATHS } from '../../utils/portalPaths';
 
 const apiErrorMessage = (err) =>
@@ -64,7 +64,7 @@ const ProfesionalesPendientesPage = () => {
 
       <ul className="space-y-3">
         {pendientes.map((profesional) => {
-          const fotoUrl = profesional.fotoPerfil ? `${API_BASE_URL}${profesional.fotoPerfil}` : null;
+          const fotoUrl = profesionalFotoAbsoluteUrl(profesional.fotoPerfil);
           return (
             <li key={profesional.idUsuario}>
               <button

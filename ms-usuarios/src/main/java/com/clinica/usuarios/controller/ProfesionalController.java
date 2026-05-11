@@ -119,14 +119,26 @@ public class ProfesionalController {
     }
 
     /**
-     * Actualiza los datos del profesional y registra cambios de estado si corresponde.
+     * Actualiza los datos del profesional y registra cambios de estado si corresponde (JSON).
      */
     @PreAuthorize("hasAuthority('ROLE_ADMINISTRADOR') or (hasAuthority('ROLE_PROFESIONAL') and @authorizationRules.esMismoUsuario(#id))")
-    @PutMapping("/{id}")
-    public ResponseEntity<ProfesionalResponseDTO> actualizar(
-            @PathVariable Long id, 
+    @PutMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ProfesionalResponseDTO> actualizarJson(
+            @PathVariable Long id,
             @Valid @RequestBody ProfesionalUpdateDTO dto) {
-        return ResponseEntity.ok(profesionalService.actualizarProfesional(id, dto));
+        return ResponseEntity.ok(profesionalService.actualizarProfesional(id, dto, null));
+    }
+
+    /**
+     * Igual que {@link #actualizarJson} pero permite adjuntar una nueva foto de perfil (.webp).
+     */
+    @PreAuthorize("hasAuthority('ROLE_ADMINISTRADOR') or (hasAuthority('ROLE_PROFESIONAL') and @authorizationRules.esMismoUsuario(#id))")
+    @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ProfesionalResponseDTO> actualizarConFoto(
+            @PathVariable Long id,
+            @RequestPart("datos") @Valid ProfesionalUpdateDTO dto,
+            @RequestPart(value = "foto", required = false) MultipartFile foto) {
+        return ResponseEntity.ok(profesionalService.actualizarProfesional(id, dto, foto));
     }
 
     /**
