@@ -9,6 +9,7 @@ import com.clinica.usuarios.model.Localidad;
 import com.clinica.usuarios.repository.DireccionRepository;
 import com.clinica.usuarios.repository.LocalidadRepository;
 import com.clinica.usuarios.service.DireccionService;
+import com.clinica.usuarios.util.DireccionTextoNormalizer;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +22,7 @@ public class DireccionServiceImpl implements DireccionService {
 
     private final DireccionRepository direccionRepository;
     private final LocalidadRepository localidadRepository;
+    private final DireccionCatalogoWriter direccionCatalogoWriter;
 
     @Override
     @Transactional(readOnly = true)
@@ -33,20 +35,26 @@ public class DireccionServiceImpl implements DireccionService {
     @Override
     @Transactional
     public DireccionResponseDTO registrar(DireccionRegistroDTO dto) {
-        String nombre = dto.getNombre() == null ? "" : dto.getNombre().trim();
+        String nombre = DireccionTextoNormalizer.normalizar(dto.getNombre());
         if (nombre.isEmpty()) {
             throw new ReglaDeNegocioException("El nombre de la dirección no puede estar vacío.");
+        }
+        if (nombre.length() > 500) {
+            throw new ReglaDeNegocioException("La dirección no puede superar los 500 caracteres.");
         }
         Localidad localidad = localidadRepository.findById(dto.getIdLocalidad())
                 .orElseThrow(() -> new RecursoNoEncontradoException("Localidad no encontrada con ID: " + dto.getIdLocalidad()));
         if (direccionRepository.existsByNombreAndLocalidad_IdLocalidad(nombre, dto.getIdLocalidad())) {
             throw new ReglaDeNegocioException("Ya existe una dirección con ese nombre en la localidad seleccionada.");
         }
-        Direccion guardada = direccionRepository.save(Direccion.builder()
+        Direccion nueva = Direccion.builder()
                 .nombre(nombre)
                 .localidad(localidad)
-                .build());
-        return toDto(guardada);
+                .build();
+        return direccionCatalogoWriter.intentarGuardar(nueva)
+                .map(this::toDto)
+                .or(() -> direccionRepository.findByNombreAndLocalidad_IdLocalidad(nombre, dto.getIdLocalidad()).map(this::toDto))
+                .orElseThrow(() -> new ReglaDeNegocioException("Ya existe una dirección con ese nombre en la localidad seleccionada."));
     }
 
     @Override
@@ -55,7 +63,7 @@ public class DireccionServiceImpl implements DireccionService {
         if (localidad == null || localidad.getIdLocalidad() == null) {
             throw new ReglaDeNegocioException("La localidad es obligatoria para registrar la dirección.");
         }
-        String nombre = texto == null ? "" : texto.trim();
+        String nombre = DireccionTextoNormalizer.normalizar(texto);
         if (nombre.isEmpty()) {
             throw new ReglaDeNegocioException("La dirección es obligatoria.");
         }
@@ -64,10 +72,12 @@ public class DireccionServiceImpl implements DireccionService {
         }
         Long idLoc = localidad.getIdLocalidad();
         return direccionRepository.findByNombreAndLocalidad_IdLocalidad(nombre, idLoc)
-                .orElseGet(() -> direccionRepository.save(Direccion.builder()
+                .or(() -> direccionCatalogoWriter.intentarGuardar(Direccion.builder()
                         .nombre(nombre)
                         .localidad(localidad)
-                        .build()));
+                        .build()))
+                .or(() -> direccionRepository.findByNombreAndLocalidad_IdLocalidad(nombre, idLoc))
+                .orElseThrow(() -> new ReglaDeNegocioException("No se pudo registrar la dirección. Intente nuevamente."));
     }
 
     private DireccionResponseDTO toDto(Direccion d) {

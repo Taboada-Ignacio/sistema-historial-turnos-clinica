@@ -14,8 +14,8 @@ public interface DireccionService {
     DireccionResponseDTO registrar(DireccionRegistroDTO dto);
 
     /**
-     * Busca por texto exacto (tras trim) en la localidad o crea una nueva fila.
-     * Así el catálogo solo crece con direcciones realmente usadas en registros.
+     * Busca por texto normalizado (trim, espacios colapsados, Unicode NFC) en la localidad
+     * o crea una nueva fila. Reutiliza la existente ante duplicado o carrera concurrente.
      */
     Direccion obtenerOCrearPorTextoYLocalidad(String texto, Localidad localidad);
 }
