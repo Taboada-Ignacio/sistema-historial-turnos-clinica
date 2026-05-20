@@ -278,6 +278,10 @@ const RegistroProfesional = () => {
             <div className="space-y-6 animate-fadeIn">
               <div>
                 <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Foto de Perfil (JPG)</label>
+                <p className="text-sm text-blue-800 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 mb-3 leading-relaxed">
+                  Subí una foto de <strong>ámbito profesional</strong> (rostro visible, fondo neutro y vestimenta acorde).
+                  Esta imagen será <strong>visible para todos los pacientes y usuarios</strong> del sistema.
+                </p>
                 <input type="file" accept=".jpg,.jpeg" required onChange={handleFileChange} className={`w-full px-4 py-3 rounded-xl border file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-bold file:bg-blue-50 file:text-blue-700 bg-gray-50 ${errorFoto ? 'border-red-500' : 'border-gray-200'}`} />
                 {errorFoto && <p className="text-red-500 text-xs mt-1 font-bold">{errorFoto}</p>}
               </div>

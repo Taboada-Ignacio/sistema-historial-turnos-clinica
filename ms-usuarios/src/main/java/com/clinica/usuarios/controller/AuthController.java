@@ -31,6 +31,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.view.RedirectView;
+import com.clinica.usuarios.web.AccountConfirmationRedirectHelper;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
@@ -51,6 +52,7 @@ public class AuthController {
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
     private final com.clinica.usuarios.service.impl.RefreshTokenService refreshTokenService;
+    private final AccountConfirmationRedirectHelper confirmRedirect;
 
     @Value("${app.url}")
     private String appUrl;
@@ -275,29 +277,33 @@ public class AuthController {
 
     @GetMapping("/confirmar-cambio-password")
     public RedirectView confirmarCambioPassword(@RequestParam("token") String token, @RequestParam("tipo") String tipo) {
-        VerificationToken verificationToken = verificationTokenRepository.findByToken(token)
-                .orElseThrow(() -> new RecursoNoEncontradoException("Token de recuperación inválido."));
+        String tipoNormalizado = tipo == null ? "paciente" : tipo.trim().toLowerCase();
+        try {
+            VerificationToken verificationToken = verificationTokenRepository.findByToken(token)
+                    .orElseThrow(() -> new RecursoNoEncontradoException("Este enlace ya fue utilizado o no es válido."));
 
-        if (verificationToken.getFechaExpiracion().isBefore(LocalDateTime.now())) {
-            throw new ReglaDeNegocioException("El enlace de recuperación ha expirado.");
+            if (verificationToken.getFechaExpiracion().isBefore(LocalDateTime.now())) {
+                throw new ReglaDeNegocioException("El enlace de recuperación ha expirado (válido por 30 minutos).");
+            }
+
+            Usuario usuario = verificationToken.getUsuario();
+            String roleEsperado = switch (tipoNormalizado) {
+                case "profesional" -> "ROLE_PROFESIONAL";
+                case "admin" -> "ROLE_ADMINISTRADOR";
+                default -> "ROLE_PACIENTE";
+            };
+            validarRolUsuario(usuario, roleEsperado);
+
+            String rutaFrontend = switch (tipoNormalizado) {
+                case "profesional" -> "/cambiar-password/profesional";
+                case "admin" -> "/cambiar-password/admin";
+                default -> "/cambiar-password/paciente";
+            };
+
+            return new RedirectView(frontendUrl + rutaFrontend + "?token=" + token);
+        } catch (Exception e) {
+            return confirmRedirect.errorRecuperacionPassword(tipoNormalizado, e);
         }
-
-        Usuario usuario = verificationToken.getUsuario();
-        String tipoNormalizado = tipo == null ? "" : tipo.trim().toLowerCase();
-        String roleEsperado = switch (tipoNormalizado) {
-            case "profesional" -> "ROLE_PROFESIONAL";
-            case "admin" -> "ROLE_ADMINISTRADOR";
-            default -> "ROLE_PACIENTE";
-        };
-        validarRolUsuario(usuario, roleEsperado);
-
-        String rutaFrontend = switch (tipoNormalizado) {
-            case "profesional" -> "/cambiar-password/profesional";
-            case "admin" -> "/cambiar-password/admin";
-            default -> "/cambiar-password/paciente";
-        };
-
-        return new RedirectView(frontendUrl + rutaFrontend + "?token=" + token);
     }
 
     @PostMapping("/cambiar-password-con-token/paciente")
@@ -340,11 +346,11 @@ public class AuthController {
 
     private ResponseEntity<?> cambiarPasswordConTokenPorTipo(CambiarPasswordConTokenDTO request, String roleEsperado) {
         VerificationToken verificationToken = verificationTokenRepository.findByToken(request.getToken())
-                .orElseThrow(() -> new RecursoNoEncontradoException("Token de recuperación inválido."));
+                .orElseThrow(() -> new RecursoNoEncontradoException("Este enlace ya fue utilizado o no es válido."));
 
         if (verificationToken.getFechaExpiracion().isBefore(LocalDateTime.now())) {
             verificationTokenRepository.delete(verificationToken);
-            throw new ReglaDeNegocioException("El enlace de recuperación ha expirado.");
+            throw new ReglaDeNegocioException("El enlace de recuperación ha expirado (válido por 30 minutos).");
         }
 
         Usuario usuario = verificationToken.getUsuario();

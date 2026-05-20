@@ -1,6 +1,9 @@
 // Ruta principal / Landing
 export const HOME_PATH = '/';
 
+/** Pantalla de error al abrir o usar un enlace de recuperación de contraseña (?tipo= & ?motivo=). */
+export const RECUPERACION_PASSWORD_ERROR_PATH = '/recuperacion-password-error';
+
 // Rutas del Portal Paciente
 export const PACIENTE_PATHS = {
   login: '/login',

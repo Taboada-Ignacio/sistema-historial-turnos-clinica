@@ -1,49 +1,37 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { clienteAxiosPublic } from '../../api/axiosConfig';
+import { Link, useSearchParams } from 'react-router-dom';
 import PasswordVisibilityToggle from '../../components/PasswordVisibilityToggle';
+import { useSubmitCambioPasswordConToken } from '../../hooks/useSubmitCambioPasswordConToken';
 
 const CambiarPasswordPaciente = () => {
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const token = useMemo(() => searchParams.get('token') || '', [searchParams]);
   const [passwordNueva, setPasswordNueva] = useState('');
   const [confirmPasswordNueva, setConfirmPasswordNueva] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const [showNueva, setShowNueva] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const submittingRef = useRef(false);
+
+  const lockRef = useRef(false);
+
+  const { isSubmitting, completado, formDisabled, error, success, submitPasswordChange } =
+    useSubmitCambioPasswordConToken('paciente', '/login', 'paciente');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (loading || submittingRef.current) return;
-    setError('');
-    setSuccess('');
-    if (!token) {
-      setError('Token inválido o ausente.');
-      return;
-    }
-    if (passwordNueva !== confirmPasswordNueva) {
-      setError('La confirmación de contraseña no coincide.');
-      return;
-    }
+    if (lockRef.current) return;
+    lockRef.current = true;
 
-    submittingRef.current = true;
-    setLoading(true);
+    let result = { completed: false };
     try {
-      const response = await clienteAxiosPublic.post('/usuarios/api/auth/cambiar-password-con-token/paciente', {
+      result = await submitPasswordChange(lockRef, {
         token,
         passwordNueva,
+        confirmPasswordNueva,
       });
-      setSuccess(response.data?.message || 'Contraseña actualizada correctamente.');
-      setTimeout(() => navigate('/login'), 1500);
-    } catch (err) {
-      setError(err.response?.data?.message || err.response?.data?.mensaje || 'No se pudo cambiar la contraseña.');
     } finally {
-      setLoading(false);
-      submittingRef.current = false;
+      if (!result?.completed) {
+        lockRef.current = false;
+      }
     }
   };
 
@@ -56,16 +44,18 @@ const CambiarPasswordPaciente = () => {
         {error && <div className="mb-4 p-3 rounded-lg bg-red-50 text-red-700 text-sm">{error}</div>}
         {success && <div className="mb-4 p-3 rounded-lg bg-green-50 text-green-700 text-sm">{success}</div>}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4" noValidate>
           <div>
             <label className="text-sm font-semibold text-gray-700">Nueva contraseña</label>
             <div className="relative mt-1">
               <input
                 type={showNueva ? 'text' : 'password'}
+                autoComplete="new-password"
                 required
+                disabled={formDisabled}
                 value={passwordNueva}
                 onChange={(e) => setPasswordNueva(e.target.value)}
-                className="w-full pl-3 pr-12 py-2 rounded-lg border border-gray-300"
+                className="w-full pl-3 pr-12 py-2 rounded-lg border border-gray-300 disabled:opacity-60"
               />
               <PasswordVisibilityToggle visible={showNueva} onToggle={() => setShowNueva((v) => !v)} />
             </div>
@@ -75,10 +65,12 @@ const CambiarPasswordPaciente = () => {
             <div className="relative mt-1">
               <input
                 type={showConfirm ? 'text' : 'password'}
+                autoComplete="new-password"
                 required
+                disabled={formDisabled}
                 value={confirmPasswordNueva}
                 onChange={(e) => setConfirmPasswordNueva(e.target.value)}
-                className="w-full pl-3 pr-12 py-2 rounded-lg border border-gray-300"
+                className="w-full pl-3 pr-12 py-2 rounded-lg border border-gray-300 disabled:opacity-60"
               />
               <PasswordVisibilityToggle visible={showConfirm} onToggle={() => setShowConfirm((v) => !v)} />
             </div>
@@ -86,10 +78,10 @@ const CambiarPasswordPaciente = () => {
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={isSubmitting || completado}
             className="w-full bg-emerald-700 text-white py-2.5 rounded-lg font-bold hover:bg-emerald-600 disabled:opacity-70"
           >
-            {loading ? 'Guardando...' : 'Guardar nueva contraseña'}
+            {isSubmitting ? 'Guardando...' : 'Guardar nueva contraseña'}
           </button>
         </form>
 

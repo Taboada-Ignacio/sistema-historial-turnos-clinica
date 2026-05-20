@@ -140,7 +140,7 @@ public class EmailServiceImpl implements EmailService {
                             "<p style='font-size: 0.9em; color: #555;'>Si no solicitaste este cambio, ignorá este correo.</p>" +
                             "<p style='word-break: break-all; color: #3498db; font-size: 0.85em;'>%s</p>" +
                             "<hr style='border: 0; border-top: 1px solid #ecf0f1; margin-top: 30px;'>" +
-                            "<p style='font-size: 0.8em; color: #777; text-align: center;'>Este enlace tiene validez limitada por seguridad.</p>" +
+                            "<p style='font-size: 0.8em; color: #777; text-align: center;'>Este enlace es válido por 30 minutos. Si expira, solicitá uno nuevo desde la pantalla de recuperación.</p>" +
                             "</div>",
                     color, color, titulo, usuario.getNombre(), linkRecuperacion, color, boton, linkRecuperacion
             );

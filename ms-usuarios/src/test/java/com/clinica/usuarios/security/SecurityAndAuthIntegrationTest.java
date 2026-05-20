@@ -77,6 +77,25 @@ class SecurityAndAuthIntegrationTest {
     }
 
     @Test
+    @DisplayName("POST cambiar-password-con-token sin JWT → no 401 (token inválido → 404)")
+    void cambiarPasswordConToken_withoutJwt_isNotUnauthorized() throws Exception {
+        mockMvc.perform(post("/api/auth/cambiar-password-con-token/paciente")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"token\":\"no-existe\",\"passwordNueva\":\"Aa1!aaaa\"}"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("POST cambiar-password-con-token con Bearer inválido → no 401 del filtro JWT")
+    void cambiarPasswordConToken_withInvalidBearer_isNotUnauthorizedFromJwt() throws Exception {
+        mockMvc.perform(post("/api/auth/cambiar-password-con-token/paciente")
+                        .header("Authorization", "Bearer token-invalido")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"token\":\"no-existe\",\"passwordNueva\":\"Aa1!aaaa\"}"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
     @DisplayName("Credenciales inexistentes → 401 (sin validación de origen cuando allowed-origins vacío)")
     void login_validPortal_badCredentials_returnsUnauthorized() throws Exception {
         mockMvc.perform(post("/api/auth/login")

@@ -14,6 +14,15 @@ const axiosSinInterceptores = axios.create({
   withCredentials: true,
 });
 
+/** Evita que un JWT guardado en el navegador provoque 401 en rutas públicas de auth. */
+axiosSinInterceptores.interceptors.request.use((config) => {
+  if (config.headers) {
+    delete config.headers.Authorization;
+    delete config.headers.authorization;
+  }
+  return config;
+});
+
 /**
  * Cliente para rutas públicas (recuperación de contraseña, etc.): no envía JWT ni reintenta refresh en 401.
  */

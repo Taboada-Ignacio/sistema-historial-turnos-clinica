@@ -11,6 +11,7 @@ import RegistroExitosoPaciente from './pages/pacientes/RegistroExitosoPaciente';
 import VerificarEmailAdmin from './pages/administracion/VerificarEmailAdmin';
 import RegistroExitosoAdmin from './pages/administracion/RegistroExitosoAdmin';
 import ConfirmacionError from './pages/general/ConfirmacionError';
+import RecuperacionPasswordError from './pages/general/RecuperacionPasswordError';
 import SolicitarCambioPasswordPaciente from './pages/pacientes/SolicitarCambioPasswordPaciente';
 import CambiarPasswordPaciente from './pages/pacientes/CambiarPasswordPaciente';
 import PacienteRoute from './pages/pacientes/PacienteRoute';
@@ -40,7 +41,7 @@ import AdminTurnosPage from './pages/administracion/AdminTurnosPage';
 import AdminHistorialesClinicosPage from './pages/administracion/AdminHistorialesClinicosPage';
 
 // UTILS / PATHS CENTRALIZADOS
-import { ADMIN_PATHS, PACIENTE_PATHS, PROFESIONAL_PATHS, HOME_PATH } from './utils/portalPaths';
+import { ADMIN_PATHS, PACIENTE_PATHS, PROFESIONAL_PATHS, HOME_PATH, RECUPERACION_PASSWORD_ERROR_PATH } from './utils/portalPaths';
 
 function App() {
   return (
@@ -49,6 +50,7 @@ function App() {
         
         {/* --- GENERALES --- */}
         <Route path={HOME_PATH} element={<Landing />} />
+        <Route path={RECUPERACION_PASSWORD_ERROR_PATH} element={<RecuperacionPasswordError />} />
         <Route path={ADMIN_PATHS.setup} element={<AdminRegisterSecret />} />
         
         {/* --- PACIENTES --- */}

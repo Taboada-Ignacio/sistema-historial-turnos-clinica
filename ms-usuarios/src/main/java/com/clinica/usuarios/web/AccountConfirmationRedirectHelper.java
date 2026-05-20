@@ -1,6 +1,5 @@
 package com.clinica.usuarios.web;
 
-import com.clinica.usuarios.exception.RecursoNoEncontradoException;
 import com.clinica.usuarios.exception.ReglaDeNegocioException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -31,13 +30,25 @@ public class AccountConfirmationRedirectHelper {
      * @param portal paciente | profesional | admin
      */
     public RedirectView errorConfirmacion(String portal, Exception e) {
-        String motivo = "invalido";
-        if (e instanceof RecursoNoEncontradoException) {
-            motivo = "invalido";
-        } else if (e instanceof ReglaDeNegocioException re) {
+        return new RedirectView(frontendUrl + "/confirmacion-error?tipo=" + portal + "&motivo=" + motivoDesdeExcepcion(e));
+    }
+
+    /**
+     * Redirección tras fallar la validación del enlace de recuperación de contraseña.
+     *
+     * @param portal paciente | profesional | admin
+     */
+    public RedirectView errorRecuperacionPassword(String portal, Exception e) {
+        return new RedirectView(frontendUrl + "/recuperacion-password-error?tipo=" + portal + "&motivo=" + motivoDesdeExcepcion(e));
+    }
+
+    private static String motivoDesdeExcepcion(Exception e) {
+        if (e instanceof ReglaDeNegocioException re) {
             String msg = re.getMessage() != null ? re.getMessage().toLowerCase() : "";
-            motivo = msg.contains("expir") ? "expirado" : "invalido";
+            if (msg.contains("expir")) {
+                return "expirado";
+            }
         }
-        return new RedirectView(frontendUrl + "/confirmacion-error?tipo=" + portal + "&motivo=" + motivo);
+        return "invalido";
     }
 }

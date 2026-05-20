@@ -50,8 +50,15 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 
-                // --- AUTH & REGISTROS ---
+                // --- AUTH (recuperación de contraseña, login, refresh; sin Bearer) ---
                 .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/usuarios/api/auth/**").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/auth/cambiar-password-con-token/**").permitAll()
+                .requestMatchers(HttpMethod.POST, "/usuarios/api/auth/cambiar-password-con-token/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/auth/confirmar-cambio-password").permitAll()
+                .requestMatchers(HttpMethod.GET, "/usuarios/api/auth/confirmar-cambio-password").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/auth/solicitar-cambio-password/**").permitAll()
+                .requestMatchers(HttpMethod.POST, "/usuarios/api/auth/solicitar-cambio-password/**").permitAll()
                 .requestMatchers("/api/pacientes/registro/**").permitAll()
                 .requestMatchers("/api/administradores/registro/**").permitAll()
                 // Aseguramos que cubra tanto "/registro" como "/registro/"
