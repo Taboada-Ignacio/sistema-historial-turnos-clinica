@@ -44,6 +44,16 @@ const AdministrarEntidadesPage = () => {
         })}
       </div>
 
+      <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wide mb-3 mt-2">Direcciones</h3>
+      <Link
+        to={`${base}/direcciones`}
+        className="block border border-slate-200 rounded-xl p-4 bg-slate-50 hover:border-emerald-300 hover:bg-emerald-50/30 transition-colors mb-8 max-w-xl"
+      >
+        <h3 className="font-bold text-slate-900">Direcciones por localidad</h3>
+        <p className="text-sm text-slate-600 mt-1">Alta, edición de nombre y baja (con contraseña).</p>
+        <p className="text-xs text-slate-500 mt-2 font-mono">/api/direcciones</p>
+      </Link>
+
       <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wide mb-3">Otras entidades</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {entidadesPlaceholder.map((entidad) => (

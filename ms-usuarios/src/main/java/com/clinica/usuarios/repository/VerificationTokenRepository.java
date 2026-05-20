@@ -12,6 +12,7 @@ public interface VerificationTokenRepository extends JpaRepository<VerificationT
     // Para validar el token cuando el usuario hace clic en el mail
     Optional<VerificationToken> findByToken(String token);
 
-    // Opcional: para limpiar tokens viejos de un usuario si pide reenvío
+    Optional<VerificationToken> findByUsuario_EmailAndCodigo(String email, String codigo);
+
     void deleteByUsuario(Usuario usuario);
 }

@@ -8,9 +8,11 @@ import com.clinica.usuarios.exception.ReglaDeNegocioException;
 import com.clinica.usuarios.mapper.PacienteMapper;
 import com.clinica.usuarios.model.*;
 import com.clinica.usuarios.repository.*;
+import com.clinica.usuarios.service.AccountActivationService;
 import com.clinica.usuarios.service.DireccionService;
 import com.clinica.usuarios.service.EmailService;
 import com.clinica.usuarios.service.PacienteService;
+import com.clinica.usuarios.service.VerificationTokenService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -20,7 +22,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -37,6 +38,8 @@ public class PacienteServiceImpl implements PacienteService {
     private final EstadoRepository estadoRepository;
     private final CambioEstadoRepository cambioEstadoRepository;
     private final VerificationTokenRepository tokenRepository;
+    private final VerificationTokenService verificationTokenService;
+    private final AccountActivationService accountActivationService;
     private final EmailService emailService;
     
     private final PacienteMapper pacienteMapper;
@@ -66,7 +69,6 @@ public class PacienteServiceImpl implements PacienteService {
         // 4. Mapeo y Configuraci?n Extra
         Paciente paciente = pacienteMapper.toEntity(dto);
         paciente.setRoles(rolesAsignados);
-        paciente.setLocalidad(localidad);
         paciente.setDireccion(direccionService.obtenerOCrearPorTextoYLocalidad(dto.getDireccion(), localidad));
         paciente.setObraSocial(obraSocial);
         paciente.setPassword(passwordEncoder.encode(dto.getPassword()));
@@ -78,9 +80,9 @@ public class PacienteServiceImpl implements PacienteService {
         // 6. Registrar Auditor?a de Estado
         registrarCambioEstado(pacienteGuardado, estadoPendiente);
 
-        // 7. Generar Token y Enviar Correo
-        String token = generarToken(pacienteGuardado);
-        emailService.enviarEmailConfirmacion(pacienteGuardado, token);
+        // 7. Generar token/código y enviar correo
+        VerificationTokenService.DatosConfirmacion datos = verificationTokenService.crearTokenConfirmacion(pacienteGuardado);
+        emailService.enviarEmailConfirmacion(pacienteGuardado, datos.token(), datos.codigo());
 
         return pacienteMapper.toResponseDTO(pacienteGuardado);
     }
@@ -88,28 +90,22 @@ public class PacienteServiceImpl implements PacienteService {
     @Override
     @Transactional
     public void confirmarCuenta(String token) {
-        // 1. Validar el token
         VerificationToken vToken = tokenRepository.findByToken(token)
-                .orElseThrow(() -> new RecursoNoEncontradoException("Token de confirmaci?n inv?lido o expirado."));
+                .orElseThrow(() -> new RecursoNoEncontradoException("Token de confirmación inválido o expirado."));
+        accountActivationService.confirmarCuentaDesdeToken(vToken, this::registrarHistorialTrasActivacion);
+    }
 
-        if (vToken.getFechaExpiracion().isBefore(LocalDateTime.now())) {
-            throw new ReglaDeNegocioException("El link de confirmaci?n ha expirado. Por favor, solicita uno nuevo.");
+    @Override
+    @Transactional
+    public void confirmarCuentaConCodigo(String email, String codigo) {
+        VerificationToken vToken = tokenRepository.findByUsuario_EmailAndCodigo(email, codigo)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Código de confirmación inválido."));
+
+        if (!(vToken.getUsuario() instanceof Paciente)) {
+            throw new ReglaDeNegocioException("El correo no corresponde a un paciente registrado.");
         }
 
-        // 2. Obtener el estado "ACTIVO"
-        Estado estadoActivo = estadoRepository.findByNombre("ACTIVO")
-                .orElseThrow(() -> new ReglaDeNegocioException("El estado ACTIVO no est? configurado."));
-
-        // 3. Actualizar el usuario
-        Usuario usuario = vToken.getUsuario();
-        usuario.setEstadoActual(estadoActivo);
-        usuarioRepository.save(usuario);
-
-        // 4. Registrar el cambio en el historial
-        registrarCambioEstado(usuario, estadoActivo);
-
-        // 5. Eliminar el token (ya fue usado)
-        tokenRepository.delete(vToken);
+        accountActivationService.confirmarCuentaDesdeToken(vToken, this::registrarHistorialTrasActivacion);
     }
 
     @Override
@@ -127,9 +123,8 @@ public class PacienteServiceImpl implements PacienteService {
             throw new ReglaDeNegocioException("La cuenta ya se encuentra activa. No es necesario reenviar el correo.");
         }
 
-        tokenRepository.deleteByUsuario(usuario);
-        String nuevoToken = generarToken(usuario);
-        emailService.enviarEmailConfirmacion(usuario, nuevoToken);
+        VerificationTokenService.DatosConfirmacion datos = verificationTokenService.crearTokenConfirmacion(usuario);
+        emailService.enviarEmailConfirmacion(usuario, datos.token(), datos.codigo());
     }
 
     @Override
@@ -179,24 +174,21 @@ public class PacienteServiceImpl implements PacienteService {
             paciente.setRoles(buscarRoles(dto.getRolesIds()));
         }
 
-        Localidad localidadObjetivo = paciente.getLocalidad();
-        if (dto.getIdLocalidad() != null) {
-            localidadObjetivo = localidadRepository.findById(dto.getIdLocalidad())
-                    .orElseThrow(() -> new RecursoNoEncontradoException("Localidad no encontrada"));
-        }
+        if (dto.getIdLocalidad() != null || (dto.getDireccion() != null && !dto.getDireccion().isBlank())) {
+            Localidad localidadObjetivo = dto.getIdLocalidad() != null
+                    ? localidadRepository.findById(dto.getIdLocalidad())
+                            .orElseThrow(() -> new RecursoNoEncontradoException("Localidad no encontrada"))
+                    : paciente.getDireccion().getLocalidad();
 
-        if (dto.getDireccion() != null && !dto.getDireccion().isBlank()) {
-            paciente.setDireccion(direccionService.obtenerOCrearPorTextoYLocalidad(dto.getDireccion(), localidadObjetivo));
-        } else if (dto.getIdLocalidad() != null
-                && paciente.getDireccion() != null
-                && paciente.getDireccion().getLocalidad() != null
-                && !paciente.getDireccion().getLocalidad().getIdLocalidad().equals(localidadObjetivo.getIdLocalidad())) {
-            throw new ReglaDeNegocioException(
-                    "Si cambi?s la localidad, envi? la direcci?n en texto para esa localidad (o no cambies la localidad).");
-        }
-
-        if (dto.getIdLocalidad() != null) {
-            paciente.setLocalidad(localidadObjetivo);
+            if (dto.getDireccion() != null && !dto.getDireccion().isBlank()) {
+                paciente.setDireccion(direccionService.obtenerOCrearPorTextoYLocalidad(dto.getDireccion(), localidadObjetivo));
+            } else if (dto.getIdLocalidad() != null
+                    && paciente.getDireccion() != null
+                    && paciente.getDireccion().getLocalidad() != null
+                    && !paciente.getDireccion().getLocalidad().getIdLocalidad().equals(localidadObjetivo.getIdLocalidad())) {
+                throw new ReglaDeNegocioException(
+                        "Si cambiás la localidad, enviá la dirección en texto para esa localidad.");
+            }
         }
 
         paciente.setObraSocial(obraSocialRepository.findById(dto.getIdObraSocial())
@@ -236,6 +228,10 @@ public class PacienteServiceImpl implements PacienteService {
                 .collect(Collectors.toSet());
     }
 
+    private void registrarHistorialTrasActivacion(Usuario usuario) {
+        registrarCambioEstado(usuario, usuario.getEstadoActual());
+    }
+
     private void registrarCambioEstado(Usuario usuario, Estado estado) {
         CambioEstado cambio = CambioEstado.builder()
                 .usuario(usuario)
@@ -245,14 +241,4 @@ public class PacienteServiceImpl implements PacienteService {
         cambioEstadoRepository.save(cambio);
     }
 
-    private String generarToken(Usuario usuario) {
-        String token = UUID.randomUUID().toString();
-        VerificationToken vToken = VerificationToken.builder()
-                .token(token)
-                .usuario(usuario)
-                .fechaExpiracion(LocalDateTime.now().plusHours(24))
-                .build();
-        tokenRepository.save(vToken);
-        return token;
-    }
 }

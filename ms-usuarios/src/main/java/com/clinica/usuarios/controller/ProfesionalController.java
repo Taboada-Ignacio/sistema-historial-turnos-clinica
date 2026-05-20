@@ -1,5 +1,6 @@
 package com.clinica.usuarios.controller;
 
+import com.clinica.usuarios.dto.request.ConfirmarCodigoDTO;
 import com.clinica.usuarios.dto.request.ProfesionalRegistroDTO;
 import com.clinica.usuarios.dto.request.ProfesionalUpdateDTO;
 import com.clinica.usuarios.dto.response.ProfesionalPresentacionDTO;
@@ -57,6 +58,12 @@ public class ProfesionalController {
     /**
      * Reenvía el correo de confirmación si el token anterior expiró o no llegó.
      */
+    @PostMapping("/confirmar-codigo")
+    public ResponseEntity<?> confirmarConCodigo(@Valid @RequestBody ConfirmarCodigoDTO dto) {
+        profesionalService.confirmarCuentaConCodigo(dto.getEmail(), dto.getCodigo());
+        return ResponseEntity.ok(Map.of("mensaje", "Cuenta confirmada correctamente."));
+    }
+
     @PostMapping("/reenviar-confirmacion")
     public ResponseEntity<?> reenviarConfirmacion(@RequestParam("email") String email) {
         profesionalService.reenviarCorreoConfirmacion(email);

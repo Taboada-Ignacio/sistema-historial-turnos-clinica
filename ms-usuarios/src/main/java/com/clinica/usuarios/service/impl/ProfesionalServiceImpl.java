@@ -9,9 +9,11 @@ import com.clinica.usuarios.exception.ReglaDeNegocioException;
 import com.clinica.usuarios.mapper.ProfesionalMapper;
 import com.clinica.usuarios.model.*;
 import com.clinica.usuarios.repository.*;
+import com.clinica.usuarios.service.AccountActivationService;
 import com.clinica.usuarios.service.DireccionService;
 import com.clinica.usuarios.service.EmailService;
 import com.clinica.usuarios.service.ProfesionalService;
+import com.clinica.usuarios.service.VerificationTokenService;
 import lombok.RequiredArgsConstructor;
 
 import java.nio.file.Files;
@@ -46,6 +48,8 @@ public class ProfesionalServiceImpl implements ProfesionalService {
     private final EstadoRepository estadoRepository;
     private final CambioEstadoRepository cambioEstadoRepository;
     private final VerificationTokenRepository tokenRepository;
+    private final VerificationTokenService verificationTokenService;
+    private final AccountActivationService accountActivationService;
     private final EmailService emailService;
     
     // --- REPOSITORIOS DE MEMBRESÍA ---
@@ -83,7 +87,6 @@ public class ProfesionalServiceImpl implements ProfesionalService {
         // 4. Mapeo y Configuración Base
         Profesional profesional = profesionalMapper.toEntity(dto);
         profesional.setRoles(rolesAsignados);
-        profesional.setLocalidad(localidad);
         profesional.setDireccion(direccionService.obtenerOCrearPorTextoYLocalidad(dto.getDireccion(), localidad));
         profesional.setEspecialidad(especialidad);
         // Hasheamos el password antes de guardar
@@ -104,10 +107,8 @@ public class ProfesionalServiceImpl implements ProfesionalService {
         registrarHistorialEstado(profesionalGuardado, estadoPendiente);
         registrarCambioMembresia(profesionalGuardado, membresiaSinVerificar, LocalDateTime.now(), null);
         
-        String token = crearTokenVerificacion(profesionalGuardado);
-
-        // 8. Envío de Email de confirmación
-        emailService.enviarEmailConfirmacion(profesionalGuardado, token);
+        VerificationTokenService.DatosConfirmacion datos = verificationTokenService.crearTokenConfirmacion(profesionalGuardado);
+        emailService.enviarEmailConfirmacion(profesionalGuardado, datos.token(), datos.codigo());
 
         return profesionalMapper.toResponseDTO(profesionalGuardado);
     }
@@ -117,20 +118,20 @@ public class ProfesionalServiceImpl implements ProfesionalService {
     public void confirmarCuenta(String token) {
         VerificationToken vToken = tokenRepository.findByToken(token)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Token de confirmación inválido o inexistente"));
+        accountActivationService.confirmarCuentaDesdeToken(vToken, this::registrarHistorialTrasActivacion);
+    }
 
-        if (vToken.getFechaExpiracion().isBefore(LocalDateTime.now())) {
-            throw new ReglaDeNegocioException("El link de confirmación ha expirado.");
+    @Override
+    @Transactional
+    public void confirmarCuentaConCodigo(String email, String codigo) {
+        VerificationToken vToken = tokenRepository.findByUsuario_EmailAndCodigo(email, codigo)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Código de confirmación inválido."));
+
+        if (!(vToken.getUsuario() instanceof Profesional)) {
+            throw new ReglaDeNegocioException("El correo no corresponde a un profesional registrado.");
         }
 
-        Usuario usuario = vToken.getUsuario();
-        Estado estadoActivo = estadoRepository.findByNombre("ACTIVO")
-                .orElseThrow(() -> new ReglaDeNegocioException("Estado ACTIVO no disponible"));
-
-        usuario.setEstadoActual(estadoActivo);
-        usuarioRepository.save(usuario);
-        
-        registrarHistorialEstado(usuario, estadoActivo);
-        tokenRepository.delete(vToken);
+        accountActivationService.confirmarCuentaDesdeToken(vToken, this::registrarHistorialTrasActivacion);
     }
 
     @Override
@@ -210,13 +211,16 @@ public class ProfesionalServiceImpl implements ProfesionalService {
         if (u.getDireccion() != null && u.getDireccion().getNombre() != null && !u.getDireccion().getNombre().isBlank()) {
             partes.add(u.getDireccion().getNombre().trim());
         }
-        if (u.getLocalidad() != null && u.getLocalidad().getNombre() != null && !u.getLocalidad().getNombre().isBlank()) {
-            partes.add(u.getLocalidad().getNombre().trim());
+        if (u.getDireccion() != null && u.getDireccion().getLocalidad() != null
+                && u.getDireccion().getLocalidad().getNombre() != null
+                && !u.getDireccion().getLocalidad().getNombre().isBlank()) {
+            partes.add(u.getDireccion().getLocalidad().getNombre().trim());
         }
-        if (u.getLocalidad() != null && u.getLocalidad().getProvincia() != null
-                && u.getLocalidad().getProvincia().getNombre() != null
-                && !u.getLocalidad().getProvincia().getNombre().isBlank()) {
-            partes.add(u.getLocalidad().getProvincia().getNombre().trim());
+        if (u.getDireccion() != null && u.getDireccion().getLocalidad() != null
+                && u.getDireccion().getLocalidad().getProvincia() != null
+                && u.getDireccion().getLocalidad().getProvincia().getNombre() != null
+                && !u.getDireccion().getLocalidad().getProvincia().getNombre().isBlank()) {
+            partes.add(u.getDireccion().getLocalidad().getProvincia().getNombre().trim());
         }
         return String.join(" - ", partes);
     }
@@ -244,22 +248,20 @@ public class ProfesionalServiceImpl implements ProfesionalService {
         profesional.setTelefono(dto.getTelefono());
         profesional.setMatricula(dto.getMatricula());
 
-        Localidad localidadObjetivo = profesional.getLocalidad();
-        if (dto.getIdLocalidad() != null) {
-            localidadObjetivo = localidadRepository.findById(dto.getIdLocalidad())
-                    .orElseThrow(() -> new RecursoNoEncontradoException("Localidad no encontrada"));
-        }
-        if (dto.getDireccion() != null && !dto.getDireccion().isBlank()) {
-            profesional.setDireccion(direccionService.obtenerOCrearPorTextoYLocalidad(dto.getDireccion(), localidadObjetivo));
-        } else if (dto.getIdLocalidad() != null
-                && profesional.getDireccion() != null
-                && profesional.getDireccion().getLocalidad() != null
-                && !profesional.getDireccion().getLocalidad().getIdLocalidad().equals(localidadObjetivo.getIdLocalidad())) {
-            throw new ReglaDeNegocioException(
-                    "Si cambiás la localidad, enviá la dirección en texto para esa localidad (o no cambies la localidad).");
-        }
-        if (dto.getIdLocalidad() != null) {
-            profesional.setLocalidad(localidadObjetivo);
+        if (dto.getIdLocalidad() != null || (dto.getDireccion() != null && !dto.getDireccion().isBlank())) {
+            Localidad localidadObjetivo = dto.getIdLocalidad() != null
+                    ? localidadRepository.findById(dto.getIdLocalidad())
+                            .orElseThrow(() -> new RecursoNoEncontradoException("Localidad no encontrada"))
+                    : profesional.getDireccion().getLocalidad();
+            if (dto.getDireccion() != null && !dto.getDireccion().isBlank()) {
+                profesional.setDireccion(direccionService.obtenerOCrearPorTextoYLocalidad(dto.getDireccion(), localidadObjetivo));
+            } else if (dto.getIdLocalidad() != null
+                    && profesional.getDireccion() != null
+                    && profesional.getDireccion().getLocalidad() != null
+                    && !profesional.getDireccion().getLocalidad().getIdLocalidad().equals(localidadObjetivo.getIdLocalidad())) {
+                throw new ReglaDeNegocioException(
+                        "Si cambiás la localidad, enviá la dirección en texto para esa localidad.");
+            }
         }
 
         // Actualización de estado si viene en el DTO
@@ -358,15 +360,8 @@ public class ProfesionalServiceImpl implements ProfesionalService {
         cambioEstadoRepository.save(historial);
     }
 
-    private String crearTokenVerificacion(Usuario usuario) {
-        String tokenString = UUID.randomUUID().toString();
-        VerificationToken token = VerificationToken.builder()
-                .token(tokenString)
-                .usuario(usuario)
-                .fechaExpiracion(LocalDateTime.now().plusHours(48)) 
-                .build();
-        tokenRepository.save(token);
-        return tokenString; 
+    private void registrarHistorialTrasActivacion(Usuario usuario) {
+        registrarHistorialEstado(usuario, usuario.getEstadoActual());
     }
 
     private void validarUnicidadProfesional(String email, Integer dni) {
@@ -448,18 +443,11 @@ public class ProfesionalServiceImpl implements ProfesionalService {
         // 3. (Opcional pero recomendado) Eliminar tokens anteriores para ese usuario 
         // para que no se acumulen en la base de datos si pide el reenvío muchas veces.
         // Si no tenés este método en tokenRepository, podés crearlo: void deleteByUsuario(Usuario usuario);
-        tokenRepository.deleteByUsuario(usuario); 
-
-        // 4. Generar un nuevo token usando tu método privado existente (que le da 48hs de validez)
-        String nuevoToken = crearTokenVerificacion(usuario);
-
-        // 5. Reenviar el correo usando tu servicio de email (Hacemos un cast a Profesional si tu emailService lo requiere específicamente, 
-        // aunque asumo que recibe la clase padre Usuario o que el repositorio de usuario te devuelve la instancia correcta)
-        if (usuario instanceof Profesional) {
-             emailService.enviarEmailConfirmacion((Profesional) usuario, nuevoToken);
-        } else {
-             // Por si en un futuro usas este mismo método para administradores u otros roles
-             emailService.enviarEmailConfirmacion(usuario, nuevoToken); 
+        if (!(usuario instanceof Profesional profesional)) {
+            throw new ReglaDeNegocioException("El correo no corresponde a un profesional registrado.");
         }
+
+        VerificationTokenService.DatosConfirmacion datos = verificationTokenService.crearTokenConfirmacion(profesional);
+        emailService.enviarEmailConfirmacion(profesional, datos.token(), datos.codigo());
     }
 }

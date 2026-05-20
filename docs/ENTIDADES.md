@@ -24,7 +24,8 @@ erDiagram
     usuarios ||--o| profesionales : "JOINED id"
     usuarios ||--o| administradores : "JOINED id"
     usuarios }o--|| estados : "id_estado_actual"
-    usuarios }o--|| localidades : "id_localidad"
+    usuarios }o--|| direcciones : "id_direccion"
+    direcciones }o--|| localidades : "id_localidad"
     usuarios }o--o{ usuario_roles : ""
     roles }o--o{ usuario_roles : ""
     provincias ||--o{ localidades : ""
@@ -45,7 +46,7 @@ erDiagram
 
 | Entidad | Tabla | Descripción |
 |---------|-------|-------------|
-| **`Usuario`** | `usuarios` | Email, password (hash), nombre, apellido, DNI, teléfono, fecha nacimiento, dirección opcional, FK estado actual, FK localidad, roles N:N. |
+| **`Usuario`** | `usuarios` | Email, password (hash), nombre, apellido, DNI, teléfono, fecha nacimiento, FK **`id_direccion`** (obligatoria), FK estado actual, roles N:N. La localidad se obtiene vía `direccion.localidad`. |
 | **`Paciente`** | `pacientes` | Extiende `Usuario`; FK obligatoria **obra social**, `numero_afiliado` opcional. |
 | **`Profesional`** | `profesionales` | Matrícula única, FK **especialidad**, foto perfil (ruta), FK **membresía actual**, historial cambios membresía. |
 | **`Administrador`** | `administradores` | Sin campos extra por ahora; extiende `Usuario`. |
@@ -57,18 +58,21 @@ erDiagram
 | **`Rol`** | `roles` | `descripcion` única (ej. `ROLE_PACIENTE`, `ROLE_PROFESIONAL`, `ROLE_ADMINISTRADOR`). |
 | **`Estado`** | `estados` | Nombre único: ej. `PENDIENTE`, `ACTIVO`, `BLOQUEADO`. |
 | **`CambioEstado`** | `cambios_estado` (convención JPA) | Usuario, estado, fecha (auditoría). |
-| **`VerificationToken`** | `tokens_confirmacion` | Token email confirmación / recuperación (OneToOne con usuario). |
+| **`VerificationToken`** | `tokens_confirmacion` | Token y **código** de 6 dígitos para confirmación de email; expiración; OneToOne con usuario. |
 | **`RefreshToken`** | `refresh_tokens` | Token opaco, usuario, expiración, revocado. |
 
 ### Catálogos
 
 | Entidad | Tabla | Relaciones |
 |---------|-------|------------|
-| **`Provincia`** | `provincias` | 1 — N **Localidad**. |
-| **`Localidad`** | `localidades` | N — 1 **Provincia**. |
+| **`Provincia`** | `provincias` | 1 — N **Localidad**. Incluye fila reservada `SIN ESPECIFICAR`. |
+| **`Localidad`** | `localidades` | N — 1 **Provincia**; único `(nombre, provincia)`. Al crear localidad se genera dirección sentinel. |
+| **`Direccion`** | `direcciones` | N — 1 **Localidad**; único `(nombre, localidad)`. Por localidad existe `SIN ESPECIFICAR` para reasignar usuarios al borrar otras direcciones. |
 | **`Especialidad`** | `especialidades` | Usada por **Profesional**. |
 | **`ObraSocial`** | `obras_sociales` | Usada por **Paciente**. |
 | **`Membresia`** | `membresias` | Nombre único (ej. `SIN_VERIFICAR`, `ACTIVA`); **Profesional** tiene membresía actual + historial **`CambioMembresia`**. |
+
+**Sentinel `SIN ESPECIFICAR`:** en especialidades, obras sociales, provincias, localidades y direcciones. No debe crearse manualmente por admin con ese nombre; sirve para mantener FK al eliminar registros de catálogo o direcciones en uso.
 
 ---
 

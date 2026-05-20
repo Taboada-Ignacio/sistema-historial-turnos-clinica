@@ -1,5 +1,6 @@
 package com.clinica.usuarios.controller;
 
+import com.clinica.usuarios.dto.request.ConfirmarCodigoDTO;
 import com.clinica.usuarios.dto.request.PacienteRegistroDTO;
 import com.clinica.usuarios.dto.request.PacienteUpdateDTO;
 import com.clinica.usuarios.dto.response.PacienteResponseDTO;
@@ -51,6 +52,12 @@ public class PacienteController {
     /**
      * Reenvía el correo de confirmación (pantalla “verificá tu correo”).
      */
+    @PostMapping("/confirmar-codigo")
+    public ResponseEntity<?> confirmarConCodigo(@Valid @RequestBody ConfirmarCodigoDTO dto) {
+        pacienteService.confirmarCuentaConCodigo(dto.getEmail(), dto.getCodigo());
+        return ResponseEntity.ok(Map.of("mensaje", "Cuenta confirmada correctamente."));
+    }
+
     @PostMapping("/reenviar-confirmacion")
     public ResponseEntity<?> reenviarConfirmacion(@RequestParam("email") String email) {
         pacienteService.reenviarCorreoConfirmacion(email);

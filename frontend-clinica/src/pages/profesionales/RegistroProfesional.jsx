@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import clienteAxios from '../../api/axiosConfig';
 import PasswordVisibilityToggle from '../../components/PasswordVisibilityToggle';
+import ProvinciaLocalidadFields from '../../components/ProvinciaLocalidadFields';
 import { getMaxBirthDateString, isAtLeastAge } from '../../utils/ageValidation';
 import imageCompression from 'browser-image-compression'; 
 
@@ -20,8 +21,6 @@ const RegistroProfesional = () => {
   });
 
   const [especialidades, setEspecialidades] = useState([]);
-  const [provincias, setProvincias] = useState([]);
-  const [localidades, setLocalidades] = useState([]);
   const [rolesIds, setRolesIds] = useState([]); 
   const [errorFoto, setErrorFoto] = useState('');
 
@@ -32,14 +31,12 @@ const RegistroProfesional = () => {
       console.log("%c[DEBUG] Cargando datos iniciales (Roles, Provincias, Especialidades)...", "color: blue; font-weight: bold;");
       
       try {
-        const [resEsp, resProv, resRoles] = await Promise.all([
+        const [resEsp, resRoles] = await Promise.all([
           clienteAxios.get('/usuarios/api/especialidades'),
-          clienteAxios.get('/usuarios/api/provincias'),
           clienteAxios.get('/usuarios/api/roles')
         ]);
         
         setEspecialidades(resEsp.data);
-        setProvincias(resProv.data);
 
         const ids = resRoles.data
           .filter(r => r.descripcion === 'ROLE_PROFESIONAL' || r.descripcion === 'ROLE_PACIENTE')
@@ -54,18 +51,6 @@ const RegistroProfesional = () => {
     };
     cargarDatosIniciales();
   }, []);
-
-  // 2. LOCALIDADES
-  useEffect(() => {
-    if (formData.provincia) {
-      console.log(`[DEBUG] Buscando localidades para Provincia ID: ${formData.provincia}`);
-      clienteAxios.get(`/usuarios/api/localidades/provincia/${formData.provincia}`)
-        .then(res => setLocalidades(res.data))
-        .catch(err => console.error("[DEBUG] Error cargando localidades:", err));
-    } else {
-      setLocalidades([]);
-    }
-  }, [formData.provincia]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -241,19 +226,20 @@ const RegistroProfesional = () => {
                 <input type="date" name="fechaNacimiento" required max={getMaxBirthDateString()} value={formData.fechaNacimiento} onChange={handleChange} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50 transition-all" />
                 <p className="text-xs text-gray-500 mt-1">Mayor de 18 años.</p>
               </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Provincia</label>
-                <select name="provincia" required value={formData.provincia} onChange={handleChange} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50">
-                  <option value="">Seleccione provincia</option>
-                  {provincias.map(p => <option key={p.idProvincia} value={p.idProvincia}>{p.nombre}</option>)}
-                </select>
-              </div>
               <div className="md:col-span-2">
-                <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Localidad</label>
-                <select name="localidad" required value={formData.localidad} onChange={handleChange} disabled={!formData.provincia} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50 disabled:opacity-50">
-                  <option value="">Seleccione localidad</option>
-                  {localidades.map(l => <option key={l.idLocalidad} value={l.idLocalidad}>{l.nombre}</option>)}
-                </select>
+                <ProvinciaLocalidadFields
+                  showLabels
+                  provinciaId={formData.provincia}
+                  localidadId={formData.localidad}
+                  onProvinciaChange={(id) =>
+                    setFormData((prev) => ({ ...prev, provincia: id, localidad: '', direccion: '' }))
+                  }
+                  onLocalidadChange={(id) =>
+                    setFormData((prev) => ({ ...prev, localidad: id, direccion: '' }))
+                  }
+                  inputClassName="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50"
+                  className="grid grid-cols-1 md:grid-cols-2 gap-4"
+                />
               </div>
               <div className="md:col-span-2">
                 <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Dirección</label>

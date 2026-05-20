@@ -22,6 +22,9 @@ public class VerificationToken {
     @Column(nullable = false, unique = true)
     private String token;
 
+    @Column(nullable = false, length = 6)
+    private String codigo;
+
     @Column(name = "fecha_expiracion", nullable = false)
     private LocalDateTime fechaExpiracion;
 

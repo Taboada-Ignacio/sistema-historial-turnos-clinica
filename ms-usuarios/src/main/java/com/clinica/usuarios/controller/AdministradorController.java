@@ -1,6 +1,7 @@
 package com.clinica.usuarios.controller;
 
 import com.clinica.usuarios.dto.request.AdministradorRegistroDTO;
+import com.clinica.usuarios.dto.request.ConfirmarCodigoDTO;
 import com.clinica.usuarios.dto.request.AdministradorUpdateDTO;
 import com.clinica.usuarios.dto.response.AdministradorResponseDTO;
 import com.clinica.usuarios.service.AdministradorService;
@@ -49,6 +50,12 @@ public class AdministradorController {
         } catch (Exception e) {
             return confirmRedirect.errorConfirmacion("admin", e);
         }
+    }
+
+    @PostMapping("/confirmar-codigo")
+    public ResponseEntity<?> confirmarConCodigo(@Valid @RequestBody ConfirmarCodigoDTO dto) {
+        administradorService.confirmarCuentaConCodigo(dto.getEmail(), dto.getCodigo());
+        return ResponseEntity.ok(Map.of("mensaje", "Cuenta confirmada correctamente."));
     }
 
     @PostMapping("/reenviar-confirmacion")

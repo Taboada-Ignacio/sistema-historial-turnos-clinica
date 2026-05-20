@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import clienteAxios from "../../api/axiosConfig";
 import PasswordVisibilityToggle from '../../components/PasswordVisibilityToggle';
+import ProvinciaLocalidadFields from '../../components/ProvinciaLocalidadFields';
 import { getMaxBirthDateString, isAtLeastAge } from '../../utils/ageValidation';
 import { PACIENTE_PATHS } from '../../utils/portalPaths';
 const Register = () => {
@@ -9,8 +10,6 @@ const Register = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [provincias, setProvincias] = useState([]);
-  const [localidades, setLocalidades] = useState([]);
   const [provinciaSeleccionada, setProvinciaSeleccionada] = useState('');
 
   const [formData, setFormData] = useState({
@@ -25,18 +24,6 @@ const Register = () => {
     direccion: '',
     idObraSocial: ''
   });
-
-  useEffect(() => {
-    const fetchProvincias = async () => {
-      try {
-        const response = await clienteAxios.get('/usuarios/api/provincias');
-        setProvincias(response.data);
-      } catch (err) {
-        setError("No se pudieron cargar las provincias.");
-      }
-    };
-    fetchProvincias();
-  }, []);
 
   useEffect(() => {
     const fetchObras = async () => {
@@ -55,22 +42,6 @@ const Register = () => {
     fetchObras();
   }, []);
 
-  useEffect(() => {
-    const fetchLocalidades = async () => {
-      if (!provinciaSeleccionada) {
-        setLocalidades([]);
-        return;
-      }
-      try {
-        const response = await clienteAxios.get(`/usuarios/api/localidades/provincia/${provinciaSeleccionada}`);
-        setLocalidades(response.data);
-      } catch (err) {
-        setError("Error al cargar localidades.");
-      }
-    };
-    fetchLocalidades();
-  }, [provinciaSeleccionada]);
-
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -78,11 +49,6 @@ const Register = () => {
       [name]: value,
       ...(name === 'idLocalidad' ? { direccion: '' } : {})
     }));
-  };
-
-  const handleProvinciaChange = (e) => {
-    setProvinciaSeleccionada(e.target.value);
-    setFormData((prev) => ({ ...prev, idLocalidad: '', direccion: '' }));
   };
 
   const validacionesPassword = {
@@ -170,15 +136,20 @@ const Register = () => {
               </div>
 
               {/* UBICACIÓN DINÁMICA */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
-                <select value={provinciaSeleccionada} onChange={handleProvinciaChange} required className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-clinica-dark outline-none bg-white">
-                  <option value="">Provincia</option>
-                  {provincias.map(p => <option key={p.idProvincia} value={p.idProvincia}>{p.nombre}</option>)}
-                </select>
-                <select name="idLocalidad" value={formData.idLocalidad} onChange={handleChange} required disabled={!provinciaSeleccionada} className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-clinica-dark outline-none bg-white disabled:bg-gray-100">
-                  <option value="">Localidad</option>
-                  {localidades.map(l => <option key={l.idLocalidad} value={l.idLocalidad}>{l.nombre}</option>)}
-                </select>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100 space-y-0">
+                <ProvinciaLocalidadFields
+                  provinciaId={provinciaSeleccionada}
+                  localidadId={formData.idLocalidad}
+                  onProvinciaChange={(id) => {
+                    setProvinciaSeleccionada(id);
+                    setFormData((prev) => ({ ...prev, idLocalidad: '', direccion: '' }));
+                  }}
+                  onLocalidadChange={(id) => {
+                    setFormData((prev) => ({ ...prev, idLocalidad: id, direccion: '' }));
+                  }}
+                  inputClassName="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-clinica-dark outline-none bg-white"
+                  className="grid grid-cols-1 md:grid-cols-2 gap-4 col-span-2"
+                />
                 <input
                   type="text"
                   name="direccion"
@@ -188,7 +159,7 @@ const Register = () => {
                   disabled={!formData.idLocalidad}
                   maxLength={500}
                   placeholder="Calle, número, piso/depto (según la localidad elegida)"
-                  className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-clinica-dark outline-none bg-white disabled:bg-gray-100 md:col-span-2"
+                  className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-clinica-dark outline-none bg-white disabled:bg-gray-100 md:col-span-2 mt-0"
                 />
               </div>
 

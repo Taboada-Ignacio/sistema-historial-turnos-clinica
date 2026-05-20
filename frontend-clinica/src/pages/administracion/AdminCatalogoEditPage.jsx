@@ -3,6 +3,8 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import clienteAxios from '../../api/axiosConfig';
 import { ADMIN_PATHS } from '../../utils/portalPaths';
 import { filaEsReservada, getCatalogConfig } from './adminCatalogConfig';
+import { buildPutPayload } from './catalogPayloadHelpers';
+import CatalogProvinciaPicker from '../../components/CatalogProvinciaPicker';
 
 function pickForm(row, editableKeys) {
   const o = {};
@@ -10,22 +12,6 @@ function pickForm(row, editableKeys) {
     o[k] = row[k] != null ? String(row[k]) : '';
   });
   return o;
-}
-
-function buildPutPayload(tipo, form) {
-  if (tipo === 'obras-sociales' || tipo === 'especialidades') {
-    return { descripcion: form.descripcion.trim().toUpperCase() };
-  }
-  if (tipo === 'provincias') {
-    return { nombre: form.nombre.trim().toUpperCase() };
-  }
-  if (tipo === 'localidades') {
-    return {
-      nombre: form.nombre.trim().toUpperCase(),
-      idProvincia: parseInt(form.idProvincia, 10),
-    };
-  }
-  return {};
 }
 
 const AdminCatalogoEditPage = () => {
@@ -41,7 +27,6 @@ const AdminCatalogoEditPage = () => {
   const [saving, setSaving] = useState(false);
   const [showPwd, setShowPwd] = useState(false);
   const [pwd, setPwd] = useState('');
-
   const numericId = useMemo(() => {
     const n = Number(id);
     return Number.isFinite(n) ? n : NaN;
@@ -153,13 +138,23 @@ const AdminCatalogoEditPage = () => {
               <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
                 {config.fieldLabels[key] || key}
               </label>
-              <input
-                type={key === 'idProvincia' ? 'number' : 'text'}
-                disabled={reservada}
-                value={form[key] ?? ''}
-                onChange={(e) => handleField(key, e.target.value)}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-600/30 disabled:bg-slate-100"
-              />
+              {key === 'idProvincia' && tipo === 'localidades' ? (
+                <CatalogProvinciaPicker
+                  value={form.idProvincia ?? ''}
+                  onChange={(val) => handleField('idProvincia', val)}
+                  excludeSentinel={false}
+                  required
+                  disabled={reservada}
+                />
+              ) : (
+                <input
+                  type="text"
+                  disabled={reservada}
+                  value={form[key] ?? ''}
+                  onChange={(e) => handleField(key, e.target.value)}
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-600/30 disabled:bg-slate-100"
+                />
+              )}
             </div>
           ))}
 

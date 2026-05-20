@@ -4,6 +4,7 @@ import clienteAxios from '../../api/axiosConfig';
 import PasswordVisibilityToggle from '../../components/PasswordVisibilityToggle';
 import { getMaxBirthDateString, isAtLeastAge } from '../../utils/ageValidation';
 import { ADMIN_PATHS } from '../../utils/portalPaths';
+import ProvinciaLocalidadFields from '../../components/ProvinciaLocalidadFields';
 
 const AdminRegisterSecret = () => {
   const navigate = useNavigate();
@@ -14,8 +15,6 @@ const AdminRegisterSecret = () => {
   const [showSystemKey, setShowSystemKey] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   
-  const [provincias, setProvincias] = useState([]);
-  const [localidades, setLocalidades] = useState([]);
   const [provinciaSeleccionada, setProvinciaSeleccionada] = useState('');
 
   const [formData, setFormData] = useState({
@@ -30,34 +29,6 @@ const AdminRegisterSecret = () => {
     direccion: ''
   });
 
-  useEffect(() => {
-    const fetchProvincias = async () => {
-      try {
-        const response = await clienteAxios.get('/usuarios/api/provincias');
-        setProvincias(response.data);
-      } catch (err) {
-        setError("Error: No se pudieron cargar las provincias.");
-      }
-    };
-    fetchProvincias();
-  }, []);
-
-  useEffect(() => {
-    const fetchLocalidades = async () => {
-      if (!provinciaSeleccionada) {
-        setLocalidades([]);
-        return;
-      }
-      try {
-        const response = await clienteAxios.get(`/usuarios/api/localidades/provincia/${provinciaSeleccionada}`);
-        setLocalidades(response.data);
-      } catch (err) {
-        setError("Error al cargar las localidades.");
-      }
-    };
-    fetchLocalidades();
-  }, [provinciaSeleccionada]);
-
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -65,11 +36,6 @@ const AdminRegisterSecret = () => {
       [name]: value,
       ...(name === 'idLocalidad' ? { direccion: '' } : {})
     }));
-  };
-
-  const handleProvinciaChange = (e) => {
-    setProvinciaSeleccionada(e.target.value);
-    setFormData((prev) => ({ ...prev, idLocalidad: '', direccion: '' }));
   };
 
   const validaciones = {
@@ -193,15 +159,19 @@ const AdminRegisterSecret = () => {
               <input type="date" name="fechaNacimiento" required max={getMaxBirthDateString()} value={formData.fechaNacimiento} onChange={handleChange} className="px-3 py-2 border rounded outline-none text-gray-500" title="Mayor de 18 años" />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <select value={provinciaSeleccionada} onChange={handleProvinciaChange} required className="px-3 py-2 border rounded outline-none bg-white">
-                <option value="">Provincia</option>
-                {provincias.map(p => <option key={p.idProvincia} value={p.idProvincia}>{p.nombre}</option>)}
-              </select>
-              <select name="idLocalidad" value={formData.idLocalidad} onChange={handleChange} required disabled={!provinciaSeleccionada} className="px-3 py-2 border rounded outline-none bg-white disabled:bg-gray-100">
-                <option value="">Localidad</option>
-                {localidades.map(l => <option key={l.idLocalidad} value={l.idLocalidad}>{l.nombre}</option>)}
-              </select>
+            <div className="space-y-4">
+              <ProvinciaLocalidadFields
+                provinciaId={provinciaSeleccionada}
+                localidadId={formData.idLocalidad}
+                onProvinciaChange={(id) => {
+                  setProvinciaSeleccionada(id);
+                  setFormData((prev) => ({ ...prev, idLocalidad: '', direccion: '' }));
+                }}
+                onLocalidadChange={(id) => {
+                  setFormData((prev) => ({ ...prev, idLocalidad: id, direccion: '' }));
+                }}
+                inputClassName="px-3 py-2 border rounded outline-none bg-white w-full"
+              />
               <input
                 type="text"
                 name="direccion"

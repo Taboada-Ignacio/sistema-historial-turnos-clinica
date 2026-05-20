@@ -66,7 +66,6 @@ CREATE TABLE IF NOT EXISTS usuarios (
     telefono VARCHAR(20) NOT NULL,
     fecha_nacimiento DATE,
     id_direccion BIGINT NOT NULL REFERENCES direcciones(id_direccion),
-    id_localidad BIGINT NOT NULL REFERENCES localidades(id_localidad),
     id_estado_actual BIGINT NOT NULL REFERENCES estados(id_estado)
 );
 
@@ -113,6 +112,7 @@ CREATE TABLE IF NOT EXISTS cambios_estado (
 CREATE TABLE IF NOT EXISTS tokens_confirmacion (
     id BIGSERIAL PRIMARY KEY,
     token VARCHAR(255) UNIQUE NOT NULL,
+    codigo VARCHAR(6),
     fecha_expiracion TIMESTAMP NOT NULL,
     id_usuario BIGINT NOT NULL REFERENCES usuarios(id_usuario)
 );
@@ -133,9 +133,8 @@ CREATE TABLE IF NOT EXISTS cambios_membresia (
 INSERT INTO estados (nombre) VALUES ('PENDIENTE'), ('ACTIVO'), ('BLOQUEADO') ON CONFLICT (nombre) DO NOTHING;
 INSERT INTO roles (descripcion) VALUES ('ROLE_PROFESIONAL'), ('ROLE_PACIENTE'), ('ROLE_ADMINISTRADOR') ON CONFLICT (descripcion) DO NOTHING;
 
-INSERT INTO especialidades (descripcion) VALUES ('MÉDICO'), ('COSMIATRA'), ('ODÓNTOLOGO'), ('PSICÓLOGO'), ('SIN CARGAR') ON CONFLICT (descripcion) DO NOTHING;
+INSERT INTO especialidades (descripcion) VALUES ('MEDICO'), ('COSMIATRA'), ('ODONTOLOGO'), ('PSICOLOGO') ON CONFLICT (descripcion) DO NOTHING;
 INSERT INTO obras_sociales (descripcion) VALUES ('LA CAJA'), ('OSDE'), ('NO POSEE') ON CONFLICT (descripcion) DO NOTHING;
-INSERT INTO provincias (nombre) VALUES ('CORDOBA'), ('SANTA CRUZ'), ('SIN CARGAR') ON CONFLICT (nombre) DO NOTHING;
 
 -- CARGA INICIAL DE MEMBRESÍAS
 INSERT INTO membresias (nombre) VALUES ('SIN_VERIFICAR'), ('INACTIVA'), ('ACTIVA'), ('ACCESO_INDEFINIDO') ON CONFLICT (nombre) DO NOTHING;
@@ -149,19 +148,6 @@ INSERT INTO especialidades (descripcion) VALUES ('SIN ESPECIFICAR') ON CONFLICT 
 INSERT INTO obras_sociales (descripcion) VALUES ('SIN ESPECIFICAR') ON CONFLICT (descripcion) DO NOTHING;
 INSERT INTO provincias (nombre) VALUES ('SIN ESPECIFICAR') ON CONFLICT (nombre) DO NOTHING;
 
-INSERT INTO localidades (nombre, id_provincia) 
-VALUES 
-    ('CAPILLA DEL MONTE', (SELECT id_provincia FROM provincias WHERE nombre = 'CORDOBA')),
-    ('CORDOBA CAPITAL', (SELECT id_provincia FROM provincias WHERE nombre = 'CORDOBA')),
-    ('RIO GALLEGOS', (SELECT id_provincia FROM provincias WHERE nombre = 'SANTA CRUZ')),
-    ('PUERTO SAN JULIÁN', (SELECT id_provincia FROM provincias WHERE nombre = 'SANTA CRUZ')),
-    ('SIN CARGAR', (SELECT id_provincia FROM provincias WHERE nombre = 'SIN CARGAR'))
-ON CONFLICT (nombre, id_provincia) DO NOTHING;
-
-INSERT INTO localidades (nombre, id_provincia)
-SELECT 'SIN ESPECIFICAR', p.id_provincia
-FROM provincias p
-WHERE p.nombre = 'SIN ESPECIFICAR'
-ON CONFLICT (nombre, id_provincia) DO NOTHING;
-
--- direcciones: sin datos iniciales; se crean al registrar usuarios (texto libre por localidad) o por POST /api/direcciones/registro (admin).
+-- Provincias y localidades: docker-entrypoint-initdb.d/02-argentina-geo-data.sql
+-- Direcciones sentinel por localidad: docker-entrypoint-initdb.d/03-direcciones-sentinel.sql
+-- Documentación: README.md en este directorio

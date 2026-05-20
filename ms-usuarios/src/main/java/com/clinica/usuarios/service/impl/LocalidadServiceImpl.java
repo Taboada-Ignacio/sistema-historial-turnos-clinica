@@ -13,7 +13,6 @@ import com.clinica.usuarios.model.Provincia;
 import com.clinica.usuarios.repository.DireccionRepository;
 import com.clinica.usuarios.repository.LocalidadRepository;
 import com.clinica.usuarios.repository.ProvinciaRepository;
-import com.clinica.usuarios.repository.UsuarioRepository;
 import com.clinica.usuarios.service.LocalidadService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -28,8 +27,8 @@ public class LocalidadServiceImpl implements LocalidadService {
 
     private final LocalidadRepository localidadRepository;
     private final ProvinciaRepository provinciaRepository;
-    private final UsuarioRepository usuarioRepository;
     private final DireccionRepository direccionRepository;
+    private final DireccionSentinelHelper direccionSentinelHelper;
     private final LocalidadMapper localidadMapper;
 
     @Override
@@ -51,7 +50,9 @@ public class LocalidadServiceImpl implements LocalidadService {
         localidad.setProvincia(provincia);
         localidad.setNombre(nombreMayuscula);
 
-        return localidadMapper.toResponseDTO(localidadRepository.save(localidad));
+        Localidad guardada = localidadRepository.save(localidad);
+        direccionSentinelHelper.obtenerOCrearSentinel(guardada);
+        return localidadMapper.toResponseDTO(guardada);
     }
 
     @Override
@@ -65,9 +66,30 @@ public class LocalidadServiceImpl implements LocalidadService {
     @Override
     @Transactional(readOnly = true)
     public List<LocalidadResponseDTO> obtenerTodasLasLocalidades() {
-        return localidadRepository.findAll().stream()
+        return buscarLocalidades(null, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<LocalidadResponseDTO> buscarLocalidades(Long provinciaId, String nombre) {
+        if (provinciaId != null && !provinciaRepository.existsById(provinciaId)) {
+            throw new RecursoNoEncontradoException("No se encontró la provincia con ID: " + provinciaId);
+        }
+        String nombrePattern = toNombreLikePattern(nombre);
+        return localidadRepository.buscar(provinciaId, nombrePattern).stream()
                 .map(localidadMapper::toResponseDTO)
                 .collect(Collectors.toList());
+    }
+
+    private static String toNombreLikePattern(String nombre) {
+        if (nombre == null) {
+            return null;
+        }
+        String trimmed = nombre.trim();
+        if (trimmed.isEmpty()) {
+            return null;
+        }
+        return "%" + trimmed.toUpperCase() + "%";
     }
 
     @Override
@@ -130,19 +152,13 @@ public class LocalidadServiceImpl implements LocalidadService {
             d.setLocalidad(sentinel);
             direccionRepository.save(d);
         }
-        usuarioRepository.reasignarLocalidad(id, sentinelId);
         localidadRepository.deleteById(id);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<LocalidadResponseDTO> obtenerLocalidadesPorProvincia(Long provinciaId) {
-        List<Localidad> localidades = localidadRepository.findByProvinciaId(provinciaId);
-        
-        // Si no hay localidades, podrías devolver una lista vacía o lanzar una excepción
-        return localidades.stream()
-                .map(localidadMapper::toResponseDTO)
-                .collect(Collectors.toList());
+        return buscarLocalidades(provinciaId, null);
     }
 
     private boolean esLocalidadSentinel(Localidad l) {

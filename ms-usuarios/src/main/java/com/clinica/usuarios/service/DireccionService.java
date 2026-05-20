@@ -1,6 +1,7 @@
 package com.clinica.usuarios.service;
 
 import com.clinica.usuarios.dto.request.DireccionRegistroDTO;
+import com.clinica.usuarios.dto.request.DireccionUpdateDTO;
 import com.clinica.usuarios.dto.response.DireccionResponseDTO;
 import com.clinica.usuarios.model.Direccion;
 import com.clinica.usuarios.model.Localidad;
@@ -11,11 +12,16 @@ public interface DireccionService {
 
     List<DireccionResponseDTO> listarPorLocalidad(Long idLocalidad);
 
+    DireccionResponseDTO obtenerPorId(Long id);
+
     DireccionResponseDTO registrar(DireccionRegistroDTO dto);
 
+    DireccionResponseDTO actualizar(Long id, DireccionUpdateDTO dto);
+
+    void eliminar(Long id);
+
     /**
-     * Busca por texto normalizado (trim, espacios colapsados, Unicode NFC) en la localidad
-     * o crea una nueva fila. Reutiliza la existente ante duplicado o carrera concurrente.
+     * Busca por texto normalizado en la localidad o crea una nueva fila.
      */
     Direccion obtenerOCrearPorTextoYLocalidad(String texto, Localidad localidad);
 }

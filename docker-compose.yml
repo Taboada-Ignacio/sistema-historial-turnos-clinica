@@ -11,9 +11,13 @@ services:
       POSTGRES_USER: user_clinica
       POSTGRES_PASSWORD: password_clinica
     ports:
-      - "5432:5432" 
+      - "5432:5432"
     volumes:
-      - ./ms-usuarios/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - db_usuarios_data:/var/lib/postgresql/data
+      # Semilla (solo en volumen nuevo): esquema → geo Argentina → direcciones SIN ESPECIFICAR
+      - ./ms-usuarios/init.sql:/docker-entrypoint-initdb.d/01-init.sql
+      - ./ms-usuarios/sql/argentina-geo-data.sql:/docker-entrypoint-initdb.d/02-argentina-geo-data.sql
+      - ./ms-usuarios/sql/03-direcciones-sentinel.sql:/docker-entrypoint-initdb.d/03-direcciones-sentinel.sql
     networks:
       - clinica-network
 
@@ -83,3 +87,6 @@ services:
 networks:
   clinica-network:
     driver: bridge
+
+volumes:
+  db_usuarios_data:

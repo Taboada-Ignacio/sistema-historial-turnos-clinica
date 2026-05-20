@@ -12,7 +12,6 @@ public interface ProfesionalMapper {
 
     @Mapping(target = "idUsuario", ignore = true)
     @Mapping(target = "roles", ignore = true)
-    @Mapping(target = "localidad", ignore = true)
     @Mapping(target = "especialidad", ignore = true)
     @Mapping(target = "estadoActual", ignore = true)
     @Mapping(target = "historialEstados", ignore = true)
@@ -24,8 +23,8 @@ public interface ProfesionalMapper {
     Profesional toEntity(ProfesionalRegistroDTO dto);
 
     @Mapping(source = "especialidad.descripcion", target = "especialidad")
-    @Mapping(source = "localidad.nombre", target = "nombreLocalidad")
-    @Mapping(source = "localidad.provincia.nombre", target = "nombreProvincia")
+    @Mapping(source = "direccion.localidad.nombre", target = "nombreLocalidad")
+    @Mapping(source = "direccion.localidad.provincia.nombre", target = "nombreProvincia")
     @Mapping(source = "estadoActual.nombre", target = "estadoActual")
     // --- NUEVO CAMPO MAPEADO ---
     @Mapping(source = "membresiaActual.nombre", target = "membresiaActual")

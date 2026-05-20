@@ -27,6 +27,8 @@ public interface ProfesionalService {
     
     void confirmarCuenta(String token);
 
+    void confirmarCuentaConCodigo(String email, String codigo);
+
     // --- NUEVOS MÉTODOS DE MEMBRESÍA ---
     void verificarMatricula(Long idProfesional); 
     void otorgarAccesoIndefinido(Long idProfesional);

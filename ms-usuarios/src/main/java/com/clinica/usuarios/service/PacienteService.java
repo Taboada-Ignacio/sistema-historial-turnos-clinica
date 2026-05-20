@@ -16,5 +16,7 @@ public interface PacienteService {
     // Double opt-in
     void confirmarCuenta(String token);
 
+    void confirmarCuentaConCodigo(String email, String codigo);
+
     void reenviarCorreoConfirmacion(String email);
 }

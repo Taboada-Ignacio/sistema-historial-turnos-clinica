@@ -8,9 +8,11 @@ import com.clinica.usuarios.exception.ReglaDeNegocioException;
 import com.clinica.usuarios.mapper.AdministradorMapper;
 import com.clinica.usuarios.model.*;
 import com.clinica.usuarios.repository.*;
+import com.clinica.usuarios.service.AccountActivationService;
 import com.clinica.usuarios.service.AdministradorService;
 import com.clinica.usuarios.service.DireccionService;
-import com.clinica.usuarios.service.EmailService; // Importado
+import com.clinica.usuarios.service.EmailService;
+import com.clinica.usuarios.service.VerificationTokenService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -20,7 +22,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -37,7 +38,9 @@ public class AdministradorServiceImpl implements AdministradorService {
     private final EstadoRepository estadoRepository;
     private final CambioEstadoRepository cambioEstadoRepository;
     private final VerificationTokenRepository tokenRepository;
-    private final EmailService emailService; // NUEVA DEPENDENCIA
+    private final VerificationTokenService verificationTokenService;
+    private final AccountActivationService accountActivationService;
+    private final EmailService emailService;
     private final AdministradorMapper administradorMapper;
     private final PasswordEncoder passwordEncoder;
     private final DireccionService direccionService;
@@ -68,7 +71,6 @@ public class AdministradorServiceImpl implements AdministradorService {
         // 4. Mapeo y Configuración
         Administrador admin = administradorMapper.toEntity(dto);
         admin.setRoles(Set.of(rolAdmin, rolProfesional, rolPaciente));
-        admin.setLocalidad(localidad);
         admin.setDireccion(direccionService.obtenerOCrearPorTextoYLocalidad(dto.getDireccion(), localidad));
         admin.setPassword(passwordEncoder.encode(dto.getPassword()));
         admin.setEstadoActual(estadoPendiente); 
@@ -78,10 +80,8 @@ public class AdministradorServiceImpl implements AdministradorService {
 
         // 6. Registro de Auditoría, Generación de Token y ENVÍO DE EMAIL
         registrarCambioEstado(adminGuardado, estadoPendiente);
-        String token = generarTokenVerificacion(adminGuardado); // Ahora devuelve el String
-        
-        // Disparamos el correo asíncrono
-        emailService.enviarEmailConfirmacion(adminGuardado, token);
+        VerificationTokenService.DatosConfirmacion datos = verificationTokenService.crearTokenConfirmacion(adminGuardado);
+        emailService.enviarEmailConfirmacion(adminGuardado, datos.token(), datos.codigo());
 
         return administradorMapper.toResponseDTO(adminGuardado);
     }
@@ -91,20 +91,27 @@ public class AdministradorServiceImpl implements AdministradorService {
     public void confirmarCuenta(String token) {
         VerificationToken vToken = tokenRepository.findByToken(token)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Token de confirmación inválido"));
+        accountActivationService.confirmarCuentaDesdeToken(vToken, this::registrarHistorialTrasActivacion);
+    }
 
-        if (vToken.getFechaExpiracion().isBefore(LocalDateTime.now())) {
-            throw new ReglaDeNegocioException("El link de confirmación ha expirado.");
-        }
+    @Override
+    @Transactional
+    public void confirmarCuentaConCodigo(String email, String codigo) {
+        VerificationToken vToken = tokenRepository.findByUsuario_EmailAndCodigo(email, codigo)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Código de confirmación inválido."));
 
         Usuario usuario = vToken.getUsuario();
-        Estado estadoActivo = estadoRepository.findByNombre("ACTIVO")
-                .orElseThrow(() -> new ReglaDeNegocioException("Estado ACTIVO no disponible"));
+        if (!(usuario instanceof Administrador)) {
+            throw new ReglaDeNegocioException("El correo no corresponde a un administrador registrado.");
+        }
 
-        usuario.setEstadoActual(estadoActivo);
-        usuarioRepository.save(usuario);
-        registrarCambioEstado(usuario, estadoActivo);
+        boolean esAdmin = usuario.getRoles().stream()
+                .anyMatch(r -> "ROLE_ADMINISTRADOR".equals(r.getDescripcion()));
+        if (!esAdmin) {
+            throw new ReglaDeNegocioException("El correo no corresponde a un administrador registrado.");
+        }
 
-        tokenRepository.delete(vToken);
+        accountActivationService.confirmarCuentaDesdeToken(vToken, this::registrarHistorialTrasActivacion);
     }
 
     @Override
@@ -128,9 +135,8 @@ public class AdministradorServiceImpl implements AdministradorService {
             throw new ReglaDeNegocioException("La cuenta ya se encuentra activa. No es necesario reenviar el correo.");
         }
 
-        tokenRepository.deleteByUsuario(usuario);
-        String nuevoToken = generarTokenVerificacion(usuario);
-        emailService.enviarEmailConfirmacion(usuario, nuevoToken);
+        VerificationTokenService.DatosConfirmacion datos = verificationTokenService.crearTokenConfirmacion(usuario);
+        emailService.enviarEmailConfirmacion(usuario, datos.token(), datos.codigo());
     }
 
     @Override
@@ -190,6 +196,10 @@ public class AdministradorServiceImpl implements AdministradorService {
 
     // --- MÉTODOS PRIVADOS DE APOYO ---
 
+    private void registrarHistorialTrasActivacion(Usuario usuario) {
+        registrarCambioEstado(usuario, usuario.getEstadoActual());
+    }
+
     private void registrarCambioEstado(Usuario usuario, Estado estado) {
         CambioEstado historial = CambioEstado.builder()
                 .usuario(usuario)
@@ -197,17 +207,6 @@ public class AdministradorServiceImpl implements AdministradorService {
                 .fecha(LocalDateTime.now())
                 .build();
         cambioEstadoRepository.save(historial);
-    }
-
-    private String generarTokenVerificacion(Usuario usuario) {
-        String token = UUID.randomUUID().toString();
-        VerificationToken vToken = VerificationToken.builder()
-                .token(token)
-                .usuario(usuario)
-                .fechaExpiracion(LocalDateTime.now().plusHours(12)) 
-                .build();
-        tokenRepository.save(vToken);
-        return token; // Retornamos el token para el EmailService
     }
 
     private void validarUnicidadUsuario(String email, Integer dni) {

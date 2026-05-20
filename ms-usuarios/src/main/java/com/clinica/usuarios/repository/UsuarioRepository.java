@@ -19,6 +19,6 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
     Optional<Usuario> findByDni(Integer dni);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Query("UPDATE Usuario u SET u.localidad.idLocalidad = :sentinelId WHERE u.localidad.idLocalidad = :oldId")
-    int reasignarLocalidad(@Param("oldId") Long oldId, @Param("sentinelId") Long sentinelId);
+    @Query("UPDATE Usuario u SET u.direccion.idDireccion = :sentinelId WHERE u.direccion.idDireccion = :oldId")
+    int reasignarDireccion(@Param("oldId") Long oldId, @Param("sentinelId") Long sentinelId);
 }

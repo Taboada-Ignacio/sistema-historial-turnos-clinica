@@ -56,6 +56,7 @@ export const ADMIN_CATALOG_CONFIG = {
     subtitleKey: 'nombreProvincia',
     readOnly: false,
     sentinelField: 'nombre',
+    supportsProvinciaFilter: true,
     editableKeys: ['nombre', 'idProvincia'],
     fieldLabels: { nombre: 'Nombre', idProvincia: 'ID provincia' },
   },

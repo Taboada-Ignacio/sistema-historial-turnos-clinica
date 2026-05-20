@@ -19,6 +19,8 @@ Tecnologías principales: Java 21, Spring Boot 3, Spring Security, JWT, React (V
 
 | Documento | Contenido |
 |-----------|-----------|
+| [ms-usuarios/README.md](ms-usuarios/README.md) | BD (init + geo Argentina), direcciones, sentinel `SIN ESPECIFICAR`, verificación email |
+| [frontend-clinica/README.md](frontend-clinica/README.md) | Panel admin: catálogos, direcciones, verificación de cuenta |
 | [docs/API.md](docs/API.md) | Rutas HTTP de `ms-usuarios`, prefijo gateway `/usuarios`, convenciones de acceso |
 | [docs/ENTIDADES.md](docs/ENTIDADES.md) | Modelo de datos y relaciones JPA |
 | [docs/SEGURIDAD.md](docs/SEGURIDAD.md) | Identidad centralizada en `ms-usuarios`, JWT, contrato con otros MS |
@@ -27,12 +29,46 @@ Tecnologías principales: Java 21, Spring Boot 3, Spring Security, JWT, React (V
 
 ## Arranque rápido local
 
-### Base de datos (Docker)
+### Stack completo (recomendado)
+
+Desde la **raíz del repo**:
+
+```bash
+docker compose up --build -d
+```
+
+El servicio `db-usuarios` aplica, en orden (solo en **volumen nuevo**):
+
+1. `ms-usuarios/init.sql` — esquema y catálogos base  
+2. `ms-usuarios/sql/argentina-geo-data.sql` — provincias y localidades de Argentina  
+3. `ms-usuarios/sql/03-direcciones-sentinel.sql` — dirección `SIN ESPECIFICAR` por localidad  
+
+Si ya tenías Postgres con datos viejos y no ves provincias/localidades:
+
+```bash
+docker compose down -v
+docker compose up --build -d
+```
+
+(`-v` borra el volumen `db_usuarios_data` y vuelve a ejecutar los scripts.)
+
+### Otras opciones de base de datos
+
+**Solo `ms-usuarios`** (misma semilla, otro compose):
+
+```bash
+cd ms-usuarios
+docker compose up -d
+```
+
+**Infra compartida** (`infra/`, otro Postgres; no incluye geo de usuarios):
 
 ```bash
 cd infra
 docker-compose up -d
 ```
+
+Detalle: [ms-usuarios/README.md](ms-usuarios/README.md).
 
 ### Backend (`ms-usuarios`)
 
@@ -146,17 +182,37 @@ Cobertura principal: **`JwtUtil`** (claims y expiración), cadena de seguridad c
 
 ## CI (GitHub Actions)
 
-Workflow **`.github/workflows/ms-usuarios-startup-check.yml`**: levanta PostgreSQL, aplica `ms-usuarios/init.sql`, empaqueta el servicio y ejecuta la JVM en modo no-web con perfil `prod` para validar `StartupChecks`. Para ejecutar también **`mvn test`** en CI, se puede añadir un job que use el perfil `test` y omita Postgres si solo corre los tests unitarios/integración ligeros.
+Workflow **`.github/workflows/ms-usuarios-startup-check.yml`**: levanta PostgreSQL, aplica `ms-usuarios/init.sql`, empaqueta el servicio y ejecuta la JVM en modo no-web con perfil `prod` para validar `StartupChecks`. En Docker local del MS se recomienda además `sql/argentina-geo-data.sql` y `sql/03-direcciones-sentinel.sql` (ver [ms-usuarios/README.md](ms-usuarios/README.md)). Para ejecutar también **`mvn test`** en CI, se puede añadir un job con perfil `test` (H2).
 
 ---
 
 ## Documentación adicional
 
-- **Despliegue y cookies (detalle):** [`ms-usuarios/README-deploy.md`](ms-usuarios/README-deploy.md)
-- **SQL inicial / semilla:** [`ms-usuarios/init.sql`](ms-usuarios/init.sql)
+- **Microservicio usuarios:** [`ms-usuarios/README.md`](ms-usuarios/README.md)
+- **Frontend (panel admin, verificación email):** [`frontend-clinica/README.md`](frontend-clinica/README.md)
+- **Despliegue y cookies:** [`ms-usuarios/README-deploy.md`](ms-usuarios/README-deploy.md)
+- **SQL:** [`ms-usuarios/init.sql`](ms-usuarios/init.sql), [`ms-usuarios/sql/`](ms-usuarios/sql/)
+
+---
+
+## Funcionalidades recientes (`ms-usuarios` + front)
+
+### Ubicación y direcciones
+
+- Catálogo **`direcciones`** por localidad; el **usuario** solo guarda **`id_direccion`** (la localidad se deduce de la dirección).
+- Valor reservado **`SIN ESPECIFICAR`** en catálogos y en una dirección por localidad (integridad al borrar).
+- API: CRUD de direcciones para admin; GET públicos para formularios de registro.
+
+### Panel admin (catálogos)
+
+Ruta base: `/internal/admin/panel/entidades` → listados, **alta** (`…/catalogo/:tipo/nuevo`), edición y baja con confirmación de **contraseña actual**. Pantalla dedicada **Direcciones** (`…/direcciones`).
+
+### Verificación de email
+
+Código de 6 dígitos (3 min) + enlace; endpoints `POST …/confirmar-codigo` por tipo de usuario. Detalle en [ms-usuarios/README.md](ms-usuarios/README.md).
 
 ---
 
 ## Modelo de datos (`ms-usuarios`)
 
-Herencia **JOINED** (`Usuario` → `Paciente` / `Profesional` / `Administrador`). Catálogos: roles, provincias, localidades, especialidades, obras sociales, estados, membresías.
+Herencia **JOINED** (`Usuario` → `Paciente` / `Profesional` / `Administrador`). Catálogos: roles, provincias, localidades, **direcciones**, especialidades, obras sociales, estados, membresías. Diagrama y FK en [docs/ENTIDADES.md](docs/ENTIDADES.md).

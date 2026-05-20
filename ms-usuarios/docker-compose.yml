@@ -9,7 +9,9 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./init.sql:/docker-entrypoint-initdb.d/01-init.sql
+      - ./sql/argentina-geo-data.sql:/docker-entrypoint-initdb.d/02-argentina-geo-data.sql
+      - ./sql/03-direcciones-sentinel.sql:/docker-entrypoint-initdb.d/03-direcciones-sentinel.sql
 
   ms-usuarios:
     build: .

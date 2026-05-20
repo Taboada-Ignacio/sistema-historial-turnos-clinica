@@ -25,9 +25,9 @@ public interface ProfesionalRepository extends JpaRepository<Profesional, Long> 
 
     @Query("""
             SELECT DISTINCT p FROM Profesional p
-            LEFT JOIN FETCH p.localidad loc
+            LEFT JOIN FETCH p.direccion dir
+            LEFT JOIN FETCH dir.localidad loc
             LEFT JOIN FETCH loc.provincia
-            LEFT JOIN FETCH p.direccion
             JOIN FETCH p.especialidad
             JOIN FETCH p.estadoActual
             """)
@@ -35,9 +35,9 @@ public interface ProfesionalRepository extends JpaRepository<Profesional, Long> 
 
     @Query("""
             SELECT p FROM Profesional p
-            LEFT JOIN FETCH p.localidad loc
+            LEFT JOIN FETCH p.direccion dir
+            LEFT JOIN FETCH dir.localidad loc
             LEFT JOIN FETCH loc.provincia
-            LEFT JOIN FETCH p.direccion
             JOIN FETCH p.especialidad
             JOIN FETCH p.estadoActual
             WHERE p.idUsuario = :id

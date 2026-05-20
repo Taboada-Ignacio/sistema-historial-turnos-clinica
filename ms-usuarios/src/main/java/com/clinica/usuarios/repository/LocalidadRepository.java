@@ -25,4 +25,15 @@ public interface LocalidadRepository extends JpaRepository<Localidad, Long> {
     List<Localidad> findByProvinciaId(@Param("idProvincia") Long idProvincia);
 
     Optional<Localidad> findByNombreAndProvincia_IdProvincia(String nombre, Long idProvincia);
+
+    @Query("""
+            SELECT l FROM Localidad l
+            JOIN FETCH l.provincia p
+            WHERE (:provinciaId IS NULL OR p.idProvincia = :provinciaId)
+              AND (:nombrePattern IS NULL OR UPPER(l.nombre) LIKE :nombrePattern)
+            ORDER BY p.nombre ASC, l.nombre ASC
+            """)
+    List<Localidad> buscar(
+            @Param("provinciaId") Long provinciaId,
+            @Param("nombrePattern") String nombrePattern);
 }

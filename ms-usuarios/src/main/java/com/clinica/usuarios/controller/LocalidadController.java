@@ -32,8 +32,10 @@ public class LocalidadController {
     }
 
     @GetMapping
-    public ResponseEntity<List<LocalidadResponseDTO>> obtenerTodas() {
-        return ResponseEntity.ok(localidadService.obtenerTodasLasLocalidades());
+    public ResponseEntity<List<LocalidadResponseDTO>> listar(
+            @RequestParam(required = false) Long provinciaId,
+            @RequestParam(required = false) String nombre) {
+        return ResponseEntity.ok(localidadService.buscarLocalidades(provinciaId, nombre));
     }
 
     @PreAuthorize("hasAuthority('ROLE_ADMINISTRADOR')")
@@ -49,10 +51,11 @@ public class LocalidadController {
         return ResponseEntity.noContent().build();
     }
     
-    // Endpoint: GET /api/localidades/provincia/1
+    /** Alias de {@code GET /api/localidades?provinciaId=} (compatibilidad). */
     @GetMapping("/provincia/{provinciaId}")
-    public ResponseEntity<List<LocalidadResponseDTO>> listarPorProvincia(@PathVariable Long provinciaId) {
-        List<LocalidadResponseDTO> localidades = localidadService.obtenerLocalidadesPorProvincia(provinciaId);
-        return ResponseEntity.ok(localidades);
+    public ResponseEntity<List<LocalidadResponseDTO>> listarPorProvincia(
+            @PathVariable Long provinciaId,
+            @RequestParam(required = false) String nombre) {
+        return ResponseEntity.ok(localidadService.buscarLocalidades(provinciaId, nombre));
     }
 }

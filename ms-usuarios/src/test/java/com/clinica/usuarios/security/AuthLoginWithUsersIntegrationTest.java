@@ -110,7 +110,6 @@ class AuthLoginWithUsersIntegrationTest {
         p.setFechaNacimiento(LocalDate.of(1991, 6, 15));
         p.setEstadoActual(estado);
         p.setRoles(Set.of(rol));
-        p.setLocalidad(loc);
         p.setDireccion(dir);
         p.setObraSocial(os);
         return p;

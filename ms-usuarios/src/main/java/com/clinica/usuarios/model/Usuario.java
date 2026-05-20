@@ -64,12 +64,8 @@ public class Usuario {
     )
     private Set<Rol> roles;
 
-    /** Dirección tipificada del catálogo; debe pertenecer a la misma {@link #localidad}. */
+    /** Dirección tipificada del catálogo; provincia y localidad se obtienen desde {@link Direccion#getLocalidad()}. */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_direccion", nullable = false)
     private Direccion direccion;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_localidad", nullable = false)
-    private Localidad localidad;
 }
