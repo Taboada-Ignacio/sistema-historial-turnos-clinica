@@ -126,6 +126,25 @@ Redirects post-confirmación (SPA, `app.frontend-url`):
 
 ---
 
+## Recuperación de contraseña
+
+Flujo en `AuthController` (sin JWT en el cliente de recuperación):
+
+| Paso | Endpoint | Notas |
+|------|----------|--------|
+| 1 | `POST /api/auth/solicitar-cambio-password/{paciente\|profesional\|admin}` | Body `{ "email" }`. Token nuevo en `tokens_confirmacion`, **30 min**. |
+| 2 | `GET /api/auth/confirmar-cambio-password?token=&tipo=` | Redirect a la SPA o a `/recuperacion-password-error`. |
+| 3 | `POST /api/auth/cambiar-password-con-token/{portal}` | Body `{ "token", "passwordNueva" }`. Borra el token y revoca refresh tokens. |
+
+Variables de enlace en el correo:
+
+- `APP_URL` — base del gateway (ej. `http://localhost:8080`) para el link del mail.
+- `app.frontend-url` — base de la SPA para redirects.
+
+Seguridad: `SecurityConfig` + `PublicRequestPaths` + omisión en `JwtAuthFilter`. Documentación ampliada: [`docs/RECUPERACION-CONTRASENA.md`](../docs/RECUPERACION-CONTRASENA.md).
+
+---
+
 ## Seguridad admin: contraseña actual
 
 `POST /api/seguridad/verificar-password-actual` — el panel admin lo usa antes de mutaciones sensibles (alta/edición de catálogos y direcciones).

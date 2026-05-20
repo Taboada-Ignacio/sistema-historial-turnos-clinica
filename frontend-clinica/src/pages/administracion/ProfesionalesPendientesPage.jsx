@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import clienteAxios from '../../api/axiosConfig';
 import { profesionalFotoAbsoluteUrl } from '../../utils/profesionalFotoUrl';
+import { formatEspecialidad } from '../../utils/formatEspecialidad';
 import { ADMIN_PATHS } from '../../utils/portalPaths';
 
 const apiErrorMessage = (err) =>
@@ -88,7 +89,9 @@ const ProfesionalesPendientesPage = () => {
                 <div className="flex-1 min-w-0 grid grid-cols-1 sm:grid-cols-3 gap-1 sm:gap-4 sm:items-center">
                   <p className="font-bold text-slate-900 truncate order-1 sm:order-1">{profesional.apellido}</p>
                   <p className="text-slate-800 truncate order-2 sm:order-2">{profesional.nombre}</p>
-                  <p className="text-sm text-slate-600 truncate order-3 sm:order-3">{profesional.especialidad || '—'}</p>
+                  <p className="text-sm text-slate-600 truncate order-3 sm:order-3">
+                    {profesional.especialidad ? formatEspecialidad(profesional.especialidad) : '—'}
+                  </p>
                 </div>
                 <span className="text-sm font-semibold text-slate-500 shrink-0 hidden sm:inline">Ver detalle →</span>
               </button>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import clienteAxios from '../../api/axiosConfig';
+import { formatEspecialidad } from '../../utils/formatEspecialidad';
 import PasswordVisibilityToggle from '../../components/PasswordVisibilityToggle';
 import ProvinciaLocalidadFields from '../../components/ProvinciaLocalidadFields';
 import { getMaxBirthDateString, isAtLeastAge } from '../../utils/ageValidation';
@@ -264,7 +265,11 @@ const RegistroProfesional = () => {
                 <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Especialidad Principal</label>
                 <select name="especialidad" required value={formData.especialidad} onChange={handleChange} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50 transition-all">
                   <option value="">Seleccione especialidad</option>
-                  {especialidades.map(e => <option key={e.idEspecialidad} value={e.idEspecialidad}>{e.descripcion}</option>)}
+                  {especialidades.map((e) => (
+                    <option key={e.idEspecialidad} value={e.idEspecialidad}>
+                      {formatEspecialidad(e.descripcion)}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div>

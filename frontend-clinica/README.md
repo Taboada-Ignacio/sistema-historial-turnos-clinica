@@ -39,6 +39,24 @@ Aplicación web con tres portales: **paciente**, **profesional** y **administrac
 - **Refresh token:** cookie **HttpOnly**; el cliente usa **`withCredentials: true`** en Axios.
 - Si una petición devuelve **401**, el interceptor intenta **`POST .../api/auth/refresh`** y reintenta la petición una vez.
 
+## Recuperación de contraseña
+
+Flujo **sin JWT** (`clienteAxiosPublic` en `src/api/axiosConfig.js`).
+
+| Portal | Solicitar correo | Nueva contraseña | Error de enlace |
+|--------|------------------|------------------|-----------------|
+| Paciente | `/recuperar-password/paciente` | `/cambiar-password/paciente?token=` | `/recuperacion-password-error` |
+| Profesional | `/recuperar-password/profesional` | `/cambiar-password/profesional?token=` | `?tipo=profesional&motivo=invalido\|expirado` |
+| Admin | `/recuperar-password/admin` | `/cambiar-password/admin?token=` | `?tipo=admin&…` |
+
+- Enlace del correo válido **30 minutos**; el token es de **un solo uso**.
+- Hook: `src/hooks/useSubmitCambioPasswordConToken.js` — un solo `POST`; candado `lockRef` en la página + `globalApiLock` en el hook para evitar doble envío.
+- Documentación completa: [`docs/RECUPERACION-CONTRASENA.md`](../docs/RECUPERACION-CONTRASENA.md).
+
+**Importante:** `VITE_API_BASE_URL` debe apuntar al **gateway** (`http://localhost:8080`) con `api-gateway` levantado en Docker, porque las rutas del front usan el prefijo `/usuarios/api/...`.
+
+---
+
 ## Verificación de email (registro)
 
 Componente compartido: `src/components/VerificarEmailForm.jsx`.
@@ -142,8 +160,20 @@ Ejemplo: listar provincias → `GET /usuarios/api/provincias`.
 
 ---
 
+## Registro profesional — foto de perfil
+
+En el paso **Seguridad y Perfil** (`RegistroProfesional.jsx`), el usuario ve un aviso antes de subir la foto:
+
+- Debe ser de **ámbito profesional** (rostro visible, fondo neutro, vestimenta acorde).
+- La imagen será **visible para todos los pacientes y usuarios** del sistema.
+
+Formato aceptado: **JPG**; el front comprime y convierte a WebP antes del `multipart` al backend.
+
+---
+
 ## Documentación del proyecto
 
 - README raíz: arquitectura, seguridad, variables de entorno, CI.
 - [`ms-usuarios/README.md`](../ms-usuarios/README.md): base de datos, sentinel, direcciones, verificación de email.
 - [`docs/API.md`](../docs/API.md): contrato HTTP completo.
+- [`docs/RECUPERACION-CONTRASENA.md`](../docs/RECUPERACION-CONTRASENA.md): recuperación de contraseña, errores de enlace y anti-doble-submit.

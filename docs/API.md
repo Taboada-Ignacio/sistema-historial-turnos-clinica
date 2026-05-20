@@ -40,11 +40,15 @@ Este documento **complementa** OpenAPI con convenciones de **seguridad**, **cook
 | POST | `/api/auth/login` | Público | Body: `email`, `password`, **`portal`**: `paciente` \| `profesional` \| `admin`. Set-Cookie **`refreshToken`** (HttpOnly). Respuesta JSON: **`token`** (JWT), **`email`**, **`rol`**. Origen validado si `app.allowed-origins` no está vacío. |
 | POST | `/api/auth/refresh` | Público (cookie) | Cookie **`refreshToken`** obligatoria; validación de origen igual que login. |
 | POST | `/api/auth/cambiar-password` | Público | Email + contraseña actual + nueva (revoca refresh tokens). |
-| POST | `/api/auth/solicitar-cambio-password/paciente` | Público | |
-| POST | `/api/auth/solicitar-cambio-password/profesional` | Público | |
-| GET | `/api/auth/confirmar-cambio-password` | Público | Query: `token`, `tipo` — redirect a SPA. |
-| POST | `/api/auth/cambiar-password-con-token/paciente` | Público | |
-| POST | `/api/auth/cambiar-password-con-token/profesional` | Público | |
+| POST | `/api/auth/solicitar-cambio-password/paciente` | Público | Body `{ "email" }`. Usuario ACTIVO con rol paciente. Invalida tokens previos; nuevo token **30 min**. |
+| POST | `/api/auth/solicitar-cambio-password/profesional` | Público | Igual, rol profesional. |
+| POST | `/api/auth/solicitar-cambio-password/admin` | Público | Igual, rol administrador. |
+| GET | `/api/auth/confirmar-cambio-password` | Público | Query: `token`, `tipo` (`paciente` \| `profesional` \| `admin`). Redirect SPA: éxito → `/cambiar-password/{tipo}?token=`; error → `/recuperacion-password-error?tipo=&motivo=invalido\|expirado`. |
+| POST | `/api/auth/cambiar-password-con-token/paciente` | Público | Body `{ "token", "passwordNueva" }`. Un solo uso del token; revoca refresh tokens. |
+| POST | `/api/auth/cambiar-password-con-token/profesional` | Público | Igual. |
+| POST | `/api/auth/cambiar-password-con-token/admin` | Público | Igual. |
+
+Flujo detallado, front y anti-doble-submit: [`RECUPERACION-CONTRASENA.md`](RECUPERACION-CONTRASENA.md).
 
 ---
 
@@ -72,8 +76,9 @@ Este documento **complementa** OpenAPI con convenciones de **seguridad**, **cook
 | POST | `/confirmar-codigo` | Público | Body: `email`, `codigo`. |
 | POST | `/reenviar-confirmacion` | Público | Query `email`. |
 | GET | `/` | ADMIN | Sin query: todos. Query **`membresia=<NOMBRE>`** (p. ej. `SIN_VERIFICAR`, `INACTIVA`, `ACTIVA`): filtra por membresía actual; el nombre se normaliza a mayúsculas y debe existir en catálogo → si no existe **404**. `membresia` vacío → **400**. |
-| GET | `/presentacion` | ADMIN, PACIENTE o PROFESIONAL | Catálogo reducido. |
-| GET | `/{id}/presentacion` | ADMIN, PACIENTE o PROFESIONAL | |
+| GET | `/me` | PROFESIONAL | Perfil del usuario autenticado (`membresiaActual`, especialidad, foto, etc.). |
+| GET | `/presentacion` | ADMIN, PACIENTE o PROFESIONAL | Catálogo reducido (solo profesionales ACTIVO). |
+| GET | `/{id}/presentacion` | ADMIN, PACIENTE o PROFESIONAL | Ficha pública; el **propio** profesional puede consultar su ficha aunque no esté ACTIVO (p. ej. `SIN_VERIFICAR`). |
 | GET | `/{id}` | ADMIN o PROFESIONAL **y** mismo usuario |
 | GET | `/membresia/inactiva` | ADMIN |
 | PUT | `/{id}` | ADMIN o PROFESIONAL **y** mismo usuario |

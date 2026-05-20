@@ -10,6 +10,8 @@ import com.clinica.usuarios.web.AccountConfirmationRedirectHelper;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -29,7 +31,7 @@ public class ProfesionalController {
     private final AccountConfirmationRedirectHelper confirmRedirect;
 
     /**
-     * Registra un nuevo profesional médico y guarda su foto de perfil.
+     * Registra un nuevo profesional de la salud y guarda su foto de perfil.
      * Se asigna el estado 'PENDIENTE', membresía 'SIN_VERIFICAR' y se envía el correo.
      */
     @PostMapping(value = "/registro", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -102,8 +104,24 @@ public class ProfesionalController {
      */
     @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRADOR', 'ROLE_PACIENTE', 'ROLE_PROFESIONAL')")
     @GetMapping("/{id}/presentacion")
-    public ResponseEntity<ProfesionalPresentacionDTO> obtenerParaPresentacion(@PathVariable Long id) {
-        return ResponseEntity.ok(profesionalService.obtenerParaPresentacion(id));
+    public ResponseEntity<ProfesionalPresentacionDTO> obtenerParaPresentacion(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails principal) {
+        String email = principal != null ? principal.getUsername() : null;
+        return ResponseEntity.ok(profesionalService.obtenerParaPresentacion(id, email));
+    }
+
+    /**
+     * Perfil del profesional autenticado (portal staff).
+     */
+    @PreAuthorize("hasAuthority('ROLE_PROFESIONAL')")
+    @GetMapping("/me")
+    public ResponseEntity<ProfesionalResponseDTO> obtenerSesion(
+            @AuthenticationPrincipal UserDetails principal) {
+        if (principal == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        return ResponseEntity.ok(profesionalService.obtenerProfesionalSesion(principal.getUsername()));
     }
 
     /**

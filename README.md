@@ -7,7 +7,7 @@ Sistema de información para consultorios médicos bajo arquitectura de microser
 | Componente | Rol |
 |------------|-----|
 | **ms-usuarios** | Identidad, roles, JWT, refresh tokens, catálogos de usuarios |
-| **api-gateway** | Entrada HTTP / enrutamiento (si aplica) |
+| **api-gateway** | Entrada HTTP (`:8080`), prefijo `/usuarios` → `ms-usuarios` (**requerido** si el front usa `VITE_API_BASE_URL` al gateway) |
 | **frontend-clinica** | Portales paciente, profesional y administración |
 | **PostgreSQL** | Una base por servicio (*database-per-service*) |
 
@@ -24,6 +24,7 @@ Tecnologías principales: Java 21, Spring Boot 3, Spring Security, JWT, React (V
 | [docs/API.md](docs/API.md) | Rutas HTTP de `ms-usuarios`, prefijo gateway `/usuarios`, convenciones de acceso |
 | [docs/ENTIDADES.md](docs/ENTIDADES.md) | Modelo de datos y relaciones JPA |
 | [docs/SEGURIDAD.md](docs/SEGURIDAD.md) | Identidad centralizada en `ms-usuarios`, JWT, contrato con otros MS |
+| [docs/RECUPERACION-CONTRASENA.md](docs/RECUPERACION-CONTRASENA.md) | Recuperación de contraseña (30 min), errores en SPA, rutas públicas, anti-doble-submit |
 
 ---
 
@@ -117,7 +118,7 @@ Listados completos de profesionales con datos sensibles: solo **`ROLE_ADMINISTRA
 ### Refresh token
 
 - Almacenamiento en cookie **HttpOnly** + **SameSite=Lax**; flag **Secure** controlado por entorno (`APP_COOKIE_SECURE` / `app.cookie.secure`).
-- Tras **cambio de contraseña** se revocan refresh tokens del usuario.
+- Tras **cambio de contraseña** (con contraseña actual o con token de recuperación) se revocan refresh tokens del usuario.
 
 ### Filtro JWT
 
@@ -189,7 +190,8 @@ Workflow **`.github/workflows/ms-usuarios-startup-check.yml`**: levanta PostgreS
 ## Documentación adicional
 
 - **Microservicio usuarios:** [`ms-usuarios/README.md`](ms-usuarios/README.md)
-- **Frontend (panel admin, verificación email):** [`frontend-clinica/README.md`](frontend-clinica/README.md)
+- **Frontend (panel admin, verificación email, recuperación):** [`frontend-clinica/README.md`](frontend-clinica/README.md)
+- **Recuperación de contraseña (flujo completo):** [`docs/RECUPERACION-CONTRASENA.md`](docs/RECUPERACION-CONTRASENA.md)
 - **Despliegue y cookies:** [`ms-usuarios/README-deploy.md`](ms-usuarios/README-deploy.md)
 - **SQL:** [`ms-usuarios/init.sql`](ms-usuarios/init.sql), [`ms-usuarios/sql/`](ms-usuarios/sql/)
 
@@ -210,6 +212,14 @@ Ruta base: `/internal/admin/panel/entidades` → listados, **alta** (`…/catalo
 ### Verificación de email
 
 Código de 6 dígitos (3 min) + enlace; endpoints `POST …/confirmar-codigo` por tipo de usuario. Detalle en [ms-usuarios/README.md](ms-usuarios/README.md).
+
+### Recuperación de contraseña
+
+Flujo por correo para paciente, profesional y administrador: solicitud → enlace (**30 min**, un solo uso) → formulario en la SPA → revocación de refresh tokens. Errores de enlace usado/expirado en `/recuperacion-password-error`. El front evita doble `POST` al guardar (`lockRef` + hook compartido). Documentación: [docs/RECUPERACION-CONTRASENA.md](docs/RECUPERACION-CONTRASENA.md).
+
+### Registro profesional — foto
+
+Aviso en el formulario: foto de ámbito profesional, visible para todos los pacientes y usuarios del sistema.
 
 ---
 

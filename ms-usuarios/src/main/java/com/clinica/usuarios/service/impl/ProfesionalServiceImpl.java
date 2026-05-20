@@ -143,6 +143,17 @@ public class ProfesionalServiceImpl implements ProfesionalService {
 
     @Override
     @Transactional(readOnly = true)
+    public ProfesionalResponseDTO obtenerProfesionalSesion(String email) {
+        Usuario usuario = usuarioRepository.findByEmail(email)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Usuario no encontrado."));
+        if (!(usuario instanceof Profesional profesional)) {
+            throw new ReglaDeNegocioException("La cuenta no corresponde a un profesional de la salud.");
+        }
+        return profesionalMapper.toResponseDTO(profesional);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<ProfesionalResponseDTO> obtenerTodosLosProfesionales() {
         return profesionalRepository.findAll().stream()
                 .map(profesionalMapper::toResponseDTO)
@@ -175,10 +186,13 @@ public class ProfesionalServiceImpl implements ProfesionalService {
 
     @Override
     @Transactional(readOnly = true)
-    public ProfesionalPresentacionDTO obtenerParaPresentacion(Long id) {
+    public ProfesionalPresentacionDTO obtenerParaPresentacion(Long id, String emailSolicitante) {
         Profesional profesional = profesionalRepository.findWithUbicacionById(id)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Profesional no encontrado con ID: " + id));
-        if (!incluirEnCatalogoPresentacion(profesional)) {
+        boolean esPropio = emailSolicitante != null
+                && profesional.getEmail() != null
+                && emailSolicitante.equalsIgnoreCase(profesional.getEmail());
+        if (!esPropio && !incluirEnCatalogoPresentacion(profesional)) {
             throw new RecursoNoEncontradoException("Profesional no encontrado con ID: " + id);
         }
         return toPresentacionDTO(profesional);

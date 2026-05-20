@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import clienteAxios from '../../api/axiosConfig';
 import { profesionalFotoAbsoluteUrl } from '../../utils/profesionalFotoUrl';
+import { formatEspecialidad } from '../../utils/formatEspecialidad';
 import { ADMIN_PATHS } from '../../utils/portalPaths';
 
 const apiErrorMessage = (err) =>
@@ -176,7 +177,9 @@ const ProfesionalPendienteDetallePage = () => {
                 </div>
                 <div>
                   <dt className="text-slate-500">Especialidad</dt>
-                  <dd className="font-medium text-slate-900">{profesional.especialidad ?? '—'}</dd>
+                  <dd className="font-medium text-slate-900">
+                    {profesional.especialidad ? formatEspecialidad(profesional.especialidad) : '—'}
+                  </dd>
                 </div>
                 <div>
                   <dt className="text-slate-500">Membresía actual</dt>

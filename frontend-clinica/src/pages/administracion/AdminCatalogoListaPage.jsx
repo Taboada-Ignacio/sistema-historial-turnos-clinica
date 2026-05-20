@@ -6,6 +6,7 @@ import { filaEsReservada, getCatalogConfig } from './adminCatalogConfig';
 import CatalogProvinciaPicker from '../../components/CatalogProvinciaPicker';
 import { useGeoCatalog } from '../../hooks/useGeoCatalog';
 import { normalizarGeoTexto } from '../../utils/geoFilter';
+import { formatEspecialidad } from '../../utils/formatEspecialidad';
 
 const AdminCatalogoListaPage = () => {
   const { tipo } = useParams();
@@ -84,7 +85,10 @@ const AdminCatalogoListaPage = () => {
   }, [idProvinciaFiltro, geo]);
 
   const textoItem = (row) => {
-    const main = row?.[config.listTitle] ?? '—';
+    let main = row?.[config.listTitle] ?? '—';
+    if (tipo === 'especialidades' && typeof main === 'string') {
+      main = formatEspecialidad(main) || main;
+    }
     if (config.subtitleKey && row?.[config.subtitleKey]) {
       return `${main} (${row[config.subtitleKey]})`;
     }

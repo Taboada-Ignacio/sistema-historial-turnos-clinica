@@ -11,6 +11,7 @@ Lista priorizada de trabajo pendiente respecto a seguridad, integración front/g
 | **P0** | ~~Confirmación de cuenta paciente~~ | Hecho: confirmación por email en `GET /api/{pacientes|profesionales|administradores}/confirmar` con redirect a la SPA (`app.frontend-url` / `APP_FRONTEND_URL`), flujo registro → verificar email → éxito → panel o login. |
 | **P0** | ~~Tests de seguridad y auth en `ms-usuarios`~~ | Cubierto en parte: `JwtUtilTest`, `SecurityAndAuthIntegrationTest`, `AuthLoginOriginIntegrationTest`, `AuthLoginWithUsersIntegrationTest`, `PacientesMethodSecurityIntegrationTest` (perfil `test` + H2). Pendiente opcional: CI con `mvn test`, login admin/profesional con fixtures, refresh con cookie rotación. |
 | **P0** | ~~CORS + credenciales en el gateway~~ | Hecho: `spring.cloud.gateway.globalcors` con **`allowCredentials: true`**, origen explícito vía **`APP_GATEWAY_CORS_ALLOWED_ORIGIN`** (default Vite `http://localhost:5173`); eliminado `CorsWebFilter` duplicado. Alinear en prod con **`APP_ALLOWED_ORIGINS`** en `ms-usuarios`. |
+| **P0** | ~~Recuperación de contraseña (UX + seguridad + doble POST)~~ | Hecho: enlace 30 min, redirects a `/recuperacion-password-error`, rutas públicas (`PublicRequestPaths`), `clienteAxiosPublic`, anti-doble-submit (`lockRef` + `globalApiLock`). Doc: [`docs/RECUPERACION-CONTRASENA.md`](docs/RECUPERACION-CONTRASENA.md). |
 
 ---
 
@@ -31,7 +32,7 @@ Lista priorizada de trabajo pendiente respecto a seguridad, integración front/g
 |-----------|------|---------|
 | **P2** | Tests en el frontend | No hay `*.test.*` / `*.spec.*` habitual; añadir cobertura mínima en login, interceptor de refresh y rutas protegidas. |
 | **P2** | Otros microservicios | El README menciona turnos e historial; en el repo predominan `ms-usuarios` y `api-gateway`. Si forman parte del entregable, completar lógica e integración. |
-| **P2** | Enlaces en correos | Revisar `APP_URL` / `app.frontend-url` y que coincidan con gateway (`/usuarios/**`) y páginas de confirmación/cambio de contraseña. |
+| **P2** | Enlaces en correos | Revisar `APP_URL` / `app.frontend-url` y que coincidan con gateway (`/usuarios/**`) y páginas de confirmación/cambio de contraseña. Recuperación documentada en [`docs/RECUPERACION-CONTRASENA.md`](docs/RECUPERACION-CONTRASENA.md). |
 | **P2** | Observabilidad | Logs estructurados, correlación de requests, métricas de auth (opcional en primera versión estable). |
 
 ---

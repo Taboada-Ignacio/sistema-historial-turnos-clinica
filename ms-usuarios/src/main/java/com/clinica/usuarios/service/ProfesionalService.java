@@ -13,6 +13,9 @@ public interface ProfesionalService {
     ProfesionalResponseDTO registrarProfesional(ProfesionalRegistroDTO dto, MultipartFile foto);
     
     ProfesionalResponseDTO obtenerProfesionalPorId(Long id);
+
+    /** Perfil del profesional autenticado (email del JWT). */
+    ProfesionalResponseDTO obtenerProfesionalSesion(String email);
     List<ProfesionalResponseDTO> obtenerTodosLosProfesionales();
 
     /**
@@ -20,7 +23,10 @@ public interface ProfesionalService {
      */
     List<ProfesionalResponseDTO> obtenerProfesionalesPorMembresiaNombre(String nombreMembresia);
     List<ProfesionalPresentacionDTO> listarParaPresentacion();
-    ProfesionalPresentacionDTO obtenerParaPresentacion(Long id);
+    /**
+     * Ficha de presentación. Si {@code emailSolicitante} coincide con el profesional, se devuelve aunque no esté ACTIVO (p. ej. panel propio).
+     */
+    ProfesionalPresentacionDTO obtenerParaPresentacion(Long id, String emailSolicitante);
     List<ProfesionalResponseDTO> obtenerProfesionalesConMembresiaInactiva();
     ProfesionalResponseDTO actualizarProfesional(Long id, ProfesionalUpdateDTO dto, MultipartFile foto);
     void eliminarSoloProfesional(Long id);

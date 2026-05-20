@@ -75,6 +75,14 @@ export const getSessionPortal = () => {
   return localStorage.getItem(STORAGE_KEYS.portal) || sessionStorage.getItem(STORAGE_KEYS.portal);
 };
 
+export const getSessionEmail = () => {
+  const stored =
+    localStorage.getItem(STORAGE_KEYS.email) || sessionStorage.getItem(STORAGE_KEYS.email);
+  if (stored) return stored;
+  const token = getSessionToken();
+  return token ? getUserEmailFromToken(token) : null;
+};
+
 export const hasActiveSession = () => {
   return Boolean(getSessionToken());
 };

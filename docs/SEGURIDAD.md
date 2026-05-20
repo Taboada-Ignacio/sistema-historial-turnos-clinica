@@ -7,7 +7,7 @@
 - Registro y confirmación de cuenta (paciente, profesional, administrador).
 - **Login** por credenciales con validación de **portal** (`paciente` | `profesional` | `admin`).
 - Emisión del **JWT de acceso** y gestión de **refresh tokens** (persistidos, rotación, revocación al cambiar contraseña).
-- Recuperación / cambio de contraseña coordinado con correo y tokens.
+- Recuperación / cambio de contraseña coordinado con correo y tokens (enlace **30 min**, un solo uso, redirects de error en la SPA). Ver [`RECUPERACION-CONTRASENA.md`](RECUPERACION-CONTRASENA.md).
 - **Roles y estados** (`ROLE_*`, `ACTIVO`, `PENDIENTE`, etc.) y reglas `@PreAuthorize` en sus propios endpoints.
 
 **Los demás microservicios deben diseñarse “alrededor” de este modelo:** no deben implementar un segundo sistema de usuarios/contraseñas ni emitir tokens propios en paralelo. Consumen la **identidad ya establecida** por `ms-usuarios` (típicamente validando el mismo JWT o confiando en un gateway que ya validó al usuario).
@@ -36,8 +36,9 @@
 
 | Pieza | Función |
 |-------|---------|
-| **`SecurityConfig`** | Cadena stateless, JWT filter, rutas públicas (auth, registro, confirmaciones, GET maestros, **GET `/api/direcciones/**`**, etc.). |
-| **`JwtAuthFilter`** | Lee `Authorization: Bearer`; si falta, continúa (anon); si hay token, valida firma/exp y rellena `SecurityContext`. Respuestas JSON con códigos **`TOKEN_EXPIRED`** / **`TOKEN_INVALID`** cuando aplica. Rutas `/api/auth/*`, `registro`, `confirmar`, `reenviar-confirmacion` **no** pasan por validación JWT obligatoria (filtro omitido). **POST** a maestros (p. ej. `POST /api/direcciones/registro`) **sí** requiere JWT con rol adecuado (`@PreAuthorize`). |
+| **`SecurityConfig`** | Cadena stateless, JWT filter, rutas públicas (auth, registro, confirmaciones, recuperación de contraseña, GET maestros, **GET `/api/direcciones/**`**, etc.). Incluye `permitAll` para `/api/auth/**`, matchers explícitos de `cambiar-password-con-token` y prefijo `/usuarios/api/auth/**` si el path llega sin `StripPrefix` del gateway. |
+| **`JwtAuthFilter`** | Lee `Authorization: Bearer`; si falta, continúa (anon); si hay token, valida firma/exp y rellena `SecurityContext`. Respuestas JSON con códigos **`TOKEN_EXPIRED`** / **`TOKEN_INVALID`** cuando aplica. Omite JWT en rutas detectadas por **`PublicRequestPaths`** (`/api/auth/`, registro, confirmar, reenviar, etc.). **POST** a maestros (p. ej. `POST /api/direcciones/registro`) **sí** requiere JWT con rol adecuado (`@PreAuthorize`). |
+| **`PublicRequestPaths`** | Normaliza `servletPath` / `requestURI` y elimina prefijo `/usuarios` para decidir bypass del filtro JWT en flujos públicos. |
 | **`JwtUtil`** | Firma HS256, claims `authorities`, expiración desde config. |
 | **`UserDetailsServiceImpl`** | Carga usuario por email; rechaza estado **`PENDIENTE`** (`DisabledException`); mapea roles a `GrantedAuthority`. |
 | **`@EnableMethodSecurity` + `@PreAuthorize`** | Autorización fina en controladores (ADMIN, ownership con `@authorizationRules.esMismoUsuario(#id)`). |
@@ -87,3 +88,4 @@ Cobertura automática en `ms-usuarios/src/test/java/...`: JWT unitario, MockMvc 
 | Quién soy / contraseña / roles / refresh | **`ms-usuarios`** |
 | Reglas de negocio por dominio (turnos, historial…) | **Cada MS**, usando identidad ya emitida por **`ms-usuarios`** |
 | Documentación de rutas HTTP | [`API.md`](API.md) + OpenAPI |
+| Recuperación de contraseña (flujo completo) | [`RECUPERACION-CONTRASENA.md`](RECUPERACION-CONTRASENA.md) |
