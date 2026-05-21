@@ -68,7 +68,7 @@ Páginas por portal:
 
 | Portal | Ruta (ejemplo) | Tras confirmar |
 |--------|----------------|----------------|
-| Paciente | `/verificar-email-paciente` | `/registro-exitoso-paciente` |
+| Paciente | `/verificar-email-paciente` | `/registro-exitoso-paciente` → redirect a `/login` |
 | Profesional | `/verificar-email-profesional` | `/aprobacion-pendiente` |
 | Admin | ruta en `ADMIN_PATHS.verificarEmail` | `/registro-exitoso-admin` |
 
@@ -82,7 +82,7 @@ Rutas bajo el layout admin (`AdminRoute` + `AdminLayout`). Prefijo típico: **`/
 
 | Ruta | Componente | Descripción |
 |------|--------------|-------------|
-| `…/entidades` | `AdministrarEntidadesPage` | Índice de catálogos y enlace a direcciones |
+| `…/entidades` | `AdministrarEntidadesPage` | Índice: catálogos → pacientes/profesionales/administradores → direcciones |
 
 ### Catálogos maestros
 
@@ -95,6 +95,7 @@ Configuración en `src/pages/administracion/adminCatalogConfig.js`.
 | `especialidades` | `/api/especialidades` | Sí | Sí | Sí | Sí |
 | `provincias` | `/api/provincias` | Sí | Sí | Sí | Sí |
 | `localidades` | `/api/localidades` | Sí (+ filtro provincia y búsqueda por nombre) | Sí | Sí | Sí |
+| `estados` | `/api/estados` | Sí (solo lectura; PENDIENTE, ACTIVO, BLOQUEADO) | No | No | No |
 
 Rutas del front:
 
@@ -141,9 +142,76 @@ Todas las mutaciones piden **contraseña de administrador** antes de ejecutarse.
 
 No se puede crear ni renombrar una dirección a `SIN ESPECIFICAR` desde el panel.
 
+### Utilidades y componentes admin (pacientes / profesionales)
+
+| Pieza | Archivo |
+|-------|---------|
+| Mensajes del API | `src/utils/adminApiError.js` — `apiErrorMessage()` lee `data.mensaje` |
+| Foto en listados | `src/utils/profesionalFotoUrl.js` |
+| Confirmación (estilo panel) | `src/components/AdminConfirmModal.jsx` |
+| Contraseña admin | `src/components/AdminPasswordConfirmModal.jsx` |
+| Rutas | `portalPaths.js` — `pacientesBuscar`, `pacienteDetalle`, `profesionalDetalle`, etc. |
+
+### Consultar pacientes
+
+| Ruta | Pantalla |
+|------|----------|
+| `…/entidades/pacientes` | `AdminPacientesBuscarPage` — búsqueda combinable (5 modos) |
+| `…/entidades/pacientes/:idPaciente` | `AdminPacienteDetallePage` — detalle, modificar, eliminar |
+| `…/entidades/pacientes/:idPaciente/editar` | `AdminPacienteEditPage` — edición con contraseña al guardar |
+
+**Búsqueda:** `GET /usuarios/api/pacientes/buscar` con `q`, `idProvincia`, `idLocalidad`.
+
+**Edición:** errores de email/DNI duplicados mostrados con `adminApiErrorMessage`.
+
+**Eliminación:** `AdminConfirmModal` (no `window.confirm`) → modal de contraseña → `DELETE`.
+
+### Consultar profesionales
+
+| Ruta | Pantalla |
+|------|----------|
+| `…/entidades/profesionales` | `AdminProfesionalesBuscarPage` — búsqueda combinable (11 modos) |
+| `…/entidades/profesionales/:idProfesional` | `AdminProfesionalDetallePage` |
+| `…/entidades/profesionales/:idProfesional/editar` | `AdminProfesionalEditPage` |
+
+**Búsqueda:** `GET /usuarios/api/profesionales/buscar` con `q`, `idEspecialidad`, `idProvincia`, `idLocalidad`.
+
+**Listado (columnas):** Foto de perfil → Apellido y nombre → DNI → Especialidad → botón **Ver profesional**.
+
+**Detalle:** foto, matrícula, membresía, ubicación, roles. Misma UX de confirmación y baja que pacientes.
+
+Documentación: [`docs/CAMBIOS-ADMIN-PACIENTES-PROFESIONALES.md`](../docs/CAMBIOS-ADMIN-PACIENTES-PROFESIONALES.md).
+
+### Consultar administradores
+
+| Ruta | Pantalla |
+|------|----------|
+| `…/entidades/administradores` | `AdminAdministradoresListaPage` — listado completo (`GET /administradores`) |
+| `…/entidades/administradores/:idAdministrador` | `AdminAdministradorDetallePage` — detalle; solo lectura en gris si no es tu cuenta |
+| `…/entidades/administradores/:idAdministrador/editar` | `AdminAdministradorEditPage` — solo el administrador logueado |
+
+**Sesión:** hook `useAdminSesion` → `GET /usuarios/api/administradores/me` para comparar `idUsuario`.
+
+**Listado:** filas ajenas en gris; la propia con badge **Tu cuenta**.
+
+**Detalle ajeno:** banner de solo lectura; sin modificar ni eliminar.
+
+**Detalle propio:** modificar datos o eliminar cuenta (confirmación + contraseña); tras eliminar → `clearSession()` y login admin.
+
+Documentación: [`docs/CAMBIOS-ADMIN-ADMINISTRADORES.md`](../docs/CAMBIOS-ADMIN-ADMINISTRADORES.md).
+
+### Profesionales pendientes de revisión
+
+| Ruta | Pantalla |
+|------|----------|
+| `…/profesionales-pendientes` | Listado (`membresia=SIN_VERIFICAR`) |
+| `…/profesionales-pendientes/:id` | Detalle, verificación de matrícula o enlace a rechazo |
+| `…/profesionales-pendientes/:id/rechazar` | Motivo del rechazo + contraseña del admin → `POST …/rechazar-pendiente` |
+
+Documentación completa: [`docs/CAMBIOS-REGISTRO-Y-RECHAZO-PROFESIONAL.md`](../docs/CAMBIOS-REGISTRO-Y-RECHAZO-PROFESIONAL.md).
+
 ### Otras pantallas admin
 
-- Profesionales pendientes: `…/profesionales-pendientes`
 - Turnos e historiales: rutas placeholder según evolución del proyecto
 
 ---
@@ -160,7 +228,25 @@ Ejemplo: listar provincias → `GET /usuarios/api/provincias`.
 
 ---
 
-## Registro profesional — foto de perfil
+## Registro paciente
+
+### Email o DNI ya registrados
+
+`Register.jsx` usa `apiErrorMessage` del helper compartido. El backend informa por separado: solo email, solo DNI, o ambos (`UnicidadUsuarioValidator`).
+
+### Tras confirmar el correo
+
+`RegistroExitosoPaciente.jsx` muestra “Cuenta activada” y redirige a **`/login`** (no al dashboard).
+
+---
+
+## Registro profesional
+
+### Email o DNI ya registrados
+
+Si el email (o DNI) ya existe, el backend responde **400** con `{ "mensaje": "..." }`. La SPA muestra ese texto en un banner en el formulario (no un `alert` genérico).
+
+### Foto de perfil
 
 En el paso **Seguridad y Perfil** (`RegistroProfesional.jsx`), el usuario ve un aviso antes de subir la foto:
 
@@ -177,3 +263,5 @@ Formato aceptado: **JPG**; el front comprime y convierte a WebP antes del `multi
 - [`ms-usuarios/README.md`](../ms-usuarios/README.md): base de datos, sentinel, direcciones, verificación de email.
 - [`docs/API.md`](../docs/API.md): contrato HTTP completo.
 - [`docs/RECUPERACION-CONTRASENA.md`](../docs/RECUPERACION-CONTRASENA.md): recuperación de contraseña, errores de enlace y anti-doble-submit.
+- [`docs/CAMBIOS-ADMIN-PACIENTES-PROFESIONALES.md`](../docs/CAMBIOS-ADMIN-PACIENTES-PROFESIONALES.md): consulta, edición y baja de pacientes/profesionales en el panel admin.
+- [`docs/CAMBIOS-ADMIN-ADMINISTRADORES.md`](../docs/CAMBIOS-ADMIN-ADMINISTRADORES.md): consulta de administradores; edición/baja solo de la cuenta propia.

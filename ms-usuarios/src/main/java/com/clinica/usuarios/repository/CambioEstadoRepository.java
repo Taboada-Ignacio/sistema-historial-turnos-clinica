@@ -10,4 +10,6 @@ public interface CambioEstadoRepository extends JpaRepository<CambioEstado, Long
     
     // Para mostrarle al administrador el historial de un usuario ordenado por fecha
     List<CambioEstado> findByUsuario_IdUsuarioOrderByFechaDesc(Long idUsuario);
+
+    void deleteByUsuario_IdUsuario(Long idUsuario);
 }

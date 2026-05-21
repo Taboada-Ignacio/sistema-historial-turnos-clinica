@@ -21,6 +21,9 @@ public interface PacienteMapper {
     Paciente toEntity(PacienteRegistroDTO dto);
 
     @Mapping(source = "obraSocial.descripcion", target = "nombreObraSocial")
+    @Mapping(source = "obraSocial.idObraSocial", target = "idObraSocial")
+    @Mapping(source = "direccion.localidad.idLocalidad", target = "idLocalidad")
+    @Mapping(source = "direccion.localidad.provincia.idProvincia", target = "idProvincia")
     @Mapping(source = "direccion.localidad.nombre", target = "nombreLocalidad")
     @Mapping(source = "direccion.localidad.provincia.nombre", target = "nombreProvincia")
     @Mapping(source = "estadoActual.nombre", target = "estadoActual") // Aplanamos el estado

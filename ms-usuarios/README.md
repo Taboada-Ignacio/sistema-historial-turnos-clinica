@@ -10,6 +10,8 @@ Identidad, roles, JWT, refresh tokens, catálogos maestros, direcciones y confir
 | [../docs/API.md](../docs/API.md) | Rutas HTTP y acceso |
 | [../docs/ENTIDADES.md](../docs/ENTIDADES.md) | Modelo JPA |
 | [../docs/SEGURIDAD.md](../docs/SEGURIDAD.md) | JWT, filtros, `@PreAuthorize` |
+| [../docs/CAMBIOS-ADMIN-PACIENTES-PROFESIONALES.md](../docs/CAMBIOS-ADMIN-PACIENTES-PROFESIONALES.md) | Búsqueda admin, CRUD pacientes/profesionales, unicidad |
+| [../docs/CAMBIOS-ADMIN-ADMINISTRADORES.md](../docs/CAMBIOS-ADMIN-ADMINISTRADORES.md) | Listado admin de administradores; PUT/DELETE solo cuenta propia |
 | [init.sql](init.sql) | Esquema y semilla base |
 | [sql/argentina-geo-data.sql](sql/argentina-geo-data.sql) | Provincias y localidades de Argentina |
 | [sql/03-direcciones-sentinel.sql](sql/03-direcciones-sentinel.sql) | Dirección `SIN ESPECIFICAR` por localidad |
@@ -55,6 +57,16 @@ Configuración en `src/main/resources/application.yml`. Con `spring.jpa.hibernat
 ### Registro de usuarios (paciente / profesional / administrador)
 
 El body incluye **`idLocalidad`** y texto **`direccion`**. El servicio **crea o reutiliza** una fila en `direcciones` con ese nombre en esa localidad y asigna su id al usuario.
+
+**Paciente y profesional (alta):** email y DNI únicos a nivel `usuarios` vía **`UnicidadUsuarioValidator`**. Se evalúan **ambos** campos antes de responder; mensajes distintos si solo email, solo DNI, o ambos. Duplicado → **400** `{ "mensaje": "..." }`.
+
+**Actualización (admin o propio usuario):** misma validación excluyendo el `idUsuario` editado; mensajes orientados al administrador en edición.
+
+Ver [`docs/CAMBIOS-REGISTRO-Y-RECHAZO-PROFESIONAL.md`](../docs/CAMBIOS-REGISTRO-Y-RECHAZO-PROFESIONAL.md) y [`docs/CAMBIOS-ADMIN-PACIENTES-PROFESIONALES.md`](../docs/CAMBIOS-ADMIN-PACIENTES-PROFESIONALES.md).
+
+### Rechazo de profesional pendiente (admin)
+
+`POST /api/profesionales/{id}/rechazar-pendiente` — body `{ "motivo", "password" }`. Solo membresía **`SIN_VERIFICAR`**: valida contraseña del admin autenticado, envía correo de no aprobación (síncrono) y elimina tokens, historiales, foto y registro. Detalle en el mismo doc anterior.
 
 ### Valor reservado `SIN ESPECIFICAR`
 
@@ -120,9 +132,9 @@ El reenvío de confirmación **no** se permite si el usuario ya está `ACTIVO`.
 
 Redirects post-confirmación (SPA, `app.frontend-url`):
 
-- Paciente → `/registro-exitoso-paciente`
+- Paciente → `/registro-exitoso-paciente` (la SPA redirige al **login** del paciente)
 - Profesional → `/aprobacion-pendiente`
-- Administrador → `/registro-exitoso-admin`
+- Administrador → `/registro-exitoso-admin` (la SPA redirige al login admin)
 
 ---
 
@@ -147,7 +159,43 @@ Seguridad: `SecurityConfig` + `PublicRequestPaths` + omisión en `JwtAuthFilter`
 
 ## Seguridad admin: contraseña actual
 
-`POST /api/seguridad/verificar-password-actual` — el panel admin lo usa antes de mutaciones sensibles (alta/edición de catálogos y direcciones).
+`POST /api/seguridad/verificar-password-actual` — el panel admin lo usa antes de mutaciones sensibles (alta/edición de catálogos, direcciones, pacientes, profesionales y la propia cuenta de administrador).
+
+---
+
+## Búsqueda admin de pacientes y profesionales
+
+| Método | Ruta | Criterios (al menos uno obligatorio según tabla) |
+|--------|------|--------------------------------------------------|
+| GET | `/api/pacientes/buscar` | `q` **o** `idProvincia`; opcional `idLocalidad` (con provincia) |
+| GET | `/api/profesionales/buscar` | `q` **o** `idEspecialidad` **o** `idProvincia`; opcional `idLocalidad` (con provincia) |
+
+Respuesta: `{ total, pacientes|profesionales[], criteriosAplicados }` (máximo **500** resultados).
+
+- **Pacientes:** `PacienteSpecifications`, `PacienteListadoDTO`.
+- **Profesionales:** `ProfesionalSpecifications`, `ProfesionalListadoDTO` (incluye `fotoPerfil`, `especialidad`).
+
+`PUT` y `DELETE` por id: solo **`ROLE_ADMINISTRADOR`** (salvo `PUT` del propio paciente/profesional según reglas existentes).
+
+Documentación de modos de búsqueda y pantallas SPA: [`docs/CAMBIOS-ADMIN-PACIENTES-PROFESIONALES.md`](../docs/CAMBIOS-ADMIN-PACIENTES-PROFESIONALES.md).
+
+---
+
+## Consulta de administradores (panel admin)
+
+| Método | Ruta | Acceso |
+|--------|------|--------|
+| GET | `/api/administradores/me` | `ROLE_ADMINISTRADOR` — perfil del JWT (email) |
+| GET | `/api/administradores` | `ROLE_ADMINISTRADOR` — listado completo, orden apellido/nombre |
+| GET | `/api/administradores/{id}` | `ROLE_ADMINISTRADOR` — detalle con `idProvincia`, `idLocalidad` |
+| PUT | `/api/administradores/{id}` | `ROLE_ADMINISTRADOR` **y** `@authorizationRules.esMismoUsuario(#id)` |
+| DELETE | `/api/administradores/{id}` | Igual que PUT |
+
+- Detalle: `AdministradorRepository.findWithUbicacionById`.
+- Actualización: `UnicidadUsuarioValidator.validarActualizacion`, dirección/localidad como paciente (`AdministradorUpdateDTO.direccion`).
+- Eliminación: borra verification tokens, refresh tokens e historial de estados antes del delete.
+
+Documentación y UX del front: [`docs/CAMBIOS-ADMIN-ADMINISTRADORES.md`](../docs/CAMBIOS-ADMIN-ADMINISTRADORES.md).
 
 ---
 

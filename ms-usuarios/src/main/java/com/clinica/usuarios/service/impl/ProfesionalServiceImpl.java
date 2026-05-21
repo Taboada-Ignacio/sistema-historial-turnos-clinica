@@ -2,8 +2,12 @@ package com.clinica.usuarios.service.impl;
 
 import com.clinica.usuarios.dto.request.ProfesionalRegistroDTO;
 import com.clinica.usuarios.dto.request.ProfesionalUpdateDTO;
+import com.clinica.usuarios.dto.request.RechazarProfesionalPendienteDTO;
+import com.clinica.usuarios.dto.response.ProfesionalBusquedaResponseDTO;
+import com.clinica.usuarios.dto.response.ProfesionalListadoDTO;
 import com.clinica.usuarios.dto.response.ProfesionalPresentacionDTO;
 import com.clinica.usuarios.dto.response.ProfesionalResponseDTO;
+import com.clinica.usuarios.repository.ProfesionalSpecifications;
 import com.clinica.usuarios.exception.RecursoNoEncontradoException;
 import com.clinica.usuarios.exception.ReglaDeNegocioException;
 import com.clinica.usuarios.mapper.ProfesionalMapper;
@@ -12,22 +16,22 @@ import com.clinica.usuarios.repository.*;
 import com.clinica.usuarios.service.AccountActivationService;
 import com.clinica.usuarios.service.DireccionService;
 import com.clinica.usuarios.service.EmailService;
+import com.clinica.usuarios.service.ProfesionalFotoStorageService;
 import com.clinica.usuarios.service.ProfesionalService;
 import com.clinica.usuarios.service.VerificationTokenService;
+import com.clinica.usuarios.service.support.UnicidadUsuarioValidator;
 import lombok.RequiredArgsConstructor;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,12 +46,14 @@ public class ProfesionalServiceImpl implements ProfesionalService {
     private final UsuarioRepository usuarioRepository;
     private final RolRepository rolRepository;
     private final LocalidadRepository localidadRepository;
+    private final ProvinciaRepository provinciaRepository;
     private final EspecialidadRepository especialidadRepository;
     
     // --- REPOSITORIOS DE ESTADO Y SEGURIDAD ---
     private final EstadoRepository estadoRepository;
     private final CambioEstadoRepository cambioEstadoRepository;
     private final VerificationTokenRepository tokenRepository;
+    private final RefreshTokenRepository refreshTokenRepository;
     private final VerificationTokenService verificationTokenService;
     private final AccountActivationService accountActivationService;
     private final EmailService emailService;
@@ -60,15 +66,13 @@ public class ProfesionalServiceImpl implements ProfesionalService {
     private final ProfesionalMapper profesionalMapper;
     private final PasswordEncoder passwordEncoder;
     private final DireccionService direccionService;
-
-    // Directorio local para guardar las imágenes
-    private final String DIRECTORIO_FOTOS = "fotosPerfilProfesionales";
+    private final ProfesionalFotoStorageService fotoStorage;
 
     @Override
     @Transactional
     public ProfesionalResponseDTO registrarProfesional(ProfesionalRegistroDTO dto, MultipartFile foto) {
         // 1. Validaciones de Identidad
-        validarUnicidadProfesional(dto.getEmail(), dto.getDni());
+        UnicidadUsuarioValidator.validarAlta(usuarioRepository, dto.getEmail(), dto.getDni());
 
         // 2. Obtención de dependencias (Localidad, Especialidad, Roles)
         Set<Rol> rolesAsignados = buscarRoles(dto.getRolesIds());
@@ -94,14 +98,14 @@ public class ProfesionalServiceImpl implements ProfesionalService {
         profesional.setEstadoActual(estadoPendiente);
         profesional.setMembresiaActual(membresiaSinVerificar);
 
-        // 5. Manejo de la foto de perfil
-        if (foto != null && !foto.isEmpty()) {
-            String rutaFoto = guardarFotoLocalmente(foto);
-            profesional.setFotoPerfil(rutaFoto);
-        }
-
-        // 6. Guardado inicial en BD
+        // 5. Guardado inicial en BD (foto después, para evitar archivos huérfanos si falla el alta)
         Profesional profesionalGuardado = profesionalRepository.save(profesional);
+
+        if (foto != null && !foto.isEmpty()) {
+            String rutaFoto = fotoStorage.guardar(foto);
+            profesionalGuardado.setFotoPerfil(rutaFoto);
+            profesionalGuardado = profesionalRepository.save(profesionalGuardado);
+        }
 
         // 7. Auditoría de estado, membresía y generación de Token
         registrarHistorialEstado(profesionalGuardado, estadoPendiente);
@@ -137,8 +141,107 @@ public class ProfesionalServiceImpl implements ProfesionalService {
     @Override
     @Transactional(readOnly = true)
     public ProfesionalResponseDTO obtenerProfesionalPorId(Long id) {
-        Profesional profesional = buscarProfesional(id);
+        Profesional profesional = profesionalRepository.findWithUbicacionById(id)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Profesional no encontrado con ID: " + id));
         return profesionalMapper.toResponseDTO(profesional);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ProfesionalBusquedaResponseDTO buscarProfesionales(
+            String texto, Long idEspecialidad, Long idProvincia, Long idLocalidad) {
+        boolean tieneTexto = texto != null && !texto.isBlank();
+        boolean tieneEspecialidad = idEspecialidad != null;
+        boolean tieneProvincia = idProvincia != null;
+        boolean tieneLocalidad = idLocalidad != null;
+
+        if (!tieneTexto && !tieneEspecialidad && !tieneProvincia) {
+            throw new ReglaDeNegocioException(
+                    "Indicá al menos apellido/nombre, una especialidad o una provincia para buscar profesionales.");
+        }
+        if (tieneLocalidad && !tieneProvincia) {
+            throw new ReglaDeNegocioException("Para filtrar por localidad debés seleccionar también la provincia.");
+        }
+
+        String nombreEspecialidad = null;
+        if (tieneEspecialidad) {
+            nombreEspecialidad = especialidadRepository.findById(idEspecialidad)
+                    .map(Especialidad::getDescripcion)
+                    .orElseThrow(() -> new RecursoNoEncontradoException("Especialidad no encontrada."));
+        }
+
+        String nombreProvincia = null;
+        String nombreLocalidad = null;
+        if (tieneLocalidad) {
+            Localidad localidad = localidadRepository.findById(idLocalidad)
+                    .orElseThrow(() -> new RecursoNoEncontradoException("Localidad no encontrada."));
+            if (!localidad.getProvincia().getIdProvincia().equals(idProvincia)) {
+                throw new ReglaDeNegocioException("La localidad no pertenece a la provincia seleccionada.");
+            }
+            nombreLocalidad = localidad.getNombre();
+            nombreProvincia = localidad.getProvincia().getNombre();
+        } else if (tieneProvincia) {
+            nombreProvincia = provinciaRepository.findById(idProvincia)
+                    .map(Provincia::getNombre)
+                    .orElseThrow(() -> new RecursoNoEncontradoException("Provincia no encontrada."));
+        }
+
+        String textoNorm = tieneTexto ? texto.trim() : null;
+        Specification<Profesional> spec = ProfesionalSpecifications.busquedaAdmin(
+                textoNorm, idEspecialidad, idProvincia, idLocalidad);
+        Sort sort = Sort.by("apellido").ascending().and(Sort.by("nombre").ascending());
+
+        List<ProfesionalListadoDTO> profesionales = profesionalRepository.findAll(spec, sort).stream()
+                .limit(500)
+                .map(this::toListadoDTO)
+                .sorted(Comparator
+                        .comparing(ProfesionalListadoDTO::getApellido, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER))
+                        .thenComparing(ProfesionalListadoDTO::getNombre, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)))
+                .collect(Collectors.toList());
+
+        return ProfesionalBusquedaResponseDTO.builder()
+                .total(profesionales.size())
+                .profesionales(profesionales)
+                .criteriosAplicados(describirCriteriosBusquedaProfesional(
+                        textoNorm, nombreEspecialidad, nombreProvincia, nombreLocalidad))
+                .build();
+    }
+
+    private String describirCriteriosBusquedaProfesional(
+            String texto, String especialidad, String provincia, String localidad) {
+        boolean tieneTexto = texto != null && !texto.isBlank();
+        boolean tieneEspecialidad = especialidad != null && !especialidad.isBlank();
+        boolean tieneProvincia = provincia != null && !provincia.isBlank();
+        boolean tieneLocalidad = localidad != null && !localidad.isBlank();
+
+        StringBuilder sb = new StringBuilder();
+        if (tieneEspecialidad) {
+            sb.append("Especialidad ").append(especialidad);
+        }
+        if (tieneProvincia) {
+            if (sb.length() > 0) sb.append("; ");
+            if (tieneLocalidad) {
+                sb.append("Provincia ").append(provincia).append(", localidad ").append(localidad);
+            } else {
+                sb.append("Provincia ").append(provincia);
+            }
+        }
+        if (tieneTexto) {
+            if (sb.length() > 0) sb.append("; ");
+            sb.append("Apellido/nombre: \"").append(texto).append("\"");
+        }
+        return sb.length() > 0 ? sb.toString() : "Criterios de búsqueda";
+    }
+
+    private ProfesionalListadoDTO toListadoDTO(Profesional p) {
+        return ProfesionalListadoDTO.builder()
+                .idUsuario(p.getIdUsuario())
+                .fotoPerfil(p.getFotoPerfil())
+                .apellido(p.getApellido())
+                .nombre(p.getNombre())
+                .dni(p.getDni())
+                .especialidad(p.getEspecialidad() != null ? p.getEspecialidad().getDescripcion() : null)
+                .build();
     }
 
     @Override
@@ -253,7 +356,12 @@ public class ProfesionalServiceImpl implements ProfesionalService {
     @Override
     @Transactional
     public ProfesionalResponseDTO actualizarProfesional(Long id, ProfesionalUpdateDTO dto, MultipartFile foto) {
-        Profesional profesional = buscarProfesional(id);
+        Profesional profesional = profesionalRepository.findWithUbicacionById(id)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Profesional no encontrado con ID: " + id));
+
+        UnicidadUsuarioValidator.validarActualizacion(
+                usuarioRepository, profesional.getIdUsuario(), dto.getEmail(), dto.getDni());
+        validarMatriculaUnica(dto.getMatricula(), profesional.getIdUsuario());
 
         profesional.setNombre(dto.getNombre());
         profesional.setApellido(dto.getApellido());
@@ -261,6 +369,12 @@ public class ProfesionalServiceImpl implements ProfesionalService {
         profesional.setEmail(dto.getEmail()); 
         profesional.setTelefono(dto.getTelefono());
         profesional.setMatricula(dto.getMatricula());
+
+        if (dto.getIdEspecialidad() != null) {
+            Especialidad especialidad = especialidadRepository.findById(dto.getIdEspecialidad())
+                    .orElseThrow(() -> new RecursoNoEncontradoException("Especialidad no encontrada"));
+            profesional.setEspecialidad(especialidad);
+        }
 
         if (dto.getIdLocalidad() != null || (dto.getDireccion() != null && !dto.getDireccion().isBlank())) {
             Localidad localidadObjetivo = dto.getIdLocalidad() != null
@@ -291,9 +405,10 @@ public class ProfesionalServiceImpl implements ProfesionalService {
 
         if (foto != null && !foto.isEmpty()) {
             String anterior = profesional.getFotoPerfil();
-            String nuevaRuta = guardarFotoLocalmente(foto);
-            borrarArchivoFotoSiExiste(anterior);
+            String nuevaRuta = fotoStorage.guardar(foto);
             profesional.setFotoPerfil(nuevaRuta);
+            profesional = profesionalRepository.save(profesional);
+            fotoStorage.borrarSiExiste(anterior);
         }
 
         return profesionalMapper.toResponseDTO(profesionalRepository.save(profesional));
@@ -311,6 +426,43 @@ public class ProfesionalServiceImpl implements ProfesionalService {
             throw new ReglaDeNegocioException(
                 "No se puede eliminar el profesional porque tiene turnos asignados o historiales asociados."
             );
+        }
+    }
+
+    @Override
+    @Transactional
+    public void rechazarYBorrarProfesionalPendiente(
+            Long idProfesional, RechazarProfesionalPendienteDTO dto, String emailAdministrador) {
+        Usuario admin = usuarioRepository.findByEmail(emailAdministrador)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Administrador no encontrado."));
+        if (!passwordEncoder.matches(dto.getPassword(), admin.getPassword())) {
+            throw new ReglaDeNegocioException("Contraseña incorrecta.");
+        }
+
+        Profesional profesional = buscarProfesional(idProfesional);
+        if (profesional.getMembresiaActual() == null
+                || !"SIN_VERIFICAR".equalsIgnoreCase(profesional.getMembresiaActual().getNombre())) {
+            throw new ReglaDeNegocioException(
+                    "Solo se puede rechazar y borrar profesionales con membresía SIN_VERIFICAR pendiente de revisión.");
+        }
+
+        String motivo = dto.getMotivo().trim();
+        emailService.enviarEmailRechazoProfesionalPendiente(profesional, motivo);
+        eliminarProfesionalPendienteEnCascada(profesional);
+    }
+
+    private void eliminarProfesionalPendienteEnCascada(Profesional profesional) {
+        Long id = profesional.getIdUsuario();
+        fotoStorage.borrarSiExiste(profesional.getFotoPerfil());
+        tokenRepository.deleteByUsuario(profesional);
+        refreshTokenRepository.deleteByUsuario(profesional);
+        cambioMembresiaRepository.deleteByProfesional_IdUsuario(id);
+        cambioEstadoRepository.deleteByUsuario_IdUsuario(id);
+        try {
+            profesionalRepository.delete(profesional);
+        } catch (DataIntegrityViolationException e) {
+            throw new ReglaDeNegocioException(
+                    "No se puede eliminar el profesional porque tiene registros asociados en el sistema.");
         }
     }
 
@@ -378,15 +530,6 @@ public class ProfesionalServiceImpl implements ProfesionalService {
         registrarHistorialEstado(usuario, usuario.getEstadoActual());
     }
 
-    private void validarUnicidadProfesional(String email, Integer dni) {
-        if (usuarioRepository.findByEmail(email).isPresent()) {
-            throw new ReglaDeNegocioException("El email ya se encuentra en uso.");
-        }
-        if (usuarioRepository.findByDni(dni).isPresent()) {
-            throw new ReglaDeNegocioException("El DNI ya se encuentra registrado.");
-        }
-    }
-
     private Set<Rol> buscarRoles(Set<Long> rolesIds) {
         return rolesIds.stream()
                 .map(id -> rolRepository.findById(id)
@@ -395,51 +538,20 @@ public class ProfesionalServiceImpl implements ProfesionalService {
     }
 
     private Profesional buscarProfesional(Long id) {
-        return profesionalRepository.findById(id)
+        return profesionalRepository.findWithUbicacionById(id)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Profesional no encontrado con ID: " + id));
     }
 
-    private void borrarArchivoFotoSiExiste(String rutaPublica) {
-        if (rutaPublica == null || rutaPublica.isBlank()) {
+    private void validarMatriculaUnica(String matricula, Long idUsuario) {
+        if (matricula == null || matricula.isBlank()) {
             return;
         }
-        String rel = rutaPublica.startsWith("/") ? rutaPublica.substring(1) : rutaPublica;
-        if (!rel.startsWith(DIRECTORIO_FOTOS + "/")) {
-            return;
-        }
-        try {
-            Files.deleteIfExists(Paths.get(rel));
-        } catch (Exception ignored) {
-            // Evita fallar la actualización si el archivo ya no está en disco
-        }
-    }
-
-    private String guardarFotoLocalmente(MultipartFile foto) {
-        try {
-            // Validamos explícitamente que sea .webp
-            if (!foto.getOriginalFilename().toLowerCase().endsWith(".webp")) {
-                throw new ReglaDeNegocioException("La foto de perfil debe ser estrictamente en formato .webp");
-            }
-
-            // Generamos un nombre único
-            String nombreArchivo = UUID.randomUUID().toString() + ".webp";
-            Path rutaDirectorio = Paths.get(DIRECTORIO_FOTOS);
-            
-            // Creamos el directorio si no existe (la primera vez que se ejecute)
-            if (!Files.exists(rutaDirectorio)) {
-                Files.createDirectories(rutaDirectorio);
-            }
-
-            // Guardamos el archivo
-            Path rutaArchivo = rutaDirectorio.resolve(nombreArchivo);
-            Files.copy(foto.getInputStream(), rutaArchivo, StandardCopyOption.REPLACE_EXISTING);
-
-            // Devolvemos la ruta que usará el frontend para consultar la imagen
-            return "/" + DIRECTORIO_FOTOS + "/" + nombreArchivo;
-
-        } catch (Exception e) {
-            throw new RuntimeException("Error al guardar la foto de perfil en el disco local", e);
-        }
+        profesionalRepository.findByMatricula(matricula.trim())
+                .filter(p -> !p.getIdUsuario().equals(idUsuario))
+                .ifPresent(p -> {
+                    throw new ReglaDeNegocioException(
+                            "La matrícula ya está registrada por otro profesional.");
+                });
     }
 
     @Override

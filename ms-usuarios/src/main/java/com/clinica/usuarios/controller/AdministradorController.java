@@ -8,6 +8,8 @@ import com.clinica.usuarios.service.AdministradorService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -67,7 +69,20 @@ public class AdministradorController {
     }
 
     /**
-     * Obtiene la lista completa de administradores.
+     * Perfil del administrador autenticado (panel admin).
+     */
+    @PreAuthorize("hasAuthority('ROLE_ADMINISTRADOR')")
+    @GetMapping("/me")
+    public ResponseEntity<AdministradorResponseDTO> obtenerSesion(
+            @AuthenticationPrincipal UserDetails principal) {
+        if (principal == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        return ResponseEntity.ok(administradorService.obtenerAdministradorPorEmail(principal.getUsername()));
+    }
+
+    /**
+     * Listado completo de administradores (son pocos; sin búsqueda paginada).
      */
     @PreAuthorize("hasAuthority('ROLE_ADMINISTRADOR')")
     @GetMapping
@@ -76,7 +91,7 @@ public class AdministradorController {
     }
 
     /**
-     * Obtiene los detalles de un administrador específico por su ID.
+     * Detalle de un administrador (cualquier admin autenticado puede consultar).
      */
     @PreAuthorize("hasAuthority('ROLE_ADMINISTRADOR')")
     @GetMapping("/{id}")
@@ -85,21 +100,20 @@ public class AdministradorController {
     }
 
     /**
-     * Actualiza la información del administrador. 
-     * Registra automáticamente cualquier cambio de estado en la tabla de auditoría.
+     * Actualiza solo el propio administrador (mismo {@code idUsuario} que el JWT).
      */
-    @PreAuthorize("hasAuthority('ROLE_ADMINISTRADOR')")
+    @PreAuthorize("hasAuthority('ROLE_ADMINISTRADOR') and @authorizationRules.esMismoUsuario(#id)")
     @PutMapping("/{id}")
     public ResponseEntity<AdministradorResponseDTO> actualizar(
-            @PathVariable Long id, 
+            @PathVariable Long id,
             @Valid @RequestBody AdministradorUpdateDTO dto) {
         return ResponseEntity.ok(administradorService.actualizarAdministrador(id, dto));
     }
 
     /**
-     * Elimina físicamente el registro del administrador.
+     * Elimina solo la propia cuenta de administrador.
      */
-    @PreAuthorize("hasAuthority('ROLE_ADMINISTRADOR')")
+    @PreAuthorize("hasAuthority('ROLE_ADMINISTRADOR') and @authorizationRules.esMismoUsuario(#id)")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminar(@PathVariable Long id) {
         administradorService.eliminarAdministrador(id);

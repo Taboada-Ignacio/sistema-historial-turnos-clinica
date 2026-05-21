@@ -20,11 +20,15 @@ Tecnologías principales: Java 21, Spring Boot 3, Spring Security, JWT, React (V
 | Documento | Contenido |
 |-----------|-----------|
 | [ms-usuarios/README.md](ms-usuarios/README.md) | BD (init + geo Argentina), direcciones, sentinel `SIN ESPECIFICAR`, verificación email |
-| [frontend-clinica/README.md](frontend-clinica/README.md) | Panel admin: catálogos, direcciones, verificación de cuenta |
+| [frontend-clinica/README.md](frontend-clinica/README.md) | Panel admin: catálogos, direcciones, pacientes/profesionales/administradores, verificación de cuenta |
 | [docs/API.md](docs/API.md) | Rutas HTTP de `ms-usuarios`, prefijo gateway `/usuarios`, convenciones de acceso |
 | [docs/ENTIDADES.md](docs/ENTIDADES.md) | Modelo de datos y relaciones JPA |
 | [docs/SEGURIDAD.md](docs/SEGURIDAD.md) | Identidad centralizada en `ms-usuarios`, JWT, contrato con otros MS |
 | [docs/RECUPERACION-CONTRASENA.md](docs/RECUPERACION-CONTRASENA.md) | Recuperación de contraseña (30 min), errores en SPA, rutas públicas, anti-doble-submit |
+| [docs/CAMBIOS-REGISTRO-Y-RECHAZO-PROFESIONAL.md](docs/CAMBIOS-REGISTRO-Y-RECHAZO-PROFESIONAL.md) | Registro profesional (email duplicado en UI), rechazo admin de pendientes con motivo y correo |
+| [docs/CAMBIOS-ADMIN-PACIENTES-PROFESIONALES.md](docs/CAMBIOS-ADMIN-PACIENTES-PROFESIONALES.md) | Admin: consultar/editar/eliminar pacientes y profesionales; búsquedas combinables; unicidad email/DNI |
+| [docs/CAMBIOS-ADMIN-ADMINISTRADORES.md](docs/CAMBIOS-ADMIN-ADMINISTRADORES.md) | Admin: listar y ver todos los administradores; editar/eliminar solo la cuenta propia |
+| [docs/CAMBIOS-PORTAL-PROFESIONAL-DASHBOARD.md](docs/CAMBIOS-PORTAL-PROFESIONAL-DASHBOARD.md) | Dashboard profesional, `GET /me`, presentación y membresía `SIN_VERIFICAR` |
 
 ---
 
@@ -208,6 +212,27 @@ Workflow **`.github/workflows/ms-usuarios-startup-check.yml`**: levanta PostgreS
 ### Panel admin (catálogos)
 
 Ruta base: `/internal/admin/panel/entidades` → listados, **alta** (`…/catalogo/:tipo/nuevo`), edición y baja con confirmación de **contraseña actual**. Pantalla dedicada **Direcciones** (`…/direcciones`).
+
+### Consultar pacientes y profesionales (admin)
+
+- **Pacientes:** `GET /api/pacientes/buscar` — filtros `q`, `idProvincia`, `idLocalidad` (combinables). Detalle, `PUT` y `DELETE` con contraseña admin.
+- **Profesionales:** `GET /api/profesionales/buscar` — filtros `q`, `idEspecialidad`, `idProvincia`, `idLocalidad`. Listado con foto de perfil; misma UX de detalle/edición/baja.
+- Validación compartida **email/DNI** en alta y edición: `UnicidadUsuarioValidator`.
+- Detalle: [docs/CAMBIOS-ADMIN-PACIENTES-PROFESIONALES.md](docs/CAMBIOS-ADMIN-PACIENTES-PROFESIONALES.md).
+
+### Consultar administradores (admin)
+
+- **`GET /api/administradores`**: listado completo (sin filtros; pocos registros).
+- **`GET /api/administradores/me`**: administrador de la sesión (la SPA usa esto para saber qué fila es “la tuya”).
+- **Detalle** de cualquier administrador: `GET /api/administradores/{id}`.
+- **`PUT` y `DELETE /{id}`**: solo el propio usuario (`esMismoUsuario`); contraseña actual en el front antes de mutar.
+- Pantallas: `…/entidades/administradores` (listado), `…/:id` (detalle; otros en gris, solo lectura), `…/:id/editar` (solo propia).
+- Detalle: [docs/CAMBIOS-ADMIN-ADMINISTRADORES.md](docs/CAMBIOS-ADMIN-ADMINISTRADORES.md).
+
+### Registro paciente — confirmación y duplicados
+
+- Errores de registro (email, DNI o ambos) en campo **`mensaje`**; la SPA usa `apiErrorMessage`.
+- Tras confirmar email: `/registro-exitoso-paciente` → redirect a **login** del paciente.
 
 ### Verificación de email
 

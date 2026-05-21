@@ -12,6 +12,8 @@ public interface AdministradorService {
 
     AdministradorResponseDTO obtenerAdministradorPorId(Long id);
 
+    AdministradorResponseDTO obtenerAdministradorPorEmail(String email);
+
     List<AdministradorResponseDTO> obtenerTodosLosAdministradores();
 
     AdministradorResponseDTO actualizarAdministrador(Long id, AdministradorUpdateDTO dto);

@@ -37,6 +37,9 @@ services:
       SPRING_DATASOURCE_PASSWORD: password_clinica
       # Mismo origen que el front (Vite) para validación Origin/Referer en login y refresh
       APP_ALLOWED_ORIGINS: ${APP_ALLOWED_ORIGINS:-http://localhost:5173}
+      PROFESIONAL_FOTO_DIR: /app/fotosPerfilProfesionales
+    volumes:
+      - profesional_fotos_data:/app/fotosPerfilProfesionales
     depends_on:
       - db-usuarios
     networks:
@@ -90,3 +93,4 @@ networks:
 
 volumes:
   db_usuarios_data:
+  profesional_fotos_data:

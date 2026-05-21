@@ -3,6 +3,7 @@ package com.clinica.usuarios.controller;
 import com.clinica.usuarios.dto.request.ConfirmarCodigoDTO;
 import com.clinica.usuarios.dto.request.PacienteRegistroDTO;
 import com.clinica.usuarios.dto.request.PacienteUpdateDTO;
+import com.clinica.usuarios.dto.response.PacienteBusquedaResponseDTO;
 import com.clinica.usuarios.dto.response.PacienteResponseDTO;
 import com.clinica.usuarios.service.PacienteService;
 import jakarta.validation.Valid;
@@ -67,15 +68,6 @@ public class PacienteController {
     }
 
     /**
-     * Obtiene un paciente por su ID.
-     */
-    @PreAuthorize("hasAuthority('ROLE_ADMINISTRADOR') or (hasAuthority('ROLE_PACIENTE') and @authorizationRules.esMismoUsuario(#id))")
-    @GetMapping("/{id}")
-    public ResponseEntity<PacienteResponseDTO> obtenerPorId(@PathVariable Long id) {
-        return ResponseEntity.ok(pacienteService.obtenerPacientePorId(id)); 
-    }
-
-    /**
      * Obtiene el listado completo de pacientes.
      * (Útil para el panel de administración de tu clínica).
      */
@@ -84,6 +76,29 @@ public class PacienteController {
     public ResponseEntity<List<PacienteResponseDTO>> obtenerTodos() {
         List<PacienteResponseDTO> pacientes = pacienteService.obtenerTodosLosPacientes();
         return ResponseEntity.ok(pacientes);
+    }
+
+    /**
+     * Búsqueda de pacientes para administración (criterios independientes y combinables).
+     * Filtros: {@code q} (apellido/nombre), {@code idProvincia}, {@code idLocalidad} (requiere provincia).
+     * Al menos {@code q} o {@code idProvincia} es obligatorio.
+     */
+    @PreAuthorize("hasAuthority('ROLE_ADMINISTRADOR')")
+    @GetMapping("/buscar")
+    public ResponseEntity<PacienteBusquedaResponseDTO> buscar(
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) Long idProvincia,
+            @RequestParam(required = false) Long idLocalidad) {
+        return ResponseEntity.ok(pacienteService.buscarPacientes(q, idProvincia, idLocalidad));
+    }
+
+    /**
+     * Obtiene un paciente por su ID.
+     */
+    @PreAuthorize("hasAuthority('ROLE_ADMINISTRADOR') or (hasAuthority('ROLE_PACIENTE') and @authorizationRules.esMismoUsuario(#id))")
+    @GetMapping("/{id}")
+    public ResponseEntity<PacienteResponseDTO> obtenerPorId(@PathVariable Long id) {
+        return ResponseEntity.ok(pacienteService.obtenerPacientePorId(id)); 
     }
 
     /**

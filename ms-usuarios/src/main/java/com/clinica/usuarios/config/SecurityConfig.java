@@ -78,13 +78,12 @@ public class SecurityConfig {
                 // --- DATOS MAESTROS (Públicos para los formularios de registro) ---
                 .requestMatchers(HttpMethod.GET, "/api/obras-sociales/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/roles/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/estados/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/especialidades/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/provincias/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/localidades/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/direcciones/**").permitAll()
 
-                // --- RECURSOS ESTÁTICOS ---
-                .requestMatchers(HttpMethod.GET, "/fotosPerfilProfesionales/**").permitAll()
                 .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                 
                 .anyRequest().authenticated()

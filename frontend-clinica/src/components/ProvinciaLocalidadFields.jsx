@@ -13,6 +13,8 @@ const ProvinciaLocalidadFields = ({
   provinciaPlaceholder = 'Provincia',
   localidadPlaceholder = 'Localidad',
   localidadDisabled,
+  provinciaRequired = true,
+  localidadRequired = true,
   showLabels = false,
   labelClassName = 'block text-xs font-bold text-gray-400 uppercase mb-2',
 }) => {
@@ -33,7 +35,7 @@ const ProvinciaLocalidadFields = ({
             filterOptions={geo.filtrarProvincias}
             placeholder={geo.loading ? 'Cargando...' : `${provinciaPlaceholder} - escribi para buscar`}
             disabled={geo.loading}
-            required
+            required={provinciaRequired}
             inputClassName={inputClassName}
           />
         </div>
@@ -52,7 +54,7 @@ const ProvinciaLocalidadFields = ({
                   : `${localidadPlaceholder} - escribi para buscar`
             }
             disabled={geo.loading || locDisabled}
-            required
+            required={localidadRequired}
             inputClassName={inputClassName}
             getOptionLabel={localidadLabel}
           />

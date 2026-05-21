@@ -11,4 +11,6 @@ public interface CambioMembresiaRepository extends JpaRepository<CambioMembresia
     
     // Obtener todo el historial de membresías de un profesional, ordenado desde el más reciente al más antiguo
     List<CambioMembresia> findByProfesional_IdUsuarioOrderByFechaInicioDesc(Long idUsuario);
+
+    void deleteByProfesional_IdUsuario(Long idUsuario);
 }

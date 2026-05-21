@@ -131,7 +131,9 @@ const AdminCatalogoListaPage = () => {
         <div>
           <h2 className="text-xl font-black text-slate-900">{config.label}</h2>
           <p className="text-sm text-slate-600 mt-1">
-            {config.readOnly ? 'Solo consulta.' : 'Modificá o eliminá ítems del catálogo.'}
+            {config.readOnly
+              ? `Solo consulta.${config.listHint ? ` ${config.listHint}.` : ''} No se pueden modificar ni eliminar.`
+              : 'Modificá o eliminá ítems del catálogo.'}
             {supportsFilter && ' Filtros en el navegador (sin llamadas al buscar).'}
           </p>
         </div>

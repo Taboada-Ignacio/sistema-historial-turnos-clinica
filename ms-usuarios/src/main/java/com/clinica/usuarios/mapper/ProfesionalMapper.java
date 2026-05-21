@@ -23,6 +23,9 @@ public interface ProfesionalMapper {
     Profesional toEntity(ProfesionalRegistroDTO dto);
 
     @Mapping(source = "especialidad.descripcion", target = "especialidad")
+    @Mapping(source = "especialidad.idEspecialidad", target = "idEspecialidad")
+    @Mapping(source = "direccion.localidad.idLocalidad", target = "idLocalidad")
+    @Mapping(source = "direccion.localidad.provincia.idProvincia", target = "idProvincia")
     @Mapping(source = "direccion.localidad.nombre", target = "nombreLocalidad")
     @Mapping(source = "direccion.localidad.provincia.nombre", target = "nombreProvincia")
     @Mapping(source = "estadoActual.nombre", target = "estadoActual")

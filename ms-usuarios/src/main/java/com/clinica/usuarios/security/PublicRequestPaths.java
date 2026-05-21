@@ -53,6 +53,7 @@ public final class PublicRequestPaths {
                 || path.contains("/api/direcciones")
                 || path.contains("/api/especialidades")
                 || path.contains("/api/roles")
+                || path.contains("/api/estados")
                 || path.contains("/api/obras-sociales");
     }
 

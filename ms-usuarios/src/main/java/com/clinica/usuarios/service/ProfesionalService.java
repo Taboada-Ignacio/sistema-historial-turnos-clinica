@@ -2,6 +2,8 @@ package com.clinica.usuarios.service;
 
 import com.clinica.usuarios.dto.request.ProfesionalRegistroDTO;
 import com.clinica.usuarios.dto.request.ProfesionalUpdateDTO;
+import com.clinica.usuarios.dto.request.RechazarProfesionalPendienteDTO;
+import com.clinica.usuarios.dto.response.ProfesionalBusquedaResponseDTO;
 import com.clinica.usuarios.dto.response.ProfesionalPresentacionDTO;
 import com.clinica.usuarios.dto.response.ProfesionalResponseDTO;
 import org.springframework.web.multipart.MultipartFile;
@@ -13,6 +15,13 @@ public interface ProfesionalService {
     ProfesionalResponseDTO registrarProfesional(ProfesionalRegistroDTO dto, MultipartFile foto);
     
     ProfesionalResponseDTO obtenerProfesionalPorId(Long id);
+
+    /**
+     * Búsqueda admin: {@code q}, {@code idEspecialidad}, {@code idProvincia}, {@code idLocalidad}
+     * (localidad requiere provincia). Al menos un criterio obligatorio.
+     */
+    ProfesionalBusquedaResponseDTO buscarProfesionales(
+            String texto, Long idEspecialidad, Long idProvincia, Long idLocalidad);
 
     /** Perfil del profesional autenticado (email del JWT). */
     ProfesionalResponseDTO obtenerProfesionalSesion(String email);
@@ -30,6 +39,11 @@ public interface ProfesionalService {
     List<ProfesionalResponseDTO> obtenerProfesionalesConMembresiaInactiva();
     ProfesionalResponseDTO actualizarProfesional(Long id, ProfesionalUpdateDTO dto, MultipartFile foto);
     void eliminarSoloProfesional(Long id);
+
+    /**
+     * Rechaza un profesional pendiente (SIN_VERIFICAR): valida contraseña del admin, envía correo y borra el registro.
+     */
+    void rechazarYBorrarProfesionalPendiente(Long idProfesional, RechazarProfesionalPendienteDTO dto, String emailAdministrador);
     
     void confirmarCuenta(String token);
 

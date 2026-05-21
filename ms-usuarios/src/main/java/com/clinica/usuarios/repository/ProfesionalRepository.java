@@ -3,6 +3,7 @@ package com.clinica.usuarios.repository;
 import com.clinica.usuarios.model.Profesional;
 import com.clinica.usuarios.model.Membresia;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -12,7 +13,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface ProfesionalRepository extends JpaRepository<Profesional, Long> {
+public interface ProfesionalRepository extends JpaRepository<Profesional, Long>, JpaSpecificationExecutor<Profesional> {
     
     // Buscar un profesional por su matrícula
     Optional<Profesional> findByMatricula(String matricula);

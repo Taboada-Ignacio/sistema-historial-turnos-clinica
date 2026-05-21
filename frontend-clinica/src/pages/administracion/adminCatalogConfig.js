@@ -60,6 +60,15 @@ export const ADMIN_CATALOG_CONFIG = {
     editableKeys: ['nombre', 'idProvincia'],
     fieldLabels: { nombre: 'Nombre', idProvincia: 'ID provincia' },
   },
+  estados: {
+    label: 'Estados de cuenta',
+    apiSegment: 'estados',
+    idKey: 'idEstado',
+    listTitle: 'nombre',
+    readOnly: true,
+    sentinelField: 'nombre',
+    listHint: 'PENDIENTE, ACTIVO, BLOQUEADO',
+  },
 };
 
 export function getCatalogConfig(tipo) {

@@ -24,6 +24,7 @@ const RegistroProfesional = () => {
   const [especialidades, setEspecialidades] = useState([]);
   const [rolesIds, setRolesIds] = useState([]); 
   const [errorFoto, setErrorFoto] = useState('');
+  const [error, setError] = useState('');
 
   // 1. CARGA INICIAL
   useEffect(() => {
@@ -55,6 +56,7 @@ const RegistroProfesional = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    if (error && (name === 'email' || name === 'dni')) setError('');
     setFormData(prev => ({ 
       ...prev, 
       [name]: value,
@@ -130,6 +132,7 @@ const RegistroProfesional = () => {
       return;
     }
     setLoading(true);
+    setError('');
 
     console.log("%c[DEBUG] Iniciando envío de Form Data...", "color: purple; font-weight: bold;");
 
@@ -162,13 +165,17 @@ const RegistroProfesional = () => {
       
       navigate('/verificar-email-profesional', { state: { email: formData.email } });
 
-    } catch (error) {
-      console.error("%c[DEBUG] ERROR EN EL POST:", "color: red; font-weight: bold;");
-      if (error.response) {
-        console.log("[DEBUG] Status:", error.response.status);
-        console.log("[DEBUG] Detalle:", error.response.data);
+    } catch (err) {
+      console.error("%c[DEBUG] ERROR EN EL POST:", "color: red; font-weight: bold;", err.response?.data);
+      const data = err.response?.data;
+      const mensaje =
+        data?.mensaje ||
+        data?.email ||
+        'No se pudo completar el registro. Verificá los datos ingresados.';
+      setError(mensaje);
+      if (mensaje.toLowerCase().includes('dni')) {
+        setStep(1);
       }
-      alert("Error al registrar. Revisá los logs de la consola.");
     } finally {
       setLoading(false);
     }
@@ -203,6 +210,12 @@ const RegistroProfesional = () => {
         </div>
 
         <form onSubmit={step === 3 ? handleSubmit : handleStepAdvance} className="p-8">
+
+          {error && (
+            <div className="bg-red-50 text-red-600 p-4 rounded-xl text-sm mb-6 border border-red-200" role="alert">
+              {error}
+            </div>
+          )}
           
           {step === 1 && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fadeIn">

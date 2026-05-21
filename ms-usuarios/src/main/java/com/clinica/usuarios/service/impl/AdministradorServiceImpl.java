@@ -13,13 +13,16 @@ import com.clinica.usuarios.service.AdministradorService;
 import com.clinica.usuarios.service.DireccionService;
 import com.clinica.usuarios.service.EmailService;
 import com.clinica.usuarios.service.VerificationTokenService;
+import com.clinica.usuarios.service.support.UnicidadUsuarioValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -38,6 +41,7 @@ public class AdministradorServiceImpl implements AdministradorService {
     private final EstadoRepository estadoRepository;
     private final CambioEstadoRepository cambioEstadoRepository;
     private final VerificationTokenRepository tokenRepository;
+    private final RefreshTokenRepository refreshTokenRepository;
     private final VerificationTokenService verificationTokenService;
     private final AccountActivationService accountActivationService;
     private final EmailService emailService;
@@ -55,7 +59,7 @@ public class AdministradorServiceImpl implements AdministradorService {
         }
 
         // 2. Validar Unicidad de Email y DNI
-        validarUnicidadUsuario(dto.getEmail(), dto.getDni());
+        UnicidadUsuarioValidator.validarAlta(usuarioRepository, dto.getEmail(), dto.getDni());
 
         // 3. Obtención de dependencias y Estado inicial
         Rol rolAdmin = obtenerRolObligatorio("ROLE_ADMINISTRADOR");
@@ -142,8 +146,17 @@ public class AdministradorServiceImpl implements AdministradorService {
     @Override
     @Transactional(readOnly = true)
     public AdministradorResponseDTO obtenerAdministradorPorId(Long id) {
-        Administrador admin = administradorRepository.findById(id)
+        Administrador admin = administradorRepository.findWithUbicacionById(id)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Administrador no encontrado con ID: " + id));
+        return administradorMapper.toResponseDTO(admin);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AdministradorResponseDTO obtenerAdministradorPorEmail(String email) {
+        Administrador admin = administradorRepository.findByEmail(email)
+                .flatMap(a -> administradorRepository.findWithUbicacionById(a.getIdUsuario()))
+                .orElseThrow(() -> new RecursoNoEncontradoException("Administrador no encontrado."));
         return administradorMapper.toResponseDTO(admin);
     }
 
@@ -151,6 +164,8 @@ public class AdministradorServiceImpl implements AdministradorService {
     @Transactional(readOnly = true)
     public List<AdministradorResponseDTO> obtenerTodosLosAdministradores() {
         return administradorRepository.findAll().stream()
+                .sorted(Comparator.comparing(Administrador::getApellido, Comparator.nullsLast(String::compareToIgnoreCase))
+                        .thenComparing(Administrador::getNombre, Comparator.nullsLast(String::compareToIgnoreCase)))
                 .map(administradorMapper::toResponseDTO)
                 .collect(Collectors.toList());
     }
@@ -158,8 +173,11 @@ public class AdministradorServiceImpl implements AdministradorService {
     @Override
     @Transactional
     public AdministradorResponseDTO actualizarAdministrador(Long id, AdministradorUpdateDTO dto) {
-        Administrador admin = administradorRepository.findById(id)
+        Administrador admin = administradorRepository.findWithUbicacionById(id)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Administrador no encontrado"));
+
+        UnicidadUsuarioValidator.validarActualizacion(
+                usuarioRepository, admin.getIdUsuario(), dto.getEmail(), dto.getDni());
 
         admin.setNombre(dto.getNombre());
         admin.setApellido(dto.getApellido());
@@ -171,10 +189,27 @@ public class AdministradorServiceImpl implements AdministradorService {
         if (dto.getEstadoActual() != null) {
             Estado nuevoEstado = estadoRepository.findByNombre(dto.getEstadoActual())
                     .orElseThrow(() -> new RecursoNoEncontradoException("Estado no válido: " + dto.getEstadoActual()));
-            
+
             if (!admin.getEstadoActual().equals(nuevoEstado)) {
                 admin.setEstadoActual(nuevoEstado);
                 registrarCambioEstado(admin, nuevoEstado);
+            }
+        }
+
+        if (dto.getIdLocalidad() != null || (dto.getDireccion() != null && !dto.getDireccion().isBlank())) {
+            Localidad localidadObjetivo = dto.getIdLocalidad() != null
+                    ? localidadRepository.findById(dto.getIdLocalidad())
+                            .orElseThrow(() -> new RecursoNoEncontradoException("Localidad no encontrada"))
+                    : admin.getDireccion().getLocalidad();
+
+            if (dto.getDireccion() != null && !dto.getDireccion().isBlank()) {
+                admin.setDireccion(direccionService.obtenerOCrearPorTextoYLocalidad(dto.getDireccion(), localidadObjetivo));
+            } else if (dto.getIdLocalidad() != null
+                    && admin.getDireccion() != null
+                    && admin.getDireccion().getLocalidad() != null
+                    && !admin.getDireccion().getLocalidad().getIdLocalidad().equals(localidadObjetivo.getIdLocalidad())) {
+                throw new ReglaDeNegocioException(
+                        "Si cambiás la localidad, enviá la dirección en texto para esa localidad.");
             }
         }
 
@@ -184,13 +219,15 @@ public class AdministradorServiceImpl implements AdministradorService {
     @Override
     @Transactional
     public void eliminarAdministrador(Long id) {
-        if (!administradorRepository.existsById(id)) {
-            throw new RecursoNoEncontradoException("Administrador no encontrado");
-        }
+        Administrador admin = administradorRepository.findById(id)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Administrador no encontrado"));
+        tokenRepository.deleteByUsuario(admin);
+        refreshTokenRepository.deleteByUsuario(admin);
+        cambioEstadoRepository.deleteByUsuario_IdUsuario(id);
         try {
-            administradorRepository.deleteById(id);
-        } catch (Exception e) {
-            throw new ReglaDeNegocioException("Error al eliminar administrador: posee registros asociados.");
+            administradorRepository.delete(admin);
+        } catch (DataIntegrityViolationException e) {
+            throw new ReglaDeNegocioException("No se puede eliminar el administrador porque tiene registros asociados.");
         }
     }
 
@@ -207,15 +244,6 @@ public class AdministradorServiceImpl implements AdministradorService {
                 .fecha(LocalDateTime.now())
                 .build();
         cambioEstadoRepository.save(historial);
-    }
-
-    private void validarUnicidadUsuario(String email, Integer dni) {
-        if (usuarioRepository.findByEmail(email).isPresent()) {
-            throw new ReglaDeNegocioException("El correo electrónico ya está en uso.");
-        }
-        if (usuarioRepository.findByDni(dni).isPresent()) {
-            throw new ReglaDeNegocioException("El DNI ya está registrado.");
-        }
     }
 
     private Rol obtenerRolObligatorio(String descripcionRol) {

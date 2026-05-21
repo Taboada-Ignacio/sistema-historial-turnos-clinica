@@ -2,7 +2,10 @@ package com.clinica.usuarios.service.impl;
 
 import com.clinica.usuarios.dto.request.PacienteRegistroDTO;
 import com.clinica.usuarios.dto.request.PacienteUpdateDTO;
+import com.clinica.usuarios.dto.response.PacienteBusquedaResponseDTO;
+import com.clinica.usuarios.dto.response.PacienteListadoDTO;
 import com.clinica.usuarios.dto.response.PacienteResponseDTO;
+import com.clinica.usuarios.repository.PacienteSpecifications;
 import com.clinica.usuarios.exception.RecursoNoEncontradoException;
 import com.clinica.usuarios.exception.ReglaDeNegocioException;
 import com.clinica.usuarios.mapper.PacienteMapper;
@@ -13,13 +16,17 @@ import com.clinica.usuarios.service.DireccionService;
 import com.clinica.usuarios.service.EmailService;
 import com.clinica.usuarios.service.PacienteService;
 import com.clinica.usuarios.service.VerificationTokenService;
+import com.clinica.usuarios.service.support.UnicidadUsuarioValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -32,12 +39,14 @@ public class PacienteServiceImpl implements PacienteService {
     private final UsuarioRepository usuarioRepository;
     private final RolRepository rolRepository;
     private final LocalidadRepository localidadRepository;
+    private final ProvinciaRepository provinciaRepository;
     private final ObraSocialRepository obraSocialRepository;
     
     // Nuevas dependencias para el flujo de estados y confirmaci?n
     private final EstadoRepository estadoRepository;
     private final CambioEstadoRepository cambioEstadoRepository;
     private final VerificationTokenRepository tokenRepository;
+    private final RefreshTokenRepository refreshTokenRepository;
     private final VerificationTokenService verificationTokenService;
     private final AccountActivationService accountActivationService;
     private final EmailService emailService;
@@ -51,7 +60,7 @@ public class PacienteServiceImpl implements PacienteService {
     public PacienteResponseDTO registrarPaciente(PacienteRegistroDTO dto) {
         
         // 1. Validaciones de Identidad
-        validarUnicidad(dto.getEmail(), dto.getDni());
+        UnicidadUsuarioValidator.validarAlta(usuarioRepository, dto.getEmail(), dto.getDni());
 
         // 2. Obtenci?n de dependencias
         Set<Rol> rolesAsignados = buscarRoles(dto.getRolesIds());
@@ -130,9 +139,101 @@ public class PacienteServiceImpl implements PacienteService {
     @Override
     @Transactional(readOnly = true)
     public PacienteResponseDTO obtenerPacientePorId(Long id) {
-        Paciente paciente = pacienteRepository.findById(id)
+        Paciente paciente = pacienteRepository.findWithUbicacionById(id)
                 .orElseThrow(() -> new RecursoNoEncontradoException("No se encontr? el paciente con ID: " + id));
         return pacienteMapper.toResponseDTO(paciente);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PacienteBusquedaResponseDTO buscarPacientes(String texto, Long idProvincia, Long idLocalidad) {
+        boolean tieneTexto = texto != null && !texto.isBlank();
+        boolean tieneProvincia = idProvincia != null;
+        boolean tieneLocalidad = idLocalidad != null;
+
+        if (!tieneTexto && !tieneProvincia) {
+            throw new ReglaDeNegocioException(
+                    "Indicá al menos apellido/nombre o una provincia para buscar pacientes.");
+        }
+        if (tieneLocalidad && !tieneProvincia) {
+            throw new ReglaDeNegocioException("Para filtrar por localidad debés seleccionar también la provincia.");
+        }
+
+        String nombreProvincia = null;
+        String nombreLocalidad = null;
+        if (tieneLocalidad) {
+            Localidad localidad = localidadRepository.findById(idLocalidad)
+                    .orElseThrow(() -> new RecursoNoEncontradoException("Localidad no encontrada."));
+            if (!localidad.getProvincia().getIdProvincia().equals(idProvincia)) {
+                throw new ReglaDeNegocioException("La localidad no pertenece a la provincia seleccionada.");
+            }
+            nombreLocalidad = localidad.getNombre();
+            nombreProvincia = localidad.getProvincia().getNombre();
+        } else if (tieneProvincia) {
+            nombreProvincia = provinciaRepository.findById(idProvincia)
+                    .map(Provincia::getNombre)
+                    .orElse("provincia seleccionada");
+        }
+
+        String textoNorm = tieneTexto ? texto.trim() : null;
+        Specification<Paciente> spec = PacienteSpecifications.busquedaAdmin(textoNorm, idProvincia, idLocalidad);
+        Sort sort = Sort.by("apellido").ascending().and(Sort.by("nombre").ascending());
+
+        List<PacienteListadoDTO> pacientes = pacienteRepository.findAll(spec, sort).stream()
+                .limit(500)
+                .map(this::toListadoDTO)
+                .sorted(Comparator
+                        .comparing(PacienteListadoDTO::getApellido, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER))
+                        .thenComparing(PacienteListadoDTO::getNombre, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)))
+                .collect(Collectors.toList());
+
+        return PacienteBusquedaResponseDTO.builder()
+                .total(pacientes.size())
+                .pacientes(pacientes)
+                .criteriosAplicados(describirCriteriosBusqueda(textoNorm, nombreProvincia, nombreLocalidad))
+                .build();
+    }
+
+    private String describirCriteriosBusqueda(String texto, String provincia, String localidad) {
+        boolean tieneTexto = texto != null && !texto.isBlank();
+        boolean tieneProvincia = provincia != null && !provincia.isBlank();
+        boolean tieneLocalidad = localidad != null && !localidad.isBlank();
+
+        if (tieneTexto && !tieneProvincia) {
+            return "Apellido y/o nombre: \"" + texto + "\"";
+        }
+        if (tieneProvincia && tieneLocalidad && tieneTexto) {
+            return "Provincia " + provincia + ", localidad " + localidad + ", apellido/nombre: \"" + texto + "\"";
+        }
+        if (tieneProvincia && tieneLocalidad) {
+            return "Provincia " + provincia + ", localidad " + localidad;
+        }
+        if (tieneProvincia && tieneTexto) {
+            return "Provincia " + provincia + ", apellido/nombre: \"" + texto + "\"";
+        }
+        if (tieneProvincia) {
+            return "Provincia " + provincia;
+        }
+        return "Criterios de búsqueda";
+    }
+
+    private PacienteListadoDTO toListadoDTO(Paciente p) {
+        String provincia = null;
+        String localidad = null;
+        if (p.getDireccion() != null && p.getDireccion().getLocalidad() != null) {
+            localidad = p.getDireccion().getLocalidad().getNombre();
+            if (p.getDireccion().getLocalidad().getProvincia() != null) {
+                provincia = p.getDireccion().getLocalidad().getProvincia().getNombre();
+            }
+        }
+        return PacienteListadoDTO.builder()
+                .idUsuario(p.getIdUsuario())
+                .apellido(p.getApellido())
+                .nombre(p.getNombre())
+                .dni(p.getDni())
+                .nombreProvincia(provincia)
+                .nombreLocalidad(localidad)
+                .build();
     }
 
     @Override
@@ -146,8 +247,11 @@ public class PacienteServiceImpl implements PacienteService {
     @Override
     @Transactional
     public PacienteResponseDTO actualizarPaciente(Long id, PacienteUpdateDTO dto) {
-        Paciente paciente = pacienteRepository.findById(id)
+        Paciente paciente = pacienteRepository.findWithUbicacionById(id)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Paciente no encontrado con ID: " + id));
+
+        UnicidadUsuarioValidator.validarActualizacion(
+                usuarioRepository, paciente.getIdUsuario(), dto.getEmail(), dto.getDni());
 
         // Actualizamos datos b?sicos
         paciente.setNombre(dto.getNombre());
@@ -200,26 +304,19 @@ public class PacienteServiceImpl implements PacienteService {
     @Override
     @Transactional 
     public void eliminarSoloPaciente(Long id) {
-        if (!pacienteRepository.existsById(id)) {
-            throw new RecursoNoEncontradoException("El paciente con ID " + id + " no fue encontrado.");
-        }
+        Paciente paciente = pacienteRepository.findById(id)
+                .orElseThrow(() -> new RecursoNoEncontradoException("El paciente con ID " + id + " no fue encontrado."));
+        tokenRepository.deleteByUsuario(paciente);
+        refreshTokenRepository.deleteByUsuario(paciente);
+        cambioEstadoRepository.deleteByUsuario_IdUsuario(id);
         try {
-            pacienteRepository.deleteById(id);
+            pacienteRepository.delete(paciente);
         } catch (DataIntegrityViolationException e) {
             throw new ReglaDeNegocioException("No se puede eliminar el paciente porque tiene registros asociados.");
         }
     }
 
     // --- METODOS PRIVADOS DE APOYO ---
-
-    private void validarUnicidad(String email, Integer dni) {
-        if (usuarioRepository.findByEmail(email).isPresent()) {
-            throw new ReglaDeNegocioException("El correo " + email + " ya esta en uso.");
-        }
-        if (usuarioRepository.findByDni(dni).isPresent()) {
-            throw new ReglaDeNegocioException("El DNI " + dni + " ya esta registrado.");
-        }
-    }
 
     private Set<Rol> buscarRoles(Set<Long> rolesIds) {
         return rolesIds.stream()

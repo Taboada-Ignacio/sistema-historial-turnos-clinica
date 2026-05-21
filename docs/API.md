@@ -60,9 +60,10 @@ Flujo detallado, front y anti-doble-submit: [`RECUPERACION-CONTRASENA.md`](RECUP
 | GET | `/confirmar` | Público | Query `token`; redirect a SPA (`app.frontend-url`). |
 | POST | `/confirmar-codigo` | Público | Body: `email`, `codigo` (6 dígitos). |
 | POST | `/reenviar-confirmacion` | Público | Query `email`. No aplica si usuario ya `ACTIVO`. |
+| GET | `/` | ADMIN | Listado completo. |
+| GET | `/buscar` | ADMIN | Query opcionales: `q`, `idProvincia`, `idLocalidad` (localidad exige provincia). Al menos `q` o `idProvincia`. Respuesta: `{ total, pacientes[], criteriosAplicados }` (máx. 500). Ver [`CAMBIOS-ADMIN-PACIENTES-PROFESIONALES.md`](CAMBIOS-ADMIN-PACIENTES-PROFESIONALES.md). |
 | GET | `/{id}` | ADMIN o PACIENTE **y** mismo usuario |
-| GET | `/` | ADMIN |
-| PUT | `/{id}` | ADMIN o PACIENTE **y** mismo usuario |
+| PUT | `/{id}` | ADMIN o PACIENTE **y** mismo usuario | Unicidad email/DNI al editar (`UnicidadUsuarioValidator`). |
 | DELETE | `/{id}` | ADMIN |
 
 ---
@@ -71,20 +72,22 @@ Flujo detallado, front y anti-doble-submit: [`RECUPERACION-CONTRASENA.md`](RECUP
 
 | Método | Ruta | Acceso |
 |--------|------|--------|
-| POST | `/registro` | Público | `multipart/form-data`: parte `datos` (JSON), opcional `foto`. |
+| POST | `/registro` | Público | `multipart/form-data`: parte `datos` (JSON), opcional `foto`. Email/DNI duplicados → **400** `{ "mensaje": "..." }`. |
 | GET | `/confirmar` | Público | Query `token`; redirect SPA. |
 | POST | `/confirmar-codigo` | Público | Body: `email`, `codigo`. |
 | POST | `/reenviar-confirmacion` | Público | Query `email`. |
 | GET | `/` | ADMIN | Sin query: todos. Query **`membresia=<NOMBRE>`** (p. ej. `SIN_VERIFICAR`, `INACTIVA`, `ACTIVA`): filtra por membresía actual; el nombre se normaliza a mayúsculas y debe existir en catálogo → si no existe **404**. `membresia` vacío → **400**. |
+| GET | `/buscar` | ADMIN | Query opcionales: `q`, `idEspecialidad`, `idProvincia`, `idLocalidad` (localidad exige provincia). Al menos `q`, `idEspecialidad` o `idProvincia`. Respuesta: `{ total, profesionales[], criteriosAplicados }` con `fotoPerfil` en cada ítem (máx. 500). |
 | GET | `/me` | PROFESIONAL | Perfil del usuario autenticado (`membresiaActual`, especialidad, foto, etc.). |
 | GET | `/presentacion` | ADMIN, PACIENTE o PROFESIONAL | Catálogo reducido (solo profesionales ACTIVO). |
 | GET | `/{id}/presentacion` | ADMIN, PACIENTE o PROFESIONAL | Ficha pública; el **propio** profesional puede consultar su ficha aunque no esté ACTIVO (p. ej. `SIN_VERIFICAR`). |
 | GET | `/{id}` | ADMIN o PROFESIONAL **y** mismo usuario |
 | GET | `/membresia/inactiva` | ADMIN |
-| PUT | `/{id}` | ADMIN o PROFESIONAL **y** mismo usuario |
+| PUT | `/{id}` | ADMIN o PROFESIONAL **y** mismo usuario | JSON o multipart con foto; unicidad email/DNI, matrícula única, `idEspecialidad`. |
 | DELETE | `/{id}` | ADMIN |
-| PUT | `/{id}/verificar-matricula` | ADMIN |
+| PUT | `/{id}/verificar-matricula` | ADMIN | Membresía → `INACTIVA`; email de aprobación. |
 | PUT | `/{id}/acceso-indefinido` | ADMIN |
+| POST | `/{id}/rechazar-pendiente` | ADMIN | Body: `motivo` (10–1000 chars), `password` (admin actual). Solo **`SIN_VERIFICAR`**: email de rechazo (síncrono) y borrado físico del profesional. Contraseña incorrecta → **400** `mensaje`. Ver [`CAMBIOS-REGISTRO-Y-RECHAZO-PROFESIONAL.md`](CAMBIOS-REGISTRO-Y-RECHAZO-PROFESIONAL.md). |
 
 ---
 
@@ -96,21 +99,31 @@ Flujo detallado, front y anti-doble-submit: [`RECUPERACION-CONTRASENA.md`](RECUP
 | GET | `/confirmar` | Público | Query `token`; redirect SPA. |
 | POST | `/confirmar-codigo` | Público | Body: `email`, `codigo`. |
 | POST | `/reenviar-confirmacion` | Público | Query `email`. |
-| GET | `/` | ADMIN |
-| GET | `/{id}` | ADMIN |
-| PUT | `/{id}` | ADMIN |
-| DELETE | `/{id}` | ADMIN |
+| GET | `/me` | ADMIN | Perfil del administrador autenticado (email del JWT). |
+| GET | `/` | ADMIN | Listado completo (orden apellido, nombre). |
+| GET | `/{id}` | ADMIN | Detalle; `AdministradorResponseDTO` incluye `idProvincia`, `idLocalidad`. |
+| PUT | `/{id}` | ADMIN **solo si** `id` = `idUsuario` del JWT (`esMismoUsuario`) | Body: `AdministradorUpdateDTO` (+ `direccion`, `idLocalidad`). |
+| DELETE | `/{id}` | ADMIN **solo si** `id` = `idUsuario` del JWT | Borrado físico tras limpiar tokens e historial de estados. |
+
+Panel SPA: listado y detalle de cualquier admin; edición/baja solo de la propia cuenta. Ver [`CAMBIOS-ADMIN-ADMINISTRADORES.md`](CAMBIOS-ADMIN-ADMINISTRADORES.md).
 
 ---
 
 ## Catálogos y maestros
 
-Rutas base: **`/api/provincias`**, **`/api/localidades`**, **`/api/direcciones`**, **`/api/especialidades`**, **`/api/obras-sociales`**, **`/api/roles`**.
+Rutas base: **`/api/provincias`**, **`/api/localidades`**, **`/api/direcciones`**, **`/api/especialidades`**, **`/api/obras-sociales`**, **`/api/roles`**, **`/api/estados`**.
 
 Patrón habitual:
 
 - **GET** listado y **GET** por id: **públicos** para lectura (JWT filter los ignora en GET; útiles para formularios de registro).
-- **POST /registro**, **PUT /{id}**, **DELETE /{id}**: **`ROLE_ADMINISTRADOR`**.
+- **POST /registro**, **PUT /{id}**, **DELETE /{id}**: **`ROLE_ADMINISTRADOR`** (no aplica a roles ni estados).
+
+**Roles y estados (solo lectura, GET público):**
+
+| Método | Ruta | Notas |
+|--------|------|--------|
+| GET | `/api/roles`, `/api/roles/{id}` | Catálogo de roles. |
+| GET | `/api/estados`, `/api/estados/{id}` | Estados de cuenta (`PENDIENTE`, `ACTIVO`, `BLOQUEADO`). Sin alta/edición/baja por API. |
 
 **Localidades (listado con filtros opcionales, GET público):**
 
@@ -139,7 +152,7 @@ Los **registros** de paciente, profesional y administrador incluyen **`direccion
 
 | Método | Ruta | Acceso |
 |--------|------|--------|
-| GET | `/fotosPerfilProfesionales/**` | Público |
+| GET | `/api/profesionales/fotos/{fileName}` | `ROLE_PROFESIONAL` o `ROLE_ADMINISTRADOR` (JWT). Solo nombres `{uuid}.webp`. Máx. **2 MB** en subida. |
 
 ---
 

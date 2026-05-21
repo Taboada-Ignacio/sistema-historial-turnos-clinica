@@ -110,6 +110,43 @@ public class EmailServiceImpl implements EmailService {
     }
 
     @Override
+    public void enviarEmailRechazoProfesionalPendiente(Usuario usuario, String motivo) {
+        try {
+            MimeMessage mimeMessage = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, "utf-8");
+
+            String motivoSeguro = motivo == null ? "" : motivo.trim();
+            String htmlMsg = String.format(
+                "<div style='font-family: Arial, sans-serif; padding: 20px; border: 1px solid #e74c3c; max-width: 600px; margin: auto; border-radius: 8px;'>" +
+                "<h2 style='color: #c0392b; text-align: center;'>Solicitud no aprobada</h2>" +
+                "<p>Hola <strong>%s</strong>,</p>" +
+                "<p>Te informamos que tu solicitud de alta como profesional en la <strong>Clínica UTN</strong> " +
+                "<strong>no ha sido aprobada</strong> por el equipo de Administración.</p>" +
+                "<div style='background-color: #fdf2f2; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #e74c3c;'>" +
+                "  <p style='margin: 0 0 6px; font-size: 0.85em; color: #777; text-transform: uppercase;'>Motivo informado</p>" +
+                "  <p style='margin: 0; color: #333; white-space: pre-wrap;'>%s</p>" +
+                "</div>" +
+                "<p style='font-size: 0.9em; color: #555;'>Si considerás que se trata de un error, podés contactar a la clínica para más información.</p>" +
+                "<hr style='border: 0; border-top: 1px solid #ecf0f1; margin-top: 30px;'>" +
+                "<p style='font-size: 0.8em; color: #777; text-align: center;'>Este es un correo automático del Sistema de Gestión de Historial Clínico.</p>" +
+                "</div>",
+                usuario.getNombre(), motivoSeguro.replace("<", "&lt;").replace(">", "&gt;")
+            );
+
+            helper.setText(htmlMsg, true);
+            helper.setTo(usuario.getEmail());
+            helper.setSubject("Solicitud profesional no aprobada - Clínica UTN");
+            helper.setFrom(sender);
+
+            mailSender.send(mimeMessage);
+            log.info("Email de rechazo de solicitud profesional enviado a: {}", usuario.getEmail());
+        } catch (MessagingException e) {
+            log.error("Error al enviar email de rechazo a {}: {}", usuario.getEmail(), e.getMessage());
+            throw new RuntimeException("No se pudo enviar el correo de notificación al profesional.", e);
+        }
+    }
+
+    @Override
     @Async
     public void enviarEmailRecuperacionPassword(Usuario usuario, String linkRecuperacion, String tipoPortal) {
         try {

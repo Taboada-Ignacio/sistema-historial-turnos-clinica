@@ -22,7 +22,10 @@ public interface AdministradorMapper {
     Administrador toEntity(AdministradorRegistroDTO dto);
 
     @Mapping(target = "nombreLocalidad", source = "direccion.localidad.nombre")
-    @Mapping(target = "estadoActual", source = "estadoActual.nombre") // Mapea el nombre del estado al String del DTO
+    @Mapping(target = "idLocalidad", source = "direccion.localidad.idLocalidad")
+    @Mapping(target = "nombreProvincia", source = "direccion.localidad.provincia.nombre")
+    @Mapping(target = "idProvincia", source = "direccion.localidad.provincia.idProvincia")
+    @Mapping(target = "estadoActual", source = "estadoActual.nombre")
     @Mapping(source = "direccion.nombre", target = "direccion")
     @Mapping(target = "roles", source = "roles", qualifiedByName = "mapRolesToStrings")
     AdministradorResponseDTO toResponseDTO(Administrador admin);

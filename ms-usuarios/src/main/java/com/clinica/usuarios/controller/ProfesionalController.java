@@ -3,6 +3,8 @@ package com.clinica.usuarios.controller;
 import com.clinica.usuarios.dto.request.ConfirmarCodigoDTO;
 import com.clinica.usuarios.dto.request.ProfesionalRegistroDTO;
 import com.clinica.usuarios.dto.request.ProfesionalUpdateDTO;
+import com.clinica.usuarios.dto.request.RechazarProfesionalPendienteDTO;
+import com.clinica.usuarios.dto.response.ProfesionalBusquedaResponseDTO;
 import com.clinica.usuarios.dto.response.ProfesionalPresentacionDTO;
 import com.clinica.usuarios.dto.response.ProfesionalResponseDTO;
 import com.clinica.usuarios.service.ProfesionalService;
@@ -87,6 +89,22 @@ public class ProfesionalController {
                         ? profesionalService.obtenerProfesionalesPorMembresiaNombre(membresia)
                         : profesionalService.obtenerTodosLosProfesionales();
         return ResponseEntity.ok(profesionales);
+    }
+
+    /**
+     * Búsqueda de profesionales para administración (criterios independientes y combinables).
+     * Filtros: {@code q}, {@code idEspecialidad}, {@code idProvincia}, {@code idLocalidad} (requiere provincia).
+     * Al menos {@code q}, {@code idEspecialidad} o {@code idProvincia} es obligatorio.
+     */
+    @PreAuthorize("hasAuthority('ROLE_ADMINISTRADOR')")
+    @GetMapping("/buscar")
+    public ResponseEntity<ProfesionalBusquedaResponseDTO> buscar(
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) Long idEspecialidad,
+            @RequestParam(required = false) Long idProvincia,
+            @RequestParam(required = false) Long idLocalidad) {
+        return ResponseEntity.ok(
+                profesionalService.buscarProfesionales(q, idEspecialidad, idProvincia, idLocalidad));
     }
 
     /**
@@ -186,6 +204,23 @@ public class ProfesionalController {
     public ResponseEntity<Void> verificarMatricula(@PathVariable Long id) {
         profesionalService.verificarMatricula(id);
         return ResponseEntity.ok().build();
+    }
+
+    /**
+     * Rechaza un profesional pendiente (SIN_VERIFICAR): valida contraseña del admin, notifica por email y borra el registro.
+     */
+    @PreAuthorize("hasAuthority('ROLE_ADMINISTRADOR')")
+    @PostMapping("/{id}/rechazar-pendiente")
+    public ResponseEntity<Map<String, String>> rechazarPendiente(
+            @PathVariable Long id,
+            @Valid @RequestBody RechazarProfesionalPendienteDTO dto,
+            @AuthenticationPrincipal UserDetails principal) {
+        if (principal == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        profesionalService.rechazarYBorrarProfesionalPendiente(id, dto, principal.getUsername());
+        return ResponseEntity.ok(Map.of(
+                "mensaje", "El profesional fue notificado y su solicitud fue eliminada del sistema."));
     }
 
     /**

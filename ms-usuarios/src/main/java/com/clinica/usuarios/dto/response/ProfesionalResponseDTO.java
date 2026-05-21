@@ -26,6 +26,9 @@ public class ProfesionalResponseDTO {
     private LocalDate fechaNacimiento;
     private String matricula;
     private String especialidad;
+    private Long idEspecialidad;
+    private Long idLocalidad;
+    private Long idProvincia;
     private String nombreLocalidad;
     private String nombreProvincia;
     

@@ -27,8 +27,11 @@ public class PacienteResponseDTO {
     @NotNull(message = "El estado actual es obligatorio")
     private String estadoActual; 
     
+    private Long idObraSocial;
     private String nombreObraSocial;
     private String numeroAfiliado;
+    private Long idLocalidad;
+    private Long idProvincia;
     private String nombreLocalidad;
     private String nombreProvincia;
     /** Texto de la dirección tipificada (catálogo). */

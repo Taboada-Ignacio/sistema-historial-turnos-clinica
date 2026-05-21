@@ -32,6 +32,16 @@ import AdminLayout from './pages/administracion/AdminLayout';
 import AdminDashboardHome from './pages/administracion/AdminDashboardHome';
 import ProfesionalesPendientesPage from './pages/administracion/ProfesionalesPendientesPage';
 import ProfesionalPendienteDetallePage from './pages/administracion/ProfesionalPendienteDetallePage';
+import ProfesionalPendienteRechazarPage from './pages/administracion/ProfesionalPendienteRechazarPage';
+import AdminPacientesBuscarPage from './pages/administracion/AdminPacientesBuscarPage';
+import AdminPacienteDetallePage from './pages/administracion/AdminPacienteDetallePage';
+import AdminPacienteEditPage from './pages/administracion/AdminPacienteEditPage';
+import AdminProfesionalesBuscarPage from './pages/administracion/AdminProfesionalesBuscarPage';
+import AdminProfesionalDetallePage from './pages/administracion/AdminProfesionalDetallePage';
+import AdminProfesionalEditPage from './pages/administracion/AdminProfesionalEditPage';
+import AdminAdministradoresListaPage from './pages/administracion/AdminAdministradoresListaPage';
+import AdminAdministradorDetallePage from './pages/administracion/AdminAdministradorDetallePage';
+import AdminAdministradorEditPage from './pages/administracion/AdminAdministradorEditPage';
 import AdministrarEntidadesPage from './pages/administracion/AdministrarEntidadesPage';
 import AdminCatalogoListaPage from './pages/administracion/AdminCatalogoListaPage';
 import AdminCatalogoEditPage from './pages/administracion/AdminCatalogoEditPage';
@@ -91,7 +101,23 @@ function App() {
             <Route index element={<AdminDashboardHome />} />
             <Route path="profesionales-pendientes" element={<ProfesionalesPendientesPage />} />
             <Route path="profesionales-pendientes/:idProfesional" element={<ProfesionalPendienteDetallePage />} />
+            <Route
+              path="profesionales-pendientes/:idProfesional/rechazar"
+              element={<ProfesionalPendienteRechazarPage />}
+            />
             <Route path="entidades" element={<AdministrarEntidadesPage />} />
+            <Route path="entidades/pacientes" element={<AdminPacientesBuscarPage />} />
+            <Route path="entidades/pacientes/:idPaciente" element={<AdminPacienteDetallePage />} />
+            <Route path="entidades/pacientes/:idPaciente/editar" element={<AdminPacienteEditPage />} />
+            <Route path="entidades/profesionales" element={<AdminProfesionalesBuscarPage />} />
+            <Route path="entidades/profesionales/:idProfesional" element={<AdminProfesionalDetallePage />} />
+            <Route path="entidades/profesionales/:idProfesional/editar" element={<AdminProfesionalEditPage />} />
+            <Route path="entidades/administradores" element={<AdminAdministradoresListaPage />} />
+            <Route path="entidades/administradores/:idAdministrador" element={<AdminAdministradorDetallePage />} />
+            <Route
+              path="entidades/administradores/:idAdministrador/editar"
+              element={<AdminAdministradorEditPage />}
+            />
             <Route path="catalogo/:tipo" element={<AdminCatalogoListaPage />} />
             <Route path="catalogo/:tipo/nuevo" element={<AdminCatalogoAltaPage />} />
             <Route path="direcciones" element={<AdminDireccionesPage />} />

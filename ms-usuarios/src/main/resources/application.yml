@@ -4,6 +4,11 @@ server:
 spring:
   application:
     name: ms-usuarios
+
+  servlet:
+    multipart:
+      max-file-size: 2MB
+      max-request-size: 4MB
   
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://db-usuarios:5432/db_clinica_usuarios}
@@ -57,6 +62,10 @@ system:
 app:
   url: ${APP_URL:http://localhost:8080}
   frontend-url: ${APP_FRONTEND_URL:http://localhost:5173}
+  # Fotos de perfil: disco local (volumen Docker). En producción escalar con object storage (S3/MinIO).
+  profesional-foto:
+    storage-dir: ${PROFESIONAL_FOTO_DIR:fotosPerfilProfesionales}
+    max-size-bytes: ${PROFESIONAL_FOTO_MAX_BYTES:2097152}
   # Cookie settings: control via environment variable APP_COOKIE_SECURE (true in production with HTTPS)
   cookie:
     secure: ${APP_COOKIE_SECURE:false}

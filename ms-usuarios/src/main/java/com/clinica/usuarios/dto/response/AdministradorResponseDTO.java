@@ -27,7 +27,10 @@ public class AdministradorResponseDTO {
     // Cambiado de Boolean a String para reflejar el nombre del estado (ACTIVO, PENDIENTE, etc.)
     private String estadoActual; 
     
+    private Long idLocalidad;
+    private Long idProvincia;
     private String nombreLocalidad;
+    private String nombreProvincia;
     /** Texto de la dirección tipificada (catálogo). */
     private String direccion;
     private Set<String> roles;

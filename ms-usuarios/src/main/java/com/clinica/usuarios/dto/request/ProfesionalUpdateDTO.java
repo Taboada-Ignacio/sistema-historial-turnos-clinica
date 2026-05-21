@@ -23,6 +23,7 @@ public class ProfesionalUpdateDTO {
     @NotNull(message = "El estado actual es obligatorio")
     private String estadoActual;
     private Long idLocalidad;
+    @NotNull(message = "La especialidad es obligatoria")
     private Long idEspecialidad;
     private Set<Long> rolesIds;
 }

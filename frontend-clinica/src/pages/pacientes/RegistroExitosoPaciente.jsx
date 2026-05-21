@@ -2,15 +2,12 @@ import React, { useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { PACIENTE_PATHS } from '../../utils/portalPaths';
 
-/**
- * Pantalla tras confirmar el email (redirect del backend). Redirige al dashboard;
- * si no hay sesión, PacienteRoute envía al login.
- */
+/** Tras confirmar el email (redirect del backend): mensaje y redirección al login de paciente. */
 const RegistroExitosoPaciente = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const t = setTimeout(() => navigate(PACIENTE_PATHS.dashboard, { replace: true }), 4500);
+    const t = setTimeout(() => navigate(PACIENTE_PATHS.login, { replace: true }), 4500);
     return () => clearTimeout(t);
   }, [navigate]);
 
@@ -20,13 +17,13 @@ const RegistroExitosoPaciente = () => {
         <div className="text-5xl mb-4">✓</div>
         <h1 className="text-2xl font-bold text-clinica-dark mb-2">¡Cuenta activada!</h1>
         <p className="text-gray-600 mb-6">
-          Tu correo fue verificado. Te llevamos al panel del paciente; si aún no iniciaste sesión, te pediremos que ingreses.
+          Tu correo fue verificado. Iniciá sesión con tu email y contraseña para acceder al portal del paciente.
         </p>
         <Link
-          to={PACIENTE_PATHS.dashboard}
+          to={PACIENTE_PATHS.login}
           className="inline-block w-full py-3 rounded-xl bg-clinica-dark text-white font-semibold hover:bg-clinica-hover transition-all"
         >
-          Ir al panel
+          Ir al inicio de sesión
         </Link>
         <p className="text-xs text-gray-400 mt-4">Redirección automática en unos segundos…</p>
       </div>

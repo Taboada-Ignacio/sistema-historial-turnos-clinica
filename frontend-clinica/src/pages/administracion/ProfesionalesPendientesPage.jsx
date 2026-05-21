@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import clienteAxios from '../../api/axiosConfig';
-import { profesionalFotoAbsoluteUrl } from '../../utils/profesionalFotoUrl';
+import ProfesionalFoto from '../../components/ProfesionalFoto';
 import { formatEspecialidad } from '../../utils/formatEspecialidad';
 import { ADMIN_PATHS } from '../../utils/portalPaths';
 
@@ -21,9 +21,11 @@ function sortProfesionalesPendientes(list) {
 
 const ProfesionalesPendientesPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [pendientes, setPendientes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const flashMensaje = location.state?.mensaje;
 
   useEffect(() => {
     const fetchPendientes = async () => {
@@ -54,6 +56,12 @@ const ProfesionalesPendientesPage = () => {
         Listado ordenado por apellido y nombre. Membresía <span className="font-mono text-sm">SIN_VERIFICAR</span>.
       </p>
 
+      {flashMensaje && (
+        <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+          {flashMensaje}
+        </div>
+      )}
+
       {error && <p className="text-red-600 mb-4">{error}</p>}
 
       {!error && pendientes.length === 0 && (
@@ -64,9 +72,7 @@ const ProfesionalesPendientesPage = () => {
       )}
 
       <ul className="space-y-3">
-        {pendientes.map((profesional) => {
-          const fotoUrl = profesionalFotoAbsoluteUrl(profesional.fotoPerfil);
-          return (
+        {pendientes.map((profesional) => (
             <li key={profesional.idUsuario}>
               <button
                 type="button"
@@ -74,17 +80,12 @@ const ProfesionalesPendientesPage = () => {
                 className="w-full text-left border border-slate-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center gap-4 hover:border-slate-400 hover:bg-slate-50/80 transition-colors"
               >
                 <div className="shrink-0 flex justify-center sm:justify-start">
-                  {fotoUrl ? (
-                    <img
-                      src={fotoUrl}
-                      alt=""
-                      className="w-20 h-20 sm:w-16 sm:h-16 object-cover rounded-lg border border-slate-200"
-                    />
-                  ) : (
-                    <div className="w-20 h-20 sm:w-16 sm:h-16 rounded-lg border border-slate-200 bg-slate-100 flex items-center justify-center text-xs text-slate-500">
-                      Sin foto
-                    </div>
-                  )}
+                  <ProfesionalFoto
+                    fotoPerfil={profesional.fotoPerfil}
+                    alt=""
+                    className="w-20 h-20 sm:w-16 sm:h-16 object-cover rounded-lg border border-slate-200"
+                    placeholderClassName="w-20 h-20 sm:w-16 sm:h-16 rounded-lg border border-slate-200 bg-slate-100 flex items-center justify-center text-xs text-slate-500"
+                  />
                 </div>
                 <div className="flex-1 min-w-0 grid grid-cols-1 sm:grid-cols-3 gap-1 sm:gap-4 sm:items-center">
                   <p className="font-bold text-slate-900 truncate order-1 sm:order-1">{profesional.apellido}</p>
@@ -96,8 +97,7 @@ const ProfesionalesPendientesPage = () => {
                 <span className="text-sm font-semibold text-slate-500 shrink-0 hidden sm:inline">Ver detalle →</span>
               </button>
             </li>
-          );
-        })}
+        ))}
       </ul>
     </section>
   );

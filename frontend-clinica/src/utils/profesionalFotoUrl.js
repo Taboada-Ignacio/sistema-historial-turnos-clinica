@@ -1,10 +1,15 @@
-import { API_BASE_URL } from '../config/env';
-
 /**
- * URL absoluta para mostrar la foto vía API Gateway: StripPrefix deja /fotosPerfilProfesionales/... en ms-usuarios.
+ * Ruta relativa al gateway para descargar foto con JWT (admin o profesional).
+ * fotoPerfil en BD: /fotosPerfilProfesionales/{uuid}.webp
  */
-export function profesionalFotoAbsoluteUrl(fotoPerfil) {
+export function profesionalFotoRequestPath(fotoPerfil) {
   if (fotoPerfil == null || fotoPerfil === '') return null;
-  const path = fotoPerfil.startsWith('/') ? fotoPerfil : `/${fotoPerfil}`;
-  return `${API_BASE_URL}/usuarios${path}`;
+  const match = String(fotoPerfil).match(/\/([^/]+\.webp)$/i);
+  if (!match) return null;
+  return `/usuarios/api/profesionales/fotos/${encodeURIComponent(match[1])}`;
+}
+
+/** @deprecated Usar ProfesionalFoto (blob autenticado). */
+export function profesionalFotoAbsoluteUrl(fotoPerfil) {
+  return profesionalFotoRequestPath(fotoPerfil);
 }

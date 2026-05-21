@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import clienteAxios from '../../api/axiosConfig';
 import { clearSession } from '../../utils/auth';
 import { formatEspecialidad } from '../../utils/formatEspecialidad';
-import { profesionalFotoAbsoluteUrl } from '../../utils/profesionalFotoUrl';
+import ProfesionalFoto from '../../components/ProfesionalFoto';
 import { HOME_PATH, PROFESIONAL_PATHS } from '../../utils/portalPaths';
 
 const MEMBRESIA_SIN_VERIFICAR = 'SIN_VERIFICAR';
@@ -102,7 +102,6 @@ const DashboardProfesional = () => {
     ? `Bienvenido, ${especialidadLabel}. Gestioná tu agenda y pacientes desde aquí.`
     : 'Bienvenido. Gestioná tu agenda y pacientes desde aquí.';
 
-  const fotoUrl = profesionalFotoAbsoluteUrl(presentacion?.fotoPerfil);
   const nombreCompleto =
     presentacion?.apellido || presentacion?.nombre
       ? [presentacion.apellido, presentacion.nombre].filter(Boolean).join(', ')
@@ -156,20 +155,12 @@ const DashboardProfesional = () => {
               </div>
             ) : (
               <>
-                {fotoUrl ? (
-                  <img
-                    src={fotoUrl}
-                    alt={nombreCompleto ? `Foto de ${nombreCompleto}` : 'Foto de perfil'}
-                    className="w-20 h-20 sm:w-24 sm:h-24 object-cover rounded-2xl border-2 border-blue-100 shadow-md shrink-0"
-                  />
-                ) : (
-                  <div
-                    className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl border-2 border-gray-200 bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-400 text-center px-2 shrink-0"
-                    aria-hidden={!nombreCompleto}
-                  >
-                    Sin foto
-                  </div>
-                )}
+                <ProfesionalFoto
+                  fotoPerfil={presentacion?.fotoPerfil}
+                  alt={nombreCompleto ? `Foto de ${nombreCompleto}` : 'Foto de perfil'}
+                  className="w-20 h-20 sm:w-24 sm:h-24 object-cover rounded-2xl border-2 border-blue-100 shadow-md shrink-0"
+                  placeholderClassName="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl border-2 border-gray-200 bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-400 text-center px-2 shrink-0"
+                />
                 {nombreCompleto && (
                   <p className="text-center font-black text-gray-900 text-sm sm:text-base leading-tight max-w-[10rem] sm:max-w-[6.5rem] mt-2">
                     {nombreCompleto}

@@ -20,5 +20,6 @@ public class AdministradorUpdateDTO {
     private LocalDate fechaNacimiento;
     private String estadoActual; // <--- AGREGAR ESTO
     private Long idLocalidad;
+    private String direccion;
     private Set<Long> rolesIds;
 }

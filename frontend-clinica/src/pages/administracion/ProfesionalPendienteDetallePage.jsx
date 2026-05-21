@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import clienteAxios from '../../api/axiosConfig';
-import { profesionalFotoAbsoluteUrl } from '../../utils/profesionalFotoUrl';
+import ProfesionalFoto from '../../components/ProfesionalFoto';
 import { formatEspecialidad } from '../../utils/formatEspecialidad';
 import { ADMIN_PATHS } from '../../utils/portalPaths';
 
@@ -94,7 +94,6 @@ const ProfesionalPendienteDetallePage = () => {
     );
   }
 
-  const fotoUrl = profesionalFotoAbsoluteUrl(profesional.fotoPerfil);
   const rolesList = profesional.roles ? Array.from(profesional.roles).sort() : [];
 
   return (
@@ -126,17 +125,12 @@ const ProfesionalPendienteDetallePage = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-8">
         <div>
-          {fotoUrl ? (
-            <img
-              src={fotoUrl}
-              alt={`Perfil de ${profesional.nombre} ${profesional.apellido}`}
-              className="w-full max-w-[220px] aspect-square object-cover rounded-xl border border-slate-200 mx-auto lg:mx-0"
-            />
-          ) : (
-            <div className="w-full max-w-[220px] aspect-square rounded-xl border border-slate-200 bg-slate-100 flex items-center justify-center text-slate-500 text-sm mx-auto lg:mx-0">
-              Sin foto de perfil
-            </div>
-          )}
+          <ProfesionalFoto
+            fotoPerfil={profesional.fotoPerfil}
+            alt={`Perfil de ${profesional.nombre} ${profesional.apellido}`}
+            className="w-full max-w-[220px] aspect-square object-cover rounded-xl border border-slate-200 mx-auto lg:mx-0"
+            placeholderClassName="w-full max-w-[220px] aspect-square rounded-xl border border-slate-200 bg-slate-100 flex items-center justify-center text-slate-500 text-sm mx-auto lg:mx-0"
+          />
         </div>
 
         <div className="min-w-0">
@@ -236,6 +230,15 @@ const ProfesionalPendienteDetallePage = () => {
             >
               Volver atrás
             </button>
+            {!notPendiente && (
+              <button
+                type="button"
+                onClick={() => navigate(ADMIN_PATHS.profesionalPendienteRechazar(idProfesional))}
+                className="px-5 py-2.5 rounded-lg border border-red-300 text-red-800 font-semibold hover:bg-red-50"
+              >
+                Rechazar y borrar solicitud
+              </button>
+            )}
             <button
               type="button"
               disabled={notPendiente || saving}
