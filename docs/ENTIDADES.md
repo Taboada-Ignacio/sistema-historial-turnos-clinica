@@ -73,6 +73,8 @@ erDiagram
 | **`Membresia`** | `membresias` | Nombre único (ej. `SIN_VERIFICAR`, `ACTIVA`, `INACTIVA`); **Profesional** tiene membresía actual + historial **`CambioMembresia`**. |
 | **`CambioMembresia`** | `cambios_membresia` | Profesional, membresía anterior/nueva, fecha (auditoría de cambios de membresía). |
 
+**Membresía vs estado de cuenta:** la **membresía** (`membresia_actual` del profesional) regula el ciclo de alta del staff; el **estado** (`estado_actual` del usuario: `PENDIENTE`, `ACTIVO`, `BLOQUEADO`) regula confirmación de email y bloqueos. No son intercambiables. Matriz de reglas en UI y catálogo público: [`CAMBIOS-PORTAL-PROFESIONAL-DASHBOARD.md`](CAMBIOS-PORTAL-PROFESIONAL-DASHBOARD.md#membresía-vs-estado-matriz-de-referencia).
+
 **Sentinel `SIN ESPECIFICAR`:** en especialidades, obras sociales, provincias, localidades y direcciones. No debe crearse manualmente por admin con ese nombre; sirve para mantener FK al eliminar registros de catálogo o direcciones en uso.
 
 ---

@@ -41,3 +41,10 @@ CI (GitHub Actions)
 - The workflow sets a **long non-placeholder** `JWT_SECRET` in the job environment for CI only (not your production secret). For deploy pipelines that target real environments, use repository/environment secrets instead of this inline value.
 - **Recomendación:** el workflow ya aplica `init.sql` completo; no requiere scripts adicionales.
 
+Fotos de perfil profesional (producción)
+---------------------------------------
+- Las imágenes WebP se guardan en disco (`PROFESIONAL_FOTO_DIR`; en Docker Compose raíz: volumen **`profesional_fotos_data`** montado en `/app/fotosPerfilProfesionales`).
+- La columna `foto_perfil` en BD guarda la ruta relativa (ej. `/fotosPerfilProfesionales/{uuid}.webp`); el archivo físico vive en el volumen.
+- **Backup:** respaldar el volumen o directorio de fotos **junto con PostgreSQL**. Restaurar solo la BD deja referencias rotas en listados y dashboards.
+- **Migración de servidor:** copiar el volumen completo antes de cambiar de host; mantener `PROFESIONAL_FOTO_DIR` coherente con las rutas almacenadas en BD.
+

@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import clienteAxios from '../../api/axiosConfig';
 import { clearSession } from '../../utils/auth';
 import { formatEspecialidad } from '../../utils/formatEspecialidad';
 import ProfesionalFoto from '../../components/ProfesionalFoto';
 import { HOME_PATH, PROFESIONAL_PATHS } from '../../utils/portalPaths';
+import { useProfesionalSession } from '../../context/ProfesionalSessionContext';
 
 const MEMBRESIA_SIN_VERIFICAR = 'SIN_VERIFICAR';
 
@@ -49,42 +49,7 @@ const ModuloDashboard = ({ disabled, titulo, descripcion, linkTo, linkLabel, chi
 
 const DashboardProfesional = () => {
   const navigate = useNavigate();
-  const [presentacion, setPresentacion] = useState(null);
-  const [membresiaActual, setMembresiaActual] = useState(null);
-  const [cargandoPerfil, setCargandoPerfil] = useState(true);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const cargarPresentacion = async () => {
-      setCargandoPerfil(true);
-      try {
-        const { data: me } = await clienteAxios.get('/usuarios/api/profesionales/me');
-        if (cancelled) return;
-
-        setMembresiaActual(me?.membresiaActual ?? null);
-
-        if (!me?.idUsuario) return;
-
-        const { data } = await clienteAxios.get(
-          `/usuarios/api/profesionales/${me.idUsuario}/presentacion`
-        );
-        if (!cancelled) setPresentacion(data);
-      } catch {
-        if (!cancelled) {
-          setPresentacion(null);
-          setMembresiaActual(null);
-        }
-      } finally {
-        if (!cancelled) setCargandoPerfil(false);
-      }
-    };
-
-    cargarPresentacion();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const { presentacion, membresiaActual, cargandoPerfil } = useProfesionalSession();
 
   const pendienteVerificacionAdmin =
     membresiaActual?.toUpperCase() === MEMBRESIA_SIN_VERIFICAR;

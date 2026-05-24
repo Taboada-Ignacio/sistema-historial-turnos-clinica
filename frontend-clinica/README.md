@@ -140,12 +140,12 @@ El dashboard muestra cards hacia turnos, historial y perfil; las subrutas **aún
 | `/aprobacion-pendiente` | `AprobacionPendiente` | No (post-confirmación email) |
 | `/recuperar-password/profesional` | `SolicitarCambioPasswordProfesional` | No |
 | `/cambiar-password/profesional` | `CambiarPasswordProfesional` | No |
-| `/dashboard-profesional` | `DashboardProfesional` | Sí (`ProfesionalRoute`) |
-| `/dashboard-profesional/turnos` | *(placeholder)* | Pendiente |
-| `/dashboard-profesional/pacientes` | *(placeholder)* | Pendiente |
-| `/dashboard-profesional/perfil` | *(placeholder)* | Pendiente |
+| `/dashboard-profesional` | `DashboardProfesional` | Sí (`ProfesionalRoute` + `ProfesionalSessionProvider`) |
+| `/dashboard-profesional/turnos` | *(placeholder)* | Pendiente — ruta no registrada en `App.jsx` |
+| `/dashboard-profesional/pacientes` | *(placeholder)* | Pendiente — ruta no registrada en `App.jsx` |
+| `/dashboard-profesional/perfil` | *(placeholder)* | Pendiente — ruta no registrada en `App.jsx` |
 
-Detalle del dashboard (membresía `SIN_VERIFICAR`, APIs `/me` y presentación): [`docs/CAMBIOS-PORTAL-PROFESIONAL-DASHBOARD.md`](../docs/CAMBIOS-PORTAL-PROFESIONAL-DASHBOARD.md).
+**Caché de perfil y detalle del dashboard** (membresía `SIN_VERIFICAR`, APIs, matriz membresía/estado): [`docs/CAMBIOS-PORTAL-PROFESIONAL-DASHBOARD.md`](../docs/CAMBIOS-PORTAL-PROFESIONAL-DASHBOARD.md).
 
 ### Panel administración
 

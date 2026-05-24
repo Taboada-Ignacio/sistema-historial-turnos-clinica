@@ -78,7 +78,7 @@ Red Docker interna: **`clinica-network`** (bridge).
 Volúmenes persistentes:
 
 - **`db_usuarios_data`** — datos PostgreSQL.
-- **`profesional_fotos_data`** — fotos de perfil WebP (`PROFESIONAL_FOTO_DIR` en el contenedor).
+- **`profesional_fotos_data`** — fotos de perfil WebP (`PROFESIONAL_FOTO_DIR` en el contenedor). **Backup:** incluir este volumen en la estrategia de respaldo del entorno (junto con la BD); sin backup, las rutas en BD apuntan a archivos inexistentes tras una pérdida del volumen. Ver [ms-usuarios/README-deploy.md](../ms-usuarios/README-deploy.md).
 
 ---
 
@@ -108,8 +108,9 @@ Detalle del gateway: [API-GATEWAY.md](API-GATEWAY.md).
 
 | Opción | Comando | Cuándo usarla |
 |--------|---------|---------------|
-| Solo MS usuarios | `cd ms-usuarios && docker compose up -d` | Desarrollo backend aislado |
-| Infra genérica | `cd infra && docker-compose up -d` | Postgres compartido sin semilla geo de usuarios |
+| **Stack completo (recomendado)** | `docker compose up --build -d` (raíz) | Front + gateway + ms-usuarios + Postgres con `init.sql` completo |
+| Solo MS usuarios | `cd ms-usuarios && docker compose up -d` | Desarrollo backend aislado con misma semilla geo |
+| Infra genérica (**legacy**) | `cd infra && docker-compose up -d` | Postgres 15 genérico **sin** semilla geo ni esquema de usuarios — no usar para el flujo clínico completo |
 | Recrear semilla | `docker compose down -v && docker compose up --build -d` | BD vieja sin provincias/sentinel |
 
 ---
@@ -167,6 +168,7 @@ Detalle operativo: [../ms-usuarios/README.md](../ms-usuarios/README.md).
 | `src/pages/profesionales/` | Portal profesional |
 | `src/pages/administracion/` | Panel admin completo |
 | `src/components/` | Formularios compartidos, geo, modales admin |
+| `src/context/` | Contextos de sesión por portal (`ProfesionalSessionContext`) |
 | `src/hooks/` | Sesión admin, geo, cambio de contraseña con token |
 | `src/api/` | `axiosConfig.js` — clientes Axios e interceptores |
 | `src/utils/` | Auth, rutas (`portalPaths.js`), helpers de API |

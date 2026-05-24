@@ -31,7 +31,7 @@ Tecnologías principales: Java 21, Spring Boot 3, Spring Security, JWT, React (V
 | [docs/CAMBIOS-REGISTRO-Y-RECHAZO-PROFESIONAL.md](docs/CAMBIOS-REGISTRO-Y-RECHAZO-PROFESIONAL.md) | Registro profesional (email duplicado en UI), rechazo admin de pendientes con motivo y correo |
 | [docs/CAMBIOS-ADMIN-PACIENTES-PROFESIONALES.md](docs/CAMBIOS-ADMIN-PACIENTES-PROFESIONALES.md) | Admin: consultar/editar/eliminar pacientes y profesionales; búsquedas combinables; unicidad email/DNI |
 | [docs/CAMBIOS-ADMIN-ADMINISTRADORES.md](docs/CAMBIOS-ADMIN-ADMINISTRADORES.md) | Admin: listar y ver todos los administradores; editar/eliminar solo la cuenta propia |
-| [docs/CAMBIOS-PORTAL-PROFESIONAL-DASHBOARD.md](docs/CAMBIOS-PORTAL-PROFESIONAL-DASHBOARD.md) | Dashboard profesional, `GET /me`, presentación y membresía `SIN_VERIFICAR` |
+| [docs/CAMBIOS-PORTAL-PROFESIONAL-DASHBOARD.md](docs/CAMBIOS-PORTAL-PROFESIONAL-DASHBOARD.md) | Dashboard profesional, caché `ProfesionalSessionContext`, `GET /me`, presentación, matriz membresía/estado |
 
 ---
 
