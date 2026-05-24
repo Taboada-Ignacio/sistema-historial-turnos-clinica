@@ -8,8 +8,9 @@ Sistema de información para consultorios médicos bajo arquitectura de microser
 |------------|-----|
 | **ms-usuarios** | Identidad, roles, JWT, refresh tokens, catálogos de usuarios |
 | **api-gateway** | Entrada HTTP (`:8080`), prefijo `/usuarios` → `ms-usuarios` (**requerido** si el front usa `VITE_API_BASE_URL` al gateway) |
-| **frontend-clinica** | Portales paciente, profesional y administración |
-| **PostgreSQL** | Una base por servicio (*database-per-service*) |
+| **frontend-clinica** | Portales paciente, profesional y administración (React + Vite) |
+| **PostgreSQL** | Una base por servicio (*database-per-service*); hoy solo `db_clinica_usuarios` |
+| **Turnos / historial** | Planificados; rutas UI placeholder, sin microservicio en el repo |
 
 Tecnologías principales: Java 21, Spring Boot 3, Spring Security, JWT, React (Vite), PostgreSQL.
 
@@ -19,8 +20,10 @@ Tecnologías principales: Java 21, Spring Boot 3, Spring Security, JWT, React (V
 
 | Documento | Contenido |
 |-----------|-----------|
+| [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md) | Estructura del repo, puertos, Docker, estado implementado vs planificado |
+| [docs/API-GATEWAY.md](docs/API-GATEWAY.md) | Gateway: enrutamiento `/usuarios`, CORS, Swagger |
 | [ms-usuarios/README.md](ms-usuarios/README.md) | BD (init + geo Argentina), direcciones, sentinel `SIN ESPECIFICAR`, verificación email |
-| [frontend-clinica/README.md](frontend-clinica/README.md) | Panel admin: catálogos, direcciones, pacientes/profesionales/administradores, verificación de cuenta |
+| [frontend-clinica/README.md](frontend-clinica/README.md) | Mapa de rutas SPA, portales, panel admin, Axios e interceptores |
 | [docs/API.md](docs/API.md) | Rutas HTTP de `ms-usuarios`, prefijo gateway `/usuarios`, convenciones de acceso |
 | [docs/ENTIDADES.md](docs/ENTIDADES.md) | Modelo de datos y relaciones JPA |
 | [docs/SEGURIDAD.md](docs/SEGURIDAD.md) | Identidad centralizada en `ms-usuarios`, JWT, contrato con otros MS |
@@ -42,13 +45,11 @@ Desde la **raíz del repo**:
 docker compose up --build -d
 ```
 
-El servicio `db-usuarios` aplica, en orden (solo en **volumen nuevo**):
+Levanta **cuatro servicios**: `db-usuarios`, `ms-usuarios` (8081), `api-gateway` (8080) y `frontend-clinica` (5173 con hot-reload). Ver [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md).
 
-1. `ms-usuarios/init.sql` — esquema y catálogos base  
-2. `ms-usuarios/sql/argentina-geo-data.sql` — provincias y localidades de Argentina  
-3. `ms-usuarios/sql/03-direcciones-sentinel.sql` — dirección `SIN ESPECIFICAR` por localidad  
+El servicio `db-usuarios` aplica **`ms-usuarios/init.sql`** (solo en **volumen nuevo**): esquema, catálogos, provincias/localidades de Argentina y direcciones `SIN ESPECIFICAR` por localidad.
 
-Si ya tenías Postgres con datos viejos y no ves provincias/localidades:
+Si ya tenías Postgres con datos viejos o un esquema distinto:
 
 ```bash
 docker compose down -v
@@ -163,7 +164,16 @@ Con perfil **`prod`** y **`app.startup.strict=true`** (por defecto), al iniciar 
 | `APP_ALLOWED_ORIGINS` / `app.allowed-origins` | Orígenes permitidos para login/refresh |
 | `APP_URL` | Base del gateway en links de email hacia la API |
 | `APP_FRONTEND_URL` / `app.frontend-url` | Base de la SPA para redirects tras confirmar cuenta por email |
+| `MAIL_USERNAME` / `MAIL_PASSWORD` | Credenciales SMTP (Gmail u otro) para correos de verificación y recuperación |
+| `ADMIN_REGISTRATION_SECRET` / `system.registration.secret` | Header `X-System-Key` para registro del primer administrador |
+| `PROFESIONAL_FOTO_DIR` / `app.profesional-foto.storage-dir` | Directorio de fotos WebP en disco (volumen Docker en compose raíz) |
 | `app.startup.strict` | Si `false`, relaja validaciones de arranque (no recomendado en prod) |
+
+### `api-gateway`
+
+| Variable | Descripción |
+|----------|-------------|
+| `APP_GATEWAY_CORS_ALLOWED_ORIGIN` | Origen único permitido en CORS (debe coincidir con el front y con `APP_ALLOWED_ORIGINS`) |
 
 ### `frontend-clinica` (build)
 
@@ -187,17 +197,19 @@ Cobertura principal: **`JwtUtil`** (claims y expiración), cadena de seguridad c
 
 ## CI (GitHub Actions)
 
-Workflow **`.github/workflows/ms-usuarios-startup-check.yml`**: levanta PostgreSQL, aplica `ms-usuarios/init.sql`, empaqueta el servicio y ejecuta la JVM en modo no-web con perfil `prod` para validar `StartupChecks`. En Docker local del MS se recomienda además `sql/argentina-geo-data.sql` y `sql/03-direcciones-sentinel.sql` (ver [ms-usuarios/README.md](ms-usuarios/README.md)). Para ejecutar también **`mvn test`** en CI, se puede añadir un job con perfil `test` (H2).
+Workflow **`.github/workflows/ms-usuarios-startup-check.yml`**: levanta PostgreSQL, aplica `ms-usuarios/init.sql` (esquema + semilla completa), empaqueta el servicio y ejecuta la JVM en modo no-web con perfil `prod` para validar `StartupChecks`. Para ejecutar también **`mvn test`** en CI, se puede añadir un job con perfil `test` (H2).
 
 ---
 
 ## Documentación adicional
 
+- **Arquitectura y Docker:** [`docs/ARQUITECTURA.md`](docs/ARQUITECTURA.md)
+- **API Gateway:** [`docs/API-GATEWAY.md`](docs/API-GATEWAY.md) · [`api-gateway/README.md`](api-gateway/README.md)
 - **Microservicio usuarios:** [`ms-usuarios/README.md`](ms-usuarios/README.md)
 - **Frontend (panel admin, verificación email, recuperación):** [`frontend-clinica/README.md`](frontend-clinica/README.md)
 - **Recuperación de contraseña (flujo completo):** [`docs/RECUPERACION-CONTRASENA.md`](docs/RECUPERACION-CONTRASENA.md)
 - **Despliegue y cookies:** [`ms-usuarios/README-deploy.md`](ms-usuarios/README-deploy.md)
-- **SQL:** [`ms-usuarios/init.sql`](ms-usuarios/init.sql), [`ms-usuarios/sql/`](ms-usuarios/sql/)
+- **SQL:** [`ms-usuarios/init.sql`](ms-usuarios/init.sql) (único script de esquema y semilla)
 
 ---
 

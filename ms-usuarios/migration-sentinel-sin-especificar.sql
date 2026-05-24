@@ -1,2 +1,0 @@
--- OBSOLETO: el contenido está en init.sql (sección «Catálogo reservado SIN ESPECIFICAR»).
--- No hace falta ejecutar este archivo en instalaciones nuevas que carguen init.sql completo.

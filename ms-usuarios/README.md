@@ -6,16 +6,103 @@ Identidad, roles, JWT, refresh tokens, catálogos maestros, direcciones y confir
 
 | Archivo | Contenido |
 |---------|-----------|
+| [../docs/ARQUITECTURA.md](../docs/ARQUITECTURA.md) | Estructura del repo y Docker |
+| [../docs/API-GATEWAY.md](../docs/API-GATEWAY.md) | Gateway HTTP |
 | [README-deploy.md](README-deploy.md) | Cookies, CORS, variables de despliegue |
 | [../docs/API.md](../docs/API.md) | Rutas HTTP y acceso |
 | [../docs/ENTIDADES.md](../docs/ENTIDADES.md) | Modelo JPA |
 | [../docs/SEGURIDAD.md](../docs/SEGURIDAD.md) | JWT, filtros, `@PreAuthorize` |
 | [../docs/CAMBIOS-ADMIN-PACIENTES-PROFESIONALES.md](../docs/CAMBIOS-ADMIN-PACIENTES-PROFESIONALES.md) | Búsqueda admin, CRUD pacientes/profesionales, unicidad |
 | [../docs/CAMBIOS-ADMIN-ADMINISTRADORES.md](../docs/CAMBIOS-ADMIN-ADMINISTRADORES.md) | Listado admin de administradores; PUT/DELETE solo cuenta propia |
-| [init.sql](init.sql) | Esquema y semilla base |
-| [sql/argentina-geo-data.sql](sql/argentina-geo-data.sql) | Provincias y localidades de Argentina |
-| [sql/03-direcciones-sentinel.sql](sql/03-direcciones-sentinel.sql) | Dirección `SIN ESPECIFICAR` por localidad |
-| [migration-drop-usuario-id-localidad.sql](migration-drop-usuario-id-localidad.sql) | Migración para BDs antiguas |
+| [init.sql](init.sql) | Esquema, semilla, geo Argentina y direcciones sentinel (único script) |
+
+---
+
+## Estructura del código (Java)
+
+Paquete raíz: `com.clinica.usuarios`.
+
+### Controladores REST
+
+| Clase | Prefijo | Responsabilidad |
+|-------|---------|-----------------|
+| `AuthController` | `/api/auth` | Login, refresh, cambio/recuperación contraseña |
+| `PacienteController` | `/api/pacientes` | Registro, confirmación, CRUD, búsqueda admin |
+| `ProfesionalController` | `/api/profesionales` | Registro multipart, membresía, búsqueda, `/me`, presentación, rechazo |
+| `AdministradorController` | `/api/administradores` | Registro con `X-System-Key`, CRUD, `/me` |
+| `CuentaSeguridadController` | `/api/seguridad` | Verificación contraseña actual (panel admin) |
+| `ProfesionalFotoController` | `/api/profesionales/fotos` | GET foto WebP (JWT profesional o admin) |
+| `ProvinciaController`, `LocalidadController`, `DireccionController` | `/api/...` | Catálogos geo |
+| `EspecialidadController`, `ObraSocialController` | `/api/...` | Catálogos clínicos |
+| `RolController`, `EstadoController` | `/api/...` | Solo lectura |
+
+### Servicios principales
+
+| Servicio | Rol |
+|----------|-----|
+| `AccountActivationService` | Confirmación email (token + código) |
+| `VerificationTokenService` | Tokens de verificación y recuperación |
+| `RefreshTokenService` | Persistencia, rotación y revocación de refresh |
+| `EmailService` | Envío SMTP |
+| `ProfesionalFotoStorageService` | Guardado WebP en disco, validación tamaño/nombre |
+| `PacienteService`, `ProfesionalService`, `AdministradorService` | CRUD y reglas de negocio por tipo |
+| `DireccionService`, `LocalidadService`, `ProvinciaService` | Catálogos geo y sentinel |
+| Catálogos (`Especialidad`, `ObraSocial`, `Rol`, `Estado`) | CRUD o lectura según entidad |
+
+### Seguridad y configuración
+
+| Clase | Rol |
+|-------|-----|
+| `SecurityConfig` | Cadena stateless, rutas públicas |
+| `JwtAuthFilter`, `JwtUtil` | Validación Bearer |
+| `PublicRequestPaths` | Bypass JWT en registro/confirmación/auth |
+| `AuthorizationRules` | Ownership `esMismoUsuario(#id)` |
+| `UserDetailsServiceImpl` | Carga por email; rechaza `PENDIENTE` |
+| `StartupChecks` | Validaciones en perfil `prod` |
+
+### Búsquedas admin
+
+- `PacienteSpecifications` + `GET /api/pacientes/buscar`
+- `ProfesionalSpecifications` + `GET /api/profesionales/buscar`
+
+---
+
+## Correo electrónico (SMTP)
+
+Configuración en `application.yml` → `spring.mail`:
+
+| Variable | Descripción |
+|----------|-------------|
+| `MAIL_USERNAME` | Usuario SMTP |
+| `MAIL_PASSWORD` | Contraseña o app password |
+
+Usado para: confirmación de cuenta (código + enlace), recuperación de contraseña, aprobación/rechazo de profesional.
+
+Links en correos:
+
+- **`APP_URL`** — base del gateway (enlace que apunta al API, p. ej. confirmar token).
+- **`APP_FRONTEND_URL`** — base SPA para redirects HTTP desde `GET …/confirmar`.
+
+---
+
+## Fotos de perfil profesional
+
+| Propiedad / env | Default | Notas |
+|-----------------|---------|--------|
+| `PROFESIONAL_FOTO_DIR` | `fotosPerfilProfesionales` | En Docker raíz: volumen `profesional_fotos_data` → `/app/fotosPerfilProfesionales` |
+| `app.profesional-foto.max-size-bytes` | 2097152 (2 MB) | Alineado con `multipart.max-file-size` |
+
+- Subida en registro/edición profesional: **multipart**, conversión a **WebP** en servidor.
+- Lectura: **`GET /api/profesionales/fotos/{fileName}`** — requiere JWT `ROLE_PROFESIONAL` o `ROLE_ADMINISTRADOR`.
+- Vía gateway: `GET /usuarios/api/profesionales/fotos/{fileName}`.
+
+---
+
+## Registro de administrador (bootstrap)
+
+`POST /api/administradores/registro` es **público** pero exige header **`X-System-Key`** con el valor de **`system.registration.secret`** (`ADMIN_REGISTRATION_SECRET` en env).
+
+Pantalla SPA: `/internal/admin/bootstrap-setup` (`AdminRegisterSecret.jsx`).
 
 ---
 
@@ -28,15 +115,18 @@ cd ms-usuarios
 docker compose up -d
 ```
 
-PostgreSQL en **5432**; el servicio en **8081**. Los scripts de inicialización se montan en este orden:
+PostgreSQL en **5432**; el servicio en **8081**. En volumen **nuevo**, Docker ejecuta un solo script:
 
-| Orden | Archivo | Contenido |
-|-------|---------|-----------|
-| 1 | `init.sql` → `01-init.sql` | Tablas, estados, roles, membresías, catálogos base, sentinel `SIN ESPECIFICAR` en especialidades/obras/provincias |
-| 2 | `sql/argentina-geo-data.sql` | 24 provincias + localidades principales + localidad sentinel |
-| 3 | `sql/03-direcciones-sentinel.sql` | Una fila `direcciones.nombre = 'SIN ESPECIFICAR'` por cada localidad |
+| Archivo | Contenido |
+|---------|-----------|
+| `init.sql` | Tablas (incl. `refresh_tokens`), catálogos base, sentinel `SIN ESPECIFICAR`, 24 provincias argentinas, localidades principales y dirección `SIN ESPECIFICAR` por localidad |
 
-**Importante:** los scripts de `docker-entrypoint-initdb.d` solo se ejecutan en un **volumen de datos nuevo**. Si la BD ya existía, hay que recrear el volumen o aplicar migraciones a mano.
+**Importante:** `docker-entrypoint-initdb.d` solo corre en volumen vacío. Si cambiás el esquema en desarrollo:
+
+```bash
+docker compose down -v
+docker compose up -d
+```
 
 ### Sin Docker
 
@@ -44,7 +134,7 @@ PostgreSQL en **5432**; el servicio en **8081**. Los scripts de inicialización 
 mvn spring-boot:run
 ```
 
-Configuración en `src/main/resources/application.yml`. Con `spring.jpa.hibernate.ddl-auto: update`, Hibernate puede ajustar el esquema, pero la **semilla geo** y los **sentinel** deben cargarse con los SQL anteriores.
+Configuración en `src/main/resources/application.yml`. Con `spring.jpa.hibernate.ddl-auto: update`, Hibernate puede ajustar el esquema menor, pero la **semilla completa** requiere `init.sql` en Postgres (o recrear el volumen Docker).
 
 ---
 
@@ -199,19 +289,26 @@ Documentación y UX del front: [`docs/CAMBIOS-ADMIN-ADMINISTRADORES.md`](../docs
 
 ---
 
-## Migraciones
+## Base de datos
 
-### Base nueva
+El proyecto **no está en producción**: un único **[init.sql](init.sql)** define esquema y datos iniciales. No hay scripts de migración incrementales.
 
-Usar los tres scripts vía `docker compose` (ver arriba).
+### Volumen nuevo (Docker)
 
-### Base existente con `usuarios.id_localidad`
+```bash
+docker compose up -d   # desde ms-usuarios/ o raíz del repo
+```
 
-1. Asegurar que cada usuario tenga `id_direccion` coherente con su localidad.
-2. Ejecutar [migration-drop-usuario-id-localidad.sql](migration-drop-usuario-id-localidad.sql).
-3. Cargar geo y sentinel si faltan (`argentina-geo-data.sql`, `03-direcciones-sentinel.sql`).
+Monta `init.sql` en `docker-entrypoint-initdb.d/init.sql`.
 
----
+### Cambiar el esquema en desarrollo
+
+Recrear el volumen (borra datos locales):
+
+```bash
+docker compose down -v
+docker compose up --build -d
+```
 
 ## Tests
 
@@ -219,7 +316,19 @@ Usar los tres scripts vía `docker compose` (ver arriba).
 mvn test
 ```
 
-Perfil `test` con H2. Incluye seguridad, login con usuarios semilla, y reglas de método en pacientes.
+Perfil `test` con H2 (`src/test/resources/application-test.yml`).
+
+| Clase de test | Cobertura |
+|---------------|-----------|
+| `JwtUtilTest` | Claims, firma, expiración |
+| `SecurityAndAuthIntegrationTest` | MockMvc: rutas públicas vs protegidas, JWT inválido |
+| `AuthLoginOriginIntegrationTest` | Validación Origin/Referer en login |
+| `AuthLoginWithUsersIntegrationTest` | Login real, cookie refresh, `PORTAL_NO_PERMITIDO`, ownership paciente |
+| `PacientesMethodSecurityIntegrationTest` | `@PreAuthorize` en listado pacientes |
+| `DireccionServiceImplTest` | Borrado con reasignación sentinel |
+| `LocalidadServiceImplTest` | Alta localidad + dirección sentinel |
+| `DireccionTextoNormalizerTest` | Normalización texto dirección |
+| `MsUsuariosApplicationTests` | Contexto Spring |
 
 ---
 
@@ -227,4 +336,4 @@ Perfil `test` con H2. Incluye seguridad, login con usuarios semilla, y reglas de
 
 Workflow `.github/workflows/ms-usuarios-startup-check.yml`: Postgres + `init.sql` + arranque con perfil `prod` para `StartupChecks`.
 
-**Nota:** si el CI solo monta `init.sql`, no tendrá provincias argentinas ni direcciones sentinel hasta ampliar el workflow con `02` y `03` (recomendado para paridad con Docker local).
+**Nota:** el CI aplica solo `init.sql` (incluye geo y sentinel). Para paridad con Docker local no hace falta ningún script adicional.

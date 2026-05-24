@@ -40,17 +40,7 @@ Resumen de las mejoras al panel del profesional de la salud, APIs de sesión/pre
 
 ## Base de datos
 
-- **`init.sql`:** especialidad semilla `MEDICO` renombrada a **`MEDICINA GENERAL`**.
-- **`migration-rename-especialidad-medico.sql`:** migración idempotente para bases existentes (`MEDICO` → `MEDICINA GENERAL`).
-
-### Aplicar en entorno ya levantado
-
-```sql
-UPDATE especialidades
-SET descripcion = 'MEDICINA GENERAL'
-WHERE descripcion = 'MEDICO'
-  AND NOT EXISTS (SELECT 1 FROM especialidades WHERE descripcion = 'MEDICINA GENERAL');
-```
+- **`init.sql`:** especialidad semilla **`MEDICINA GENERAL`** (no `MEDICO`); geo y sentinel incluidos en el mismo archivo.
 
 ## Flujo de membresía (contexto UI)
 

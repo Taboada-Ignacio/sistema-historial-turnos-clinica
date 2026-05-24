@@ -2,6 +2,8 @@
 
 Aplicación web con tres portales: **paciente**, **profesional** y **administración interna**.
 
+Stack: React 19, React Router 7, Vite 8, Tailwind CSS 4, Axios, SweetAlert2, `browser-image-compression` (foto profesional).
+
 ## Requisitos
 
 - Node.js 18+ (recomendado LTS)
@@ -57,6 +59,163 @@ Flujo **sin JWT** (`clienteAxiosPublic` en `src/api/axiosConfig.js`).
 
 ---
 
+## Clientes HTTP (`src/api/axiosConfig.js`)
+
+| Cliente | Uso |
+|---------|-----|
+| **`clienteAxios`** (default) | Rutas autenticadas: adjunta `Authorization: Bearer`, `withCredentials: true`, interceptor de **refresh** ante 401 |
+| **`clienteAxiosPublic`** | Recuperación de contraseña y flujos sin JWT: no envía Bearer ni reintenta refresh |
+
+Comportamiento del interceptor autenticado:
+
+1. Ante **401**, si la URL no es login/refresh/recuperación, hace **`POST /usuarios/api/auth/refresh`** una vez.
+2. Guarda el nuevo token con `updateSessionToken` y **reintenta** la petición original.
+3. Si falla el refresh: `clearSession()`, modal SweetAlert2 y redirect a `/`.
+
+---
+
+## Sesión (`src/utils/auth.js`)
+
+| Clave storage | Contenido |
+|---------------|-----------|
+| `token` | Access JWT |
+| `app_portal` | `paciente` \| `profesional` \| `admin` |
+| `app_role` | `ADMIN` (solo panel administración) |
+| `app_email` | Email de sesión (opcional; fallback desde JWT `sub`) |
+| `remember_me` | Si true, usa `localStorage`; si no, `sessionStorage` |
+
+Funciones principales: `savePortalSession`, `saveAdminSession`, `hasActiveSession`, `isAdminSession`, `getDashboardRouteByPortal`, `clearSession`.
+
+---
+
+## Rutas protegidas (guards)
+
+| Componente | Regla |
+|------------|--------|
+| `PacienteRoute` | Sesión activa y `app_portal === 'paciente'`; si no, redirect al login o al dashboard del portal correcto |
+| `ProfesionalRoute` | Igual con portal `profesional` |
+| `AdminRoute` | `isAdminSession()` (`app_role === 'ADMIN'`); si no, login admin |
+
+Definición de rutas en `App.jsx`; constantes en **`src/utils/portalPaths.js`**.
+
+---
+
+## Mapa de rutas
+
+Rutas públicas y protegidas centralizadas en `portalPaths.js` y registradas en `App.jsx`.
+
+### Generales
+
+| Ruta | Componente | Notas |
+|------|------------|--------|
+| `/` | `Landing` | Página de inicio |
+| `/recuperacion-password-error` | `RecuperacionPasswordError` | Enlace de recuperación inválido/expirado |
+| `/internal/admin/bootstrap-setup` | `AdminRegisterSecret` | Registro del **primer** administrador (requiere `X-System-Key` en el API) |
+
+### Portal paciente
+
+| Ruta | Componente | Protegida |
+|------|------------|-----------|
+| `/login` | `Login` | No |
+| `/registro` | `Register` | No |
+| `/verificar-email-paciente` | `VerificarEmailPaciente` | No |
+| `/registro-exitoso-paciente` | `RegistroExitosoPaciente` | No → redirect a login |
+| `/confirmacion-error` | `ConfirmacionError` | No |
+| `/recuperar-password/paciente` | `SolicitarCambioPasswordPaciente` | No |
+| `/cambiar-password/paciente` | `CambiarPasswordPaciente` | No (`?token=`) |
+| `/dashboard-paciente` | `DashboardPaciente` | Sí (`PacienteRoute`) |
+| `/dashboard-paciente/turnos` | *(sin ruta en App)* | Placeholder en `portalPaths` — pendiente ms-turnos |
+| `/dashboard-paciente/historial` | *(sin ruta)* | Placeholder |
+| `/dashboard-paciente/perfil` | *(sin ruta)* | Placeholder |
+
+El dashboard muestra cards hacia turnos, historial y perfil; las subrutas **aún no están registradas** en `App.jsx`.
+
+### Portal profesional
+
+| Ruta | Componente | Protegida |
+|------|------------|-----------|
+| `/login-profesional` | `LoginProfesional` | No |
+| `/registro-profesional` | `RegistroProfesional` | No |
+| `/verificar-email-profesional` | `VerificarEmailProfesional` | No |
+| `/aprobacion-pendiente` | `AprobacionPendiente` | No (post-confirmación email) |
+| `/recuperar-password/profesional` | `SolicitarCambioPasswordProfesional` | No |
+| `/cambiar-password/profesional` | `CambiarPasswordProfesional` | No |
+| `/dashboard-profesional` | `DashboardProfesional` | Sí (`ProfesionalRoute`) |
+| `/dashboard-profesional/turnos` | *(placeholder)* | Pendiente |
+| `/dashboard-profesional/pacientes` | *(placeholder)* | Pendiente |
+| `/dashboard-profesional/perfil` | *(placeholder)* | Pendiente |
+
+Detalle del dashboard (membresía `SIN_VERIFICAR`, APIs `/me` y presentación): [`docs/CAMBIOS-PORTAL-PROFESIONAL-DASHBOARD.md`](../docs/CAMBIOS-PORTAL-PROFESIONAL-DASHBOARD.md).
+
+### Panel administración
+
+Prefijo layout: **`/internal/admin/panel`**. Login: **`/internal/admin/auth`**.
+
+| Ruta relativa al panel | Componente |
+|------------------------|------------|
+| *(index)* | `AdminDashboardHome` |
+| `profesionales-pendientes` | `ProfesionalesPendientesPage` |
+| `profesionales-pendientes/:id` | `ProfesionalPendienteDetallePage` |
+| `profesionales-pendientes/:id/rechazar` | `ProfesionalPendienteRechazarPage` |
+| `entidades` | `AdministrarEntidadesPage` |
+| `entidades/pacientes` | `AdminPacientesBuscarPage` |
+| `entidades/pacientes/:id` | `AdminPacienteDetallePage` |
+| `entidades/pacientes/:id/editar` | `AdminPacienteEditPage` |
+| `entidades/profesionales` | `AdminProfesionalesBuscarPage` |
+| `entidades/profesionales/:id` | `AdminProfesionalDetallePage` |
+| `entidades/profesionales/:id/editar` | `AdminProfesionalEditPage` |
+| `entidades/administradores` | `AdminAdministradoresListaPage` |
+| `entidades/administradores/:id` | `AdminAdministradorDetallePage` |
+| `entidades/administradores/:id/editar` | `AdminAdministradorEditPage` |
+| `catalogo/:tipo` | `AdminCatalogoListaPage` |
+| `catalogo/:tipo/nuevo` | `AdminCatalogoAltaPage` |
+| `catalogo/:tipo/:id` | `AdminCatalogoEditPage` |
+| `direcciones` | `AdminDireccionesPage` |
+| `turnos` | `AdminTurnosPage` — **placeholder** (ms-turnos) |
+| `historiales-clinicos` | `AdminHistorialesClinicosPage` — **placeholder** |
+
+Rutas admin públicas (fuera del layout): verificar email, registro exitoso, recuperación/cambio contraseña (`ADMIN_PATHS` en `portalPaths.js`).
+
+Navegación lateral del layout: `AdminLayout.jsx` (profesionales pendientes, entidades, turnos, historiales).
+
+---
+
+## Componentes compartidos
+
+| Archivo | Rol |
+|---------|-----|
+| `VerificarEmailForm.jsx` | Código de 6 dígitos + reenvío |
+| `GeoAutocomplete.jsx` | Autocomplete genérico |
+| `ProvinciaLocalidadFields.jsx` | Par provincia/localidad en registros |
+| `CatalogProvinciaPicker.jsx` | Selector de provincia en catálogo admin |
+| `AdminConfirmModal.jsx` | Confirmación estilo panel |
+| `AdminPasswordConfirmModal.jsx` | Verificación contraseña admin antes de mutar |
+| `ProfesionalFoto.jsx` | Visualización de foto con URL autenticada |
+| `PasswordVisibilityToggle.jsx` | Mostrar/ocultar contraseña |
+
+### Utilidades (`src/utils/`)
+
+| Archivo | Rol |
+|---------|-----|
+| `portalPaths.js` | Constantes de rutas por portal |
+| `auth.js` | Sesión, JWT decode, guards helpers |
+| `adminApiError.js` | `apiErrorMessage()` — lee `data.mensaje` |
+| `profesionalFotoUrl.js` | URL de foto vía gateway + JWT |
+| `formatEspecialidad.js` | Etiquetas legibles de especialidades |
+| `ageValidation.js` | Validación edad mínima en registros |
+| `geoFilter.js` | Filtrado cliente de provincias/localidades |
+| `recuperacionPasswordError.js` | Query params de pantalla de error |
+
+### Hooks
+
+| Hook | Rol |
+|------|-----|
+| `useGeoCatalog.js` | Carga provincias/localidades una vez |
+| `useAdminSesion.js` | `GET /administradores/me` para panel admin |
+| `useSubmitCambioPasswordConToken.js` | Un solo POST al cambiar contraseña con token |
+
+---
+
 ## Verificación de email (registro)
 
 Componente compartido: `src/components/VerificarEmailForm.jsx`.
@@ -70,7 +229,7 @@ Páginas por portal:
 |--------|----------------|----------------|
 | Paciente | `/verificar-email-paciente` | `/registro-exitoso-paciente` → redirect a `/login` |
 | Profesional | `/verificar-email-profesional` | `/aprobacion-pendiente` |
-| Admin | ruta en `ADMIN_PATHS.verificarEmail` | `/registro-exitoso-admin` |
+| Admin | `/verificar-email-admin` | `/registro-exitoso-admin` |
 
 ---
 
@@ -259,6 +418,8 @@ Formato aceptado: **JPG**; el front comprime y convierte a WebP antes del `multi
 
 ## Documentación del proyecto
 
+- [docs/ARQUITECTURA.md](../docs/ARQUITECTURA.md): estructura del repo, Docker, puertos.
+- [docs/API-GATEWAY.md](../docs/API-GATEWAY.md): gateway y prefijo `/usuarios`.
 - README raíz: arquitectura, seguridad, variables de entorno, CI.
 - [`ms-usuarios/README.md`](../ms-usuarios/README.md): base de datos, sentinel, direcciones, verificación de email.
 - [`docs/API.md`](../docs/API.md): contrato HTTP completo.

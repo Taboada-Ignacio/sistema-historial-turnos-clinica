@@ -42,7 +42,7 @@ Lista priorizada de trabajo pendiente respecto a seguridad, integración front/g
 | Prioridad | Ítem | Detalle |
 |-----------|------|---------|
 | **P3** | Limpieza de comentarios en servicios | Comentarios tipo “NUEVO” en `ProfesionalService*` / servicios; solo legibilidad. |
-| **P3** | Documentación al día | Mantener README y este archivo cuando cambien puertos, CORS o endpoints. |
+| **P3** | Documentación al día | Mantener README, [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md) y este archivo cuando cambien puertos, CORS o endpoints. |
 
 ---
 

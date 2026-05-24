@@ -70,7 +70,8 @@ erDiagram
 | **`Direccion`** | `direcciones` | N — 1 **Localidad**; único `(nombre, localidad)`. Por localidad existe `SIN ESPECIFICAR` para reasignar usuarios al borrar otras direcciones. |
 | **`Especialidad`** | `especialidades` | Usada por **Profesional**. |
 | **`ObraSocial`** | `obras_sociales` | Usada por **Paciente**. |
-| **`Membresia`** | `membresias` | Nombre único (ej. `SIN_VERIFICAR`, `ACTIVA`); **Profesional** tiene membresía actual + historial **`CambioMembresia`**. |
+| **`Membresia`** | `membresias` | Nombre único (ej. `SIN_VERIFICAR`, `ACTIVA`, `INACTIVA`); **Profesional** tiene membresía actual + historial **`CambioMembresia`**. |
+| **`CambioMembresia`** | `cambios_membresia` | Profesional, membresía anterior/nueva, fecha (auditoría de cambios de membresía). |
 
 **Sentinel `SIN ESPECIFICAR`:** en especialidades, obras sociales, provincias, localidades y direcciones. No debe crearse manualmente por admin con ese nombre; sirve para mantener FK al eliminar registros de catálogo o direcciones en uso.
 

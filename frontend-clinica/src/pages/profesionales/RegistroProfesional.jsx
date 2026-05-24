@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import clienteAxios from '../../api/axiosConfig';
 import { formatEspecialidad } from '../../utils/formatEspecialidad';
@@ -25,6 +25,18 @@ const RegistroProfesional = () => {
   const [rolesIds, setRolesIds] = useState([]); 
   const [errorFoto, setErrorFoto] = useState('');
   const [error, setError] = useState('');
+  const [fotoPreviewUrl, setFotoPreviewUrl] = useState(null);
+  const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    if (!formData.foto) {
+      setFotoPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(formData.foto);
+    setFotoPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [formData.foto]);
 
   // 1. CARGA INICIAL
   useEffect(() => {
@@ -98,6 +110,13 @@ const RegistroProfesional = () => {
       console.error("[DEBUG] Error procesando imagen:", err);
       setErrorFoto('Error al optimizar la imagen.');
     }
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleClearFoto = () => {
+    setFormData((prev) => ({ ...prev, foto: null }));
+    setErrorFoto('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   // Validaciones
@@ -127,6 +146,10 @@ const RegistroProfesional = () => {
   // 4. ENVÍO
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!formData.foto) {
+      setErrorFoto('Debés subir una foto de perfil.');
+      return;
+    }
     if (!isAtLeastAge(formData.fechaNacimiento)) {
       alert('Debés ser mayor de 18 años para registrarte.');
       return;
@@ -300,7 +323,41 @@ const RegistroProfesional = () => {
                   Subí una foto de <strong>ámbito profesional</strong> (rostro visible, fondo neutro y vestimenta acorde).
                   Esta imagen será <strong>visible para todos los pacientes y usuarios</strong> del sistema.
                 </p>
-                <input type="file" accept=".jpg,.jpeg" required onChange={handleFileChange} className={`w-full px-4 py-3 rounded-xl border file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-bold file:bg-blue-50 file:text-blue-700 bg-gray-50 ${errorFoto ? 'border-red-500' : 'border-gray-200'}`} />
+                {formData.foto && fotoPreviewUrl && (
+                  <div className="mb-4 flex items-center gap-4 p-4 rounded-xl border border-green-200 bg-green-50">
+                    <img
+                      src={fotoPreviewUrl}
+                      alt="Vista previa de tu foto de perfil"
+                      className="w-20 h-20 rounded-full object-cover border-2 border-white shadow-sm shrink-0"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-bold text-green-800">Foto cargada</p>
+                      <p className="text-xs text-green-700 truncate">{formData.foto.name}</p>
+                      <p className="text-xs text-green-600 mt-1">Se conserva si volvés a un paso anterior.</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleClearFoto}
+                      className="shrink-0 text-xs font-bold text-red-600 hover:text-red-800 hover:underline"
+                    >
+                      Quitar
+                    </button>
+                  </div>
+                )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".jpg,.jpeg"
+                  required={!formData.foto}
+                  onChange={handleFileChange}
+                  className={`w-full px-4 py-3 rounded-xl border file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-bold file:bg-blue-50 file:text-blue-700 bg-gray-50 ${errorFoto ? 'border-red-500' : 'border-gray-200'}`}
+                />
+                {!formData.foto && (
+                  <p className="text-xs text-gray-500 mt-1">Formato JPG. Máx. 1 MB tras optimización.</p>
+                )}
+                {formData.foto && (
+                  <p className="text-xs text-gray-500 mt-1">Podés elegir otro archivo para reemplazar la foto actual.</p>
+                )}
                 {errorFoto && <p className="text-red-500 text-xs mt-1 font-bold">{errorFoto}</p>}
               </div>
               

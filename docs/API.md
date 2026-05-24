@@ -18,7 +18,7 @@ La lista exhaustiva de esquemas (DTOs), códigos y parámetros está en **OpenAP
 - **Gateway (recomendado):** Swagger UI del gateway con spec agregado de usuarios — ver [`api-gateway/src/main/resources/application.yml`](../api-gateway/src/main/resources/application.yml) (`springdoc.swagger-ui.urls`).
 - **MS directo:** `http://localhost:8081/swagger-ui.html` (ruta puede variar según `springdoc`).
 
-Este documento **complementa** OpenAPI con convenciones de **seguridad**, **cookies** y **portales** que conviene tener en un solo lugar. Detalle de modelo de amenazas y otros MS: [`SEGURIDAD.md`](SEGURIDAD.md).
+Este documento **complementa** OpenAPI con convenciones de **seguridad**, **cookies** y **portales** que conviene tener en un solo lugar. Detalle de modelo de amenazas y otros MS: [`SEGURIDAD.md`](SEGURIDAD.md). Enrutamiento gateway: [`API-GATEWAY.md`](API-GATEWAY.md).
 
 ---
 

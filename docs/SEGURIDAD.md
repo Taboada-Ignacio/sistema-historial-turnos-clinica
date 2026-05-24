@@ -65,7 +65,9 @@ Detalle de variables: [`ms-usuarios/README-deploy.md`](../ms-usuarios/README-dep
 
 ## API Gateway
 
-El gateway **enruta** (`/usuarios/**` → `ms-usuarios`) y expone documentación OpenAPI agregada. **CORS** está centralizado en **`spring.cloud.gateway.globalcors`**: un solo origen permitido vía variable de entorno **`APP_GATEWAY_CORS_ALLOWED_ORIGIN`** (por defecto `http://localhost:5173`), **`allowCredentials: true`** para compatibilidad con **`withCredentials`** del front y cookies de refresh, y cabeceras explícitas (no `*` en `Allow-Origin`). Debe coincidir con **`APP_ALLOWED_ORIGINS`** en `ms-usuarios` para login y refresh.
+El gateway **enruta** (`/usuarios/**` → `ms-usuarios`) y expone documentación OpenAPI agregada. Documentación dedicada: [`API-GATEWAY.md`](API-GATEWAY.md).
+
+**CORS:** origen único vía **`APP_GATEWAY_CORS_ALLOWED_ORIGIN`**, **`allowCredentials: true`**, cabeceras explícitas (no `*` en `Allow-Origin`). Debe coincidir con **`APP_ALLOWED_ORIGINS`** en `ms-usuarios` para login y refresh.
 
 ---
 

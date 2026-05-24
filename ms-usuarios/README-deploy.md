@@ -29,12 +29,9 @@ Temporary localhost setting
 
 Base de datos en despliegue
 ---------------------------
-- **Esquema y semilla:** ver [README.md](README.md) (sección *Arranque local* / *Migraciones*).
-- **Docker local (`docker-compose.yml` en este directorio):** monta tres scripts en `docker-entrypoint-initdb.d`:
-  - `01-init.sql` — tablas y catálogos base
-  - `02-argentina-geo-data.sql` — provincias y localidades
-  - `03-direcciones-sentinel.sql` — dirección `SIN ESPECIFICAR` por localidad
-- **BD existente** que aún tenga `usuarios.id_localidad`: ejecutar [migration-drop-usuario-id-localidad.sql](migration-drop-usuario-id-localidad.sql) tras alinear `id_direccion` de cada usuario.
+- **Esquema y semilla:** un solo archivo [init.sql](init.sql) (tablas, catálogos, geo Argentina, direcciones sentinel).
+- **Docker local:** monta `init.sql` en `docker-entrypoint-initdb.d/init.sql`.
+- **Cambios de esquema en pre-producción:** recrear volumen (`docker compose down -v`) y volver a levantar.
 - **`APP_FRONTEND_URL`:** necesaria para redirects tras `GET …/confirmar?token=` (registro y recuperación de contraseña).
 
 CI (GitHub Actions)
@@ -42,5 +39,5 @@ CI (GitHub Actions)
 - Workflow: `.github/workflows/ms-usuarios-startup-check.yml`
 - On push/PR to `main` or `master` (when `ms-usuarios/` changes), it starts PostgreSQL, runs `ms-usuarios/init.sql`, packages the app, and runs the JVM with `spring.profiles.active=prod` and `spring.main.web-application-type=none` so `StartupChecks` runs and the process exits.
 - The workflow sets a **long non-placeholder** `JWT_SECRET` in the job environment for CI only (not your production secret). For deploy pipelines that target real environments, use repository/environment secrets instead of this inline value.
-- **Recomendación:** ampliar el job de CI para aplicar también `sql/argentina-geo-data.sql` y `sql/03-direcciones-sentinel.sql`, igual que Docker local, si los tests o `StartupChecks` dependen de datos geo completos.
+- **Recomendación:** el workflow ya aplica `init.sql` completo; no requiere scripts adicionales.
 
