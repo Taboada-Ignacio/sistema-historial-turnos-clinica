@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import clienteAxios from '../../api/axiosConfig';
 import AdminPasswordConfirmModal from '../../components/AdminPasswordConfirmModal';
 import ProvinciaLocalidadFields from '../../components/ProvinciaLocalidadFields';
+import SexoSelectField from '../../components/SexoSelectField';
 import useAdminSesion from '../../hooks/useAdminSesion';
 import { adminApiErrorMessage } from '../../utils/adminApiError';
 import { ADMIN_PATHS } from '../../utils/portalPaths';
@@ -41,6 +42,7 @@ const AdminAdministradorEditPage = () => {
           email: data.email ?? '',
           telefono: data.telefono ?? '',
           fechaNacimiento: data.fechaNacimiento ? String(data.fechaNacimiento).slice(0, 10) : '',
+          sexo: data.sexo ?? '',
           idProvincia: data.idProvincia != null ? String(data.idProvincia) : '',
           idLocalidad: data.idLocalidad != null ? String(data.idLocalidad) : '',
           direccion: data.direccion ?? '',
@@ -93,6 +95,7 @@ const AdminAdministradorEditPage = () => {
         email: form.email.trim(),
         telefono: form.telefono.trim(),
         fechaNacimiento: form.fechaNacimiento || null,
+        sexo: form.sexo,
         idLocalidad: parseInt(form.idLocalidad, 10),
         direccion: form.direccion.trim(),
       };
@@ -192,6 +195,15 @@ const AdminAdministradorEditPage = () => {
               value={form.fechaNacimiento}
               onChange={(e) => handleField('fechaNacimiento', e.target.value)}
               className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
+            />
+          </label>
+          <label className="block">
+            <span className="text-sm font-medium text-slate-700">Sexo</span>
+            <SexoSelectField
+              value={form.sexo}
+              onChange={(e) => handleField('sexo', e.target.value)}
+              showLabels={false}
+              inputClassName="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
             />
           </label>
           <label className="block sm:col-span-2">

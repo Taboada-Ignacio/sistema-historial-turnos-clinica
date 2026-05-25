@@ -45,10 +45,40 @@ const SKIP_REFRESH_ON_401 = [
   '/api/auth/solicitar-cambio-password',
   '/api/auth/cambiar-password-con-token',
   '/api/auth/confirmar-cambio-password',
+  '/api/auth/reenviar-acceso-paciente',
+  '/api/auth/datos-activacion-paciente',
+  '/api/auth/establecer-password-inicial',
   '/api/seguridad/verificar-password-actual',
 ];
 
-const MODAL_SKIP_ON_401 = SKIP_REFRESH_ON_401;
+/** Rutas que no deben enviar JWT ni disparar refresh/modal de sesión en 401. */
+function isPublicUsuarioApiPath(config) {
+  const p = requestFullPath(config);
+  if (!p) return false;
+  if (SKIP_REFRESH_ON_401.some((fragment) => p.includes(fragment))) {
+    return true;
+  }
+  if (p.includes('/api/onboarding/admin')) {
+    return true;
+  }
+  if (p.includes('/registro') || p.includes('/confirmar') || p.includes('/reenviar-confirmacion')) {
+    return true;
+  }
+  if (
+    p.includes('/api/provincias') ||
+    p.includes('/api/localidades') ||
+    p.includes('/api/direcciones') ||
+    p.includes('/api/especialidades') ||
+    p.includes('/api/obras-sociales') ||
+    p.includes('/api/roles') ||
+    p.includes('/api/estados') ||
+    p.includes('/api/profesionales/presentacion') ||
+    p.includes('/api/profesionales/fotos/public/')
+  ) {
+    return true;
+  }
+  return false;
+}
 
 function shouldSkipAuthRecoveryHandling(config) {
   const p = requestFullPath(config);
@@ -61,6 +91,14 @@ function shouldSkipAuthRecoveryHandling(config) {
 // 1. INTERCEPTOR DE PETICIONES
 clienteAxios.interceptors.request.use(
   (config) => {
+    if (isPublicUsuarioApiPath(config)) {
+      if (config.headers) {
+        delete config.headers.Authorization;
+        delete config.headers.authorization;
+      }
+      return config;
+    }
+
     const token = getSessionToken();
 
     if (token && token !== 'null' && token !== 'undefined') {
@@ -78,7 +116,6 @@ clienteAxios.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
     const status = error.response?.status;
-    const requestUrl = requestFullPath(originalRequest);
 
     if (status !== 401 || !originalRequest) {
       if (error.response?.status === 400 && !shouldSkipAuthRecoveryHandling(originalRequest)) {
@@ -87,9 +124,7 @@ clienteAxios.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    const skipRefresh = SKIP_REFRESH_ON_401.some((path) => requestUrl.includes(path));
-
-    if (skipRefresh) {
+    if (isPublicUsuarioApiPath(originalRequest)) {
       return Promise.reject(error);
     }
 
@@ -120,7 +155,7 @@ clienteAxios.interceptors.response.use(
       }
     }
 
-    const showModal = !MODAL_SKIP_ON_401.some((path) => requestUrl.includes(path));
+    const showModal = !isPublicUsuarioApiPath(originalRequest);
     if (showModal) {
       const code = error.response?.data?.code;
       const title = code === 'TOKEN_INVALID' ? 'Sesión no válida' : 'Sesión expirada';

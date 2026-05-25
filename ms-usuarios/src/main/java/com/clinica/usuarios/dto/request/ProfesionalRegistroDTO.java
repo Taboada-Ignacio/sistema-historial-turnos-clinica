@@ -1,5 +1,6 @@
 package com.clinica.usuarios.dto.request;
 
+import com.clinica.usuarios.model.Sexo;
 import jakarta.validation.constraints.*;
 import lombok.Data;
 import java.time.LocalDate;
@@ -30,6 +31,9 @@ public class ProfesionalRegistroDTO {
 
     @Past(message = "La fecha de nacimiento debe ser en el pasado")
     private LocalDate fechaNacimiento;
+
+    @NotNull(message = "El sexo es obligatorio")
+    private Sexo sexo;
 
     @NotNull(message = "La matrícula es obligatoria")
     private String matricula;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import clienteAxios from '../../api/axiosConfig';
 import loginPacientesBg from '../../assets/images/login-pacientes.webp';
@@ -6,8 +6,9 @@ import {
   savePortalSession,
   getUserEmailFromToken,
   hasActiveSession,
-  getSessionPortal,
-  getDashboardRouteByPortal
+  getEffectiveSessionPortal,
+  getDashboardRouteByPortal,
+  clearSession,
 } from '../../utils/auth';
 import PasswordVisibilityToggle from '../../components/PasswordVisibilityToggle';
 import { HOME_PATH, PACIENTE_PATHS } from '../../utils/portalPaths';
@@ -21,13 +22,11 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
-
-  // Redirección automática si ya hay una sesión activa en el portal de pacientes
-  useEffect(() => {
-    if (hasActiveSession() && getSessionPortal() === 'paciente') {
-      navigate(getDashboardRouteByPortal('paciente'));
-    }
-  }, [navigate]);
+  const [mostrarFormularioLogin, setMostrarFormularioLogin] = useState(false);
+  const sesionPacienteActiva =
+    !mostrarFormularioLogin &&
+    hasActiveSession() &&
+    getEffectiveSessionPortal() === 'paciente';
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -52,7 +51,7 @@ const Login = () => {
           email: emailFromToken,
         });
         
-        navigate(getDashboardRouteByPortal('paciente'));
+        navigate(getDashboardRouteByPortal('paciente'), { replace: true });
       } else {
         setError('Error en el formato de respuesta del servidor.');
       }
@@ -63,6 +62,11 @@ const Login = () => {
         const code = data.code;
         if (code === 'PORTAL_NO_PERMITIDO') {
           setError(serverMessage || 'Esta cuenta no tiene acceso al portal de pacientes.');
+        } else if (
+          serverMessage.toLowerCase().includes('no corresponde a un paciente') ||
+          serverMessage.toLowerCase().includes('no corresponde al portal')
+        ) {
+          setError(serverMessage || 'Esta cuenta no es de paciente. Usá el portal correspondiente.');
         } else if (serverMessage.toLowerCase().includes('activada') || serverMessage.toLowerCase().includes('confirme')) {
           setError(serverMessage);
         } else if (err.response.status === 401) {
@@ -100,13 +104,39 @@ const Login = () => {
             </div>
             <h1 className="text-4xl font-extrabold text-clinica-dark tracking-tight">Portal Paciente</h1>
             <p className="text-gray-600 mt-2 text-sm font-medium">Ingresá para gestionar turnos y seguimientos</p>
-            <Link
-              to={HOME_PATH}
-              className="inline-flex mt-4 text-sm font-semibold text-clinica-dark/90 hover:text-clinica-dark underline underline-offset-2"
+            <button
+              type="button"
+              onClick={() => navigate(HOME_PATH)}
+              className="inline-flex mt-4 px-5 py-2.5 rounded-xl border border-clinica-dark/30 bg-white/90 text-sm font-semibold text-clinica-dark hover:bg-clinica-light transition-colors"
             >
               ← Volver al inicio
-            </Link>
+            </button>
           </div>
+
+          {sesionPacienteActiva && (
+            <div className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+              <p className="font-semibold mb-2">Ya tenés una sesión activa en el portal paciente.</p>
+              <div className="flex flex-wrap gap-2 justify-center">
+                <Link
+                  to={PACIENTE_PATHS.dashboard}
+                  className="px-4 py-2 rounded-lg bg-clinica-dark text-white text-xs font-bold hover:bg-clinica-hover"
+                >
+                  Ir al panel
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => {
+                    clearSession();
+                    setError('');
+                    setMostrarFormularioLogin(true);
+                  }}
+                  className="px-4 py-2 rounded-lg border border-slate-300 text-xs font-semibold hover:bg-white"
+                >
+                  Usar otra cuenta
+                </button>
+              </div>
+            </div>
+          )}
 
           {error && (
             <div className={`p-4 rounded-xl text-sm mb-6 text-center border ${
@@ -175,11 +205,17 @@ const Login = () => {
           </form>
         </div>
         
-        <div className="bg-white/55 p-6 text-center border-t border-gray-200">
+        <div className="bg-white/55 p-6 text-center border-t border-gray-200 space-y-2">
           <p className="text-sm text-gray-600">
             ¿No tenés una cuenta?{' '}
             <Link to={PACIENTE_PATHS.registro} className="text-clinica-dark font-bold hover:underline ml-1">
               Registrate aquí
+            </Link>
+          </p>
+          <p className="text-sm text-gray-600">
+            ¿No recibiste el correo?{' '}
+            <Link to={PACIENTE_PATHS.reenviarAcceso} className="text-clinica-dark font-bold hover:underline">
+              Reenviar confirmación o activación
             </Link>
           </p>
         </div>

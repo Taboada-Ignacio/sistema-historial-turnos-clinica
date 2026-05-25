@@ -51,7 +51,7 @@ Flujo **sin JWT** (`clienteAxiosPublic` en `src/api/axiosConfig.js`).
 | Profesional | `/recuperar-password/profesional` | `/cambiar-password/profesional?token=` | `?tipo=profesional&motivo=invalido\|expirado` |
 | Admin | `/recuperar-password/admin` | `/cambiar-password/admin?token=` | `?tipo=admin&…` |
 
-- Enlace del correo válido **30 minutos**; el token es de **un solo uso**.
+- Enlaces y códigos de correo válidos **72 horas** (confirmación, activación y recuperación); el token es de **un solo uso** donde aplica.
 - Hook: `src/hooks/useSubmitCambioPasswordConToken.js` — un solo `POST`; candado `lockRef` en la página + `globalApiLock` en el hook para evitar doble envío.
 - Documentación completa: [`docs/RECUPERACION-CONTRASENA.md`](../docs/RECUPERACION-CONTRASENA.md).
 
@@ -109,8 +109,12 @@ Rutas públicas y protegidas centralizadas en `portalPaths.js` y registradas en 
 | Ruta | Componente | Notas |
 |------|------------|--------|
 | `/` | `Landing` | Página de inicio |
+| `/profesionales` | `CatalogoProfesionalesPage` | Catálogo público (`GET /presentacion`, sin login) |
+| `/profesionales/:idProfesional` | `ProfesionalPublicoDetallePage` | Ficha pública de un profesional |
 | `/recuperacion-password-error` | `RecuperacionPasswordError` | Enlace de recuperación inválido/expirado |
-| `/internal/admin/bootstrap-setup` | `AdminRegisterSecret` | Registro del **primer** administrador (requiere `X-System-Key` en el API) |
+| `/internal/admin/bootstrap-setup` | `AdminAltaPage` | Onboarding admin — alta (`POST /api/onboarding/admin/registro` + `X-System-Key`) |
+| `/verificar-email-admin` | `AdminConfirmarEmailPage` | Código 6 dígitos (onboarding admin) |
+| `/registro-exitoso-admin` | `AdminCuentaActivadaPage` | Tras confirmar → login admin |
 
 ### Portal paciente
 
@@ -123,12 +127,14 @@ Rutas públicas y protegidas centralizadas en `portalPaths.js` y registradas en 
 | `/confirmacion-error` | `ConfirmacionError` | No |
 | `/recuperar-password/paciente` | `SolicitarCambioPasswordPaciente` | No |
 | `/cambiar-password/paciente` | `CambiarPasswordPaciente` | No (`?token=`) |
-| `/dashboard-paciente` | `DashboardPaciente` | Sí (`PacienteRoute`) |
+| `/dashboard-paciente` | `DashboardPaciente` | Sí (`PacienteRoute` + `PacienteSessionContext`) |
 | `/dashboard-paciente/turnos` | *(sin ruta en App)* | Placeholder en `portalPaths` — pendiente ms-turnos |
 | `/dashboard-paciente/historial` | *(sin ruta)* | Placeholder |
-| `/dashboard-paciente/perfil` | *(sin ruta)* | Placeholder |
+| `/dashboard-paciente/perfil` | `PacientePerfilPage` | Sí — edición autogestionada (`GET /me`, `PUT /{id}`) |
 
-El dashboard muestra cards hacia turnos, historial y perfil; las subrutas **aún no están registradas** en `App.jsx`.
+El dashboard carga el perfil vía **`usePacienteSession()`** (saludo con nombre). Turnos e historial **aún no están registrados** en `App.jsx`.
+
+**Caché de sesión y perfil autogestionado:** [`docs/CAMBIOS-PORTAL-PACIENTE-PERFIL.md`](../docs/CAMBIOS-PORTAL-PACIENTE-PERFIL.md).
 
 ### Portal profesional
 
@@ -141,9 +147,10 @@ El dashboard muestra cards hacia turnos, historial y perfil; las subrutas **aún
 | `/recuperar-password/profesional` | `SolicitarCambioPasswordProfesional` | No |
 | `/cambiar-password/profesional` | `CambiarPasswordProfesional` | No |
 | `/dashboard-profesional` | `DashboardProfesional` | Sí (`ProfesionalRoute` + `ProfesionalSessionProvider`) |
-| `/dashboard-profesional/turnos` | *(placeholder)* | Pendiente — ruta no registrada en `App.jsx` |
-| `/dashboard-profesional/pacientes` | *(placeholder)* | Pendiente — ruta no registrada en `App.jsx` |
-| `/dashboard-profesional/perfil` | *(placeholder)* | Pendiente — ruta no registrada en `App.jsx` |
+| `/dashboard-profesional/turnos` | `ProfesionalAgendaPage` | Placeholder agenda (ms-turnos) |
+| `/dashboard-profesional/pacientes` | `ProfesionalPacientesPage` | Hub del módulo Mis pacientes |
+| `/dashboard-profesional/pacientes/buscar` | `ProfesionalPacientesBuscarPage` | Búsqueda por apellido/nombre/DNI en la ciudad del profesional |
+| `/dashboard-profesional/perfil` | `ProfesionalPerfilPage` | Sí — edición autogestionada (`GET /me`, `PUT /{id}`) |
 
 **Caché de perfil y detalle del dashboard** (membresía `SIN_VERIFICAR`, APIs, matriz membresía/estado): [`docs/CAMBIOS-PORTAL-PROFESIONAL-DASHBOARD.md`](../docs/CAMBIOS-PORTAL-PROFESIONAL-DASHBOARD.md).
 
@@ -184,7 +191,8 @@ Navegación lateral del layout: `AdminLayout.jsx` (profesionales pendientes, ent
 
 | Archivo | Rol |
 |---------|-----|
-| `VerificarEmailForm.jsx` | Código de 6 dígitos + reenvío |
+| `VerificarEmailForm.jsx` | Código de 6 dígitos + reenvío (solo paciente y profesional) |
+| `adminOnboarding.js` | API y persistencia de email del onboarding admin |
 | `GeoAutocomplete.jsx` | Autocomplete genérico |
 | `ProvinciaLocalidadFields.jsx` | Par provincia/localidad en registros |
 | `CatalogProvinciaPicker.jsx` | Selector de provincia en catálogo admin |
@@ -229,7 +237,7 @@ Páginas por portal:
 |--------|----------------|----------------|
 | Paciente | `/verificar-email-paciente` | `/registro-exitoso-paciente` → redirect a `/login` |
 | Profesional | `/verificar-email-profesional` | `/aprobacion-pendiente` |
-| Admin | `/verificar-email-admin` | `/registro-exitoso-admin` |
+| Admin | `/verificar-email-admin` (`AdminConfirmarEmailPage`) | `/registro-exitoso-admin` → `/internal/admin/auth` |
 
 ---
 
@@ -424,5 +432,6 @@ Formato aceptado: **JPG**; el front comprime y convierte a WebP antes del `multi
 - [`ms-usuarios/README.md`](../ms-usuarios/README.md): base de datos, sentinel, direcciones, verificación de email.
 - [`docs/API.md`](../docs/API.md): contrato HTTP completo.
 - [`docs/RECUPERACION-CONTRASENA.md`](../docs/RECUPERACION-CONTRASENA.md): recuperación de contraseña, errores de enlace y anti-doble-submit.
+- [`docs/CAMBIOS-PORTAL-PACIENTE-PERFIL.md`](../docs/CAMBIOS-PORTAL-PACIENTE-PERFIL.md): portal paciente — `GET /me`, caché de sesión, dashboard dinámico y edición de perfil.
 - [`docs/CAMBIOS-ADMIN-PACIENTES-PROFESIONALES.md`](../docs/CAMBIOS-ADMIN-PACIENTES-PROFESIONALES.md): consulta, edición y baja de pacientes/profesionales en el panel admin.
 - [`docs/CAMBIOS-ADMIN-ADMINISTRADORES.md`](../docs/CAMBIOS-ADMIN-ADMINISTRADORES.md): consulta de administradores; edición/baja solo de la cuenta propia.

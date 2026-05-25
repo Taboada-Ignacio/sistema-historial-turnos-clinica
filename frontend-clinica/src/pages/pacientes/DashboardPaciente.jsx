@@ -1,94 +1,99 @@
 import React from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { clearSession } from '../../utils/auth';
-import { HOME_PATH, PACIENTE_PATHS } from '../../utils/portalPaths';
+import { Link } from 'react-router-dom';
+import PacientePortalNav from '../../components/PacientePortalNav';
+import { usePacienteSession } from '../../context/PacienteSessionContext';
+import { PACIENTE_PATHS } from '../../utils/portalPaths';
+
+const cardButtonClass =
+  'inline-flex items-center justify-center px-4 py-2.5 rounded-lg border border-clinica-dark/35 bg-white text-clinica-dark text-sm font-semibold group-hover:bg-clinica-light group-hover:border-clinica-dark/50 transition-colors';
+
+const cardLinkClass =
+  'block bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow group focus:outline-none focus-visible:ring-2 focus-visible:ring-clinica-dark/40';
+
+const iconBoxClass =
+  'w-12 h-12 rounded-xl bg-clinica-light text-clinica-dark flex items-center justify-center mb-4 group-hover:bg-clinica-light transition-colors';
+
+const DashboardCard = ({ to, title, description, buttonLabel, icon }) => (
+  <Link to={to} className={cardLinkClass}>
+    <div className={iconBoxClass} aria-hidden="true">
+      {icon}
+    </div>
+    <h3 className="font-bold text-lg text-slate-900 mb-2 group-hover:text-clinica-dark transition-colors">{title}</h3>
+    <p className="text-slate-500 text-sm mb-4">{description}</p>
+    <span className={cardButtonClass}>{buttonLabel}</span>
+  </Link>
+);
 
 const DashboardPaciente = () => {
-  const navigate = useNavigate();
+  const { sesion, cargandoPerfil } = usePacienteSession();
 
-  const handleLogout = () => {
-    clearSession();
-    // Redirigimos al login de paciente usando la ruta centralizada
-    navigate(PACIENTE_PATHS.login); 
-  };
+  const nombreCompleto =
+    sesion?.apellido || sesion?.nombre
+      ? [sesion.apellido, sesion.nombre].filter(Boolean).join(', ')
+      : null;
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-800">
-      
-      {/* Navbar simple y funcional */}
-      <nav className="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center shadow-sm">
-        <div className="flex items-center gap-3 text-clinica-dark">
-          <div className="w-10 h-10 rounded-xl bg-clinica-light flex items-center justify-center">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path>
-            </svg>
-          </div>
-          <span className="font-black text-xl tracking-tight">Portal Paciente</span>
-        </div>
-        
-        <div className="flex items-center gap-2">
-          <Link
-            to={HOME_PATH}
-            className="px-4 py-2 text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors border border-slate-200"
-          >
-            Volver al inicio
-          </Link>
-          <button 
-            type="button"
-            onClick={handleLogout}
-            className="px-4 py-2 text-sm font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors border border-red-100"
-          >
-            Cerrar Sesión
-          </button>
-        </div>
-      </nav>
+      <PacientePortalNav />
 
-      {/* Contenido principal del Dashboard */}
       <main className="max-w-7xl mx-auto px-6 py-10">
         <header className="mb-8">
-          <h1 className="text-3xl font-black text-slate-900 mb-2">¡Hola! Bienvenido a tu panel</h1>
-          <p className="text-slate-600">Desde acá podés gestionar tus turnos, estudios y perfil.</p>
+          {cargandoPerfil ? (
+            <>
+              <div className="h-9 w-72 bg-slate-200 rounded-lg animate-pulse mb-2" />
+              <div className="h-5 w-96 bg-slate-100 rounded-lg animate-pulse" />
+            </>
+          ) : (
+            <>
+              <h1 className="text-3xl font-black text-slate-900 mb-2">
+                {nombreCompleto ? `¡Hola, ${nombreCompleto}!` : '¡Hola! Bienvenido a tu panel'}
+              </h1>
+              <p className="text-slate-600">Desde acá podés gestionar tus turnos, estudios y perfil.</p>
+            </>
+          )}
         </header>
 
-        {/* Grilla de opciones rápidas conectada a portalPaths */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          
-          {/* Card: Mis Turnos */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
-            <h3 className="font-bold text-lg text-slate-900 mb-2">Mis Turnos</h3>
-            <p className="text-slate-500 text-sm mb-4">Agendá nuevos turnos médicos o revisá los que ya tenés programados.</p>
-            <Link 
-              to={PACIENTE_PATHS.turnos}
-              className="text-clinica-dark font-semibold text-sm hover:underline inline-flex items-center"
-            >
-              Ir a turnos <span className="ml-1">&rarr;</span>
-            </Link>
-          </div>
-          
-          {/* Card: Historial Clínico */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
-            <h3 className="font-bold text-lg text-slate-900 mb-2">Historial Clínico</h3>
-            <p className="text-slate-500 text-sm mb-4">Accedé a tus estudios, recetas y diagnósticos médicos previos.</p>
-            <Link 
-              to={PACIENTE_PATHS.historial}
-              className="text-clinica-dark font-semibold text-sm hover:underline inline-flex items-center"
-            >
-              Ver historial <span className="ml-1">&rarr;</span>
-            </Link>
-          </div>
-
-          {/* Card: Mi Perfil */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
-            <h3 className="font-bold text-lg text-slate-900 mb-2">Mi Perfil</h3>
-            <p className="text-slate-500 text-sm mb-4">Mantené tus datos personales y de contacto siempre actualizados.</p>
-            <Link 
-              to={PACIENTE_PATHS.perfil}
-              className="text-clinica-dark font-semibold text-sm hover:underline inline-flex items-center"
-            >
-              Editar perfil <span className="ml-1">&rarr;</span>
-            </Link>
-          </div>
-
+          <DashboardCard
+            to={PACIENTE_PATHS.turnos}
+            title="Mis Turnos"
+            description="Agendá nuevos turnos médicos o revisá los que ya tenés programados."
+            buttonLabel="Ir a turnos"
+            icon={
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                <line x1="16" y1="2" x2="16" y2="6" />
+                <line x1="8" y1="2" x2="8" y2="6" />
+                <line x1="3" y1="10" x2="21" y2="10" />
+              </svg>
+            }
+          />
+          <DashboardCard
+            to={PACIENTE_PATHS.historial}
+            title="Historial Clínico"
+            description="Accedé a tus estudios, recetas y diagnósticos médicos previos."
+            buttonLabel="Ver historial"
+            icon={
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+                <line x1="16" y1="13" x2="8" y2="13" />
+                <line x1="16" y1="17" x2="8" y2="17" />
+              </svg>
+            }
+          />
+          <DashboardCard
+            to={PACIENTE_PATHS.perfil}
+            title="Mi Perfil"
+            description="Mantené tus datos personales y de contacto siempre actualizados."
+            buttonLabel="Editar perfil"
+            icon={
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+              </svg>
+            }
+          />
         </div>
       </main>
     </div>

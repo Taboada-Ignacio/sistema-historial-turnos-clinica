@@ -3,15 +3,23 @@ package com.clinica.usuarios.controller;
 import com.clinica.usuarios.dto.request.AuthRequestDTO;
 import com.clinica.usuarios.dto.request.CambiarPasswordConTokenDTO;
 import com.clinica.usuarios.dto.request.CambiarPasswordRequestDTO;
+import com.clinica.usuarios.dto.request.EstablecerPasswordInicialDTO;
+import com.clinica.usuarios.dto.request.ReenviarAccesoPacienteDTO;
 import com.clinica.usuarios.dto.request.SolicitarCambioPasswordDTO;
+import com.clinica.usuarios.dto.response.PacienteActivacionDatosDTO;
+import com.clinica.usuarios.service.PacienteService;
 import com.clinica.usuarios.exception.RecursoNoEncontradoException;
 import com.clinica.usuarios.exception.ReglaDeNegocioException;
 import com.clinica.usuarios.model.Usuario;
+import com.clinica.usuarios.model.Paciente;
+import com.clinica.usuarios.model.Profesional;
+import com.clinica.usuarios.model.Administrador;
 import com.clinica.usuarios.model.VerificationToken;
 import com.clinica.usuarios.repository.VerificationTokenRepository;
 import com.clinica.usuarios.repository.UsuarioRepository;
 import com.clinica.usuarios.security.JwtUtil;
 import com.clinica.usuarios.service.EmailService;
+import com.clinica.usuarios.service.VerificationTokenService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -53,6 +61,8 @@ public class AuthController {
     private final PasswordEncoder passwordEncoder;
     private final com.clinica.usuarios.service.impl.RefreshTokenService refreshTokenService;
     private final AccountConfirmationRedirectHelper confirmRedirect;
+    private final PacienteService pacienteService;
+    private final VerificationTokenService verificationTokenService;
 
     @Value("${app.url}")
     private String appUrl;
@@ -132,11 +142,13 @@ public class AuthController {
                                 "code", "PORTAL_NO_PERMITIDO"));
             }
 
-            final String jwt = jwtUtil.generateToken(userDetails);
-
-            // Create refresh token (rotating, stored in DB) and set as HttpOnly cookie
             Usuario usuario = usuarioRepository.findByEmail(request.getEmail())
                     .orElseThrow(() -> new RecursoNoEncontradoException("Usuario no encontrado"));
+            validarTipoEntidadParaPortal(usuario, portalNormalizado);
+
+            final String jwt = jwtUtil.generateToken(userDetails, portalNormalizado);
+
+            // Create refresh token (rotating, stored in DB) and set as HttpOnly cookie
             com.clinica.usuarios.model.RefreshToken refreshToken = refreshTokenService.createRefreshToken(usuario);
 
             ResponseCookie cookie = ResponseCookie.from("refreshToken", refreshToken.getToken())
@@ -199,7 +211,35 @@ public class AuthController {
 
     @PostMapping("/solicitar-cambio-password/paciente")
     public ResponseEntity<?> solicitarCambioPasswordPaciente(@Valid @RequestBody SolicitarCambioPasswordDTO request) {
-        return solicitarCambioPasswordPorTipo(request.getEmail(), "ROLE_PACIENTE", "paciente");
+        pacienteService.solicitarCambioPasswordPaciente(request.getEmail());
+        return ResponseEntity.ok(Map.of("message", "Si el correo está registrado, te enviamos instrucciones por email."));
+    }
+
+    @PostMapping("/reenviar-acceso-paciente")
+    public ResponseEntity<?> reenviarAccesoPaciente(@Valid @RequestBody ReenviarAccesoPacienteDTO request) {
+        pacienteService.reenviarCorreoAccesoPaciente(request.getEmail());
+        return ResponseEntity.ok(Map.of("message", "Si el correo está registrado, te enviamos un nuevo correo."));
+    }
+
+    @GetMapping("/confirmar-activacion-paciente")
+    public RedirectView confirmarActivacionPaciente(@RequestParam("token") String token) {
+        try {
+            pacienteService.obtenerDatosActivacionPaciente(token);
+            return new RedirectView(frontendUrl + "/activar-cuenta-paciente?token=" + token);
+        } catch (Exception e) {
+            return confirmRedirect.errorRecuperacionPassword("paciente", e);
+        }
+    }
+
+    @GetMapping("/datos-activacion-paciente")
+    public ResponseEntity<PacienteActivacionDatosDTO> datosActivacionPaciente(@RequestParam("token") String token) {
+        return ResponseEntity.ok(pacienteService.obtenerDatosActivacionPaciente(token));
+    }
+
+    @PostMapping("/establecer-password-inicial/paciente")
+    public ResponseEntity<?> establecerPasswordInicialPaciente(@Valid @RequestBody EstablecerPasswordInicialDTO request) {
+        pacienteService.establecerPasswordInicialPaciente(request.getToken(), request.getPasswordNueva());
+        return ResponseEntity.ok(Map.of("message", "Cuenta activada. Ya podés ingresar con tu email y contraseña."));
     }
 
     @PostMapping("/solicitar-cambio-password/admin")
@@ -283,7 +323,7 @@ public class AuthController {
                     .orElseThrow(() -> new RecursoNoEncontradoException("Este enlace ya fue utilizado o no es válido."));
 
             if (verificationToken.getFechaExpiracion().isBefore(LocalDateTime.now())) {
-                throw new ReglaDeNegocioException("El enlace de recuperación ha expirado (válido por 30 minutos).");
+                throw new ReglaDeNegocioException("El enlace de recuperación ha expirado (válido por 72 horas).");
             }
 
             Usuario usuario = verificationToken.getUsuario();
@@ -330,14 +370,7 @@ public class AuthController {
             throw new ReglaDeNegocioException("La cuenta debe estar activa para recuperar contraseña.");
         }
 
-        verificationTokenRepository.deleteByUsuario(usuario);
-        String token = UUID.randomUUID().toString();
-        verificationTokenRepository.save(VerificationToken.builder()
-                .token(token)
-                .usuario(usuario)
-                .fechaExpiracion(LocalDateTime.now().plusMinutes(30))
-                .build());
-
+        String token = verificationTokenService.crearTokenRecuperacionPassword(usuario);
         String linkConfirmacion = String.format("%s/usuarios/api/auth/confirmar-cambio-password?token=%s&tipo=%s", appUrl, token, tipoPortal);
         emailService.enviarEmailRecuperacionPassword(usuario, linkConfirmacion, tipoPortal);
 
@@ -350,7 +383,7 @@ public class AuthController {
 
         if (verificationToken.getFechaExpiracion().isBefore(LocalDateTime.now())) {
             verificationTokenRepository.delete(verificationToken);
-            throw new ReglaDeNegocioException("El enlace de recuperación ha expirado (válido por 30 minutos).");
+            throw new ReglaDeNegocioException("El enlace de recuperación ha expirado (válido por 72 horas).");
         }
 
         Usuario usuario = verificationToken.getUsuario();
@@ -374,6 +407,33 @@ public class AuthController {
         if (!cumple) {
             throw new ReglaDeNegocioException("La cuenta no corresponde al portal solicitado.");
         }
+    }
+
+    /**
+     * El rol en JWT no alcanza: el registro debe ser del tipo de entidad del portal (Paciente, Profesional, etc.).
+     * Profesional con ROLE_PACIENTE puede ingresar al portal paciente (UI limitada, sin edición de perfil vía paciente).
+     */
+    private void validarTipoEntidadParaPortal(Usuario usuario, String portal) {
+        boolean valido = switch (portal) {
+            case "paciente" -> usuario instanceof Paciente
+                    || (usuario instanceof Profesional && tieneRol(usuario, "ROLE_PACIENTE"));
+            case "profesional" -> usuario instanceof Profesional && tieneRol(usuario, "ROLE_PROFESIONAL");
+            case "admin" -> usuario instanceof Administrador;
+            default -> false;
+        };
+        if (!valido) {
+            throw new ReglaDeNegocioException(
+                    switch (portal) {
+                        case "paciente" -> "La cuenta no tiene acceso al portal de pacientes.";
+                        case "profesional" -> "La cuenta no corresponde a un profesional de la salud.";
+                        default -> "La cuenta no corresponde al portal solicitado.";
+                    });
+        }
+    }
+
+    private static boolean tieneRol(Usuario usuario, String rol) {
+        return usuario.getRoles() != null
+                && usuario.getRoles().stream().anyMatch(r -> rol.equals(r.getDescripcion()));
     }
 
     private boolean tieneAccesoAlPortal(UserDetails userDetails, String portal) {

@@ -1,5 +1,6 @@
 package com.clinica.usuarios.dto.response;
 
+import com.clinica.usuarios.model.Sexo;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -24,6 +25,7 @@ public class ProfesionalResponseDTO {
     private String email;
     private String telefono;
     private LocalDate fechaNacimiento;
+    private Sexo sexo;
     private String matricula;
     private String especialidad;
     private Long idEspecialidad;

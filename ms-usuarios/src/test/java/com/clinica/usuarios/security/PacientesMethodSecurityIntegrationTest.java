@@ -45,4 +45,19 @@ class PacientesMethodSecurityIntegrationTest {
         mockMvc.perform(get("/api/pacientes"))
                 .andExpect(status().isUnauthorized());
     }
+
+    @Test
+    @DisplayName("GET /api/pacientes/me sin autenticación → 401")
+    void getPacienteMe_anonymous_returnsUnauthorized() throws Exception {
+        mockMvc.perform(get("/api/pacientes/me"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("GET /api/pacientes/me con ROLE_ADMINISTRADOR → 403")
+    @WithMockUser(roles = "ADMINISTRADOR")
+    void getPacienteMe_asAdmin_returnsForbidden() throws Exception {
+        mockMvc.perform(get("/api/pacientes/me"))
+                .andExpect(status().isForbidden());
+    }
 }

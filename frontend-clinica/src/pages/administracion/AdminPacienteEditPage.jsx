@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import clienteAxios from '../../api/axiosConfig';
 import AdminPasswordConfirmModal from '../../components/AdminPasswordConfirmModal';
 import ProvinciaLocalidadFields from '../../components/ProvinciaLocalidadFields';
+import SexoSelectField from '../../components/SexoSelectField';
 import { adminApiErrorMessage } from '../../utils/adminApiError';
 import { ADMIN_PATHS } from '../../utils/portalPaths';
 
@@ -39,6 +40,7 @@ const AdminPacienteEditPage = () => {
           email: p.email ?? '',
           telefono: p.telefono ?? '',
           fechaNacimiento: p.fechaNacimiento ? String(p.fechaNacimiento).slice(0, 10) : '',
+          sexo: p.sexo ?? '',
           numeroAfiliado: p.numeroAfiliado ?? '',
           estadoActual: p.estadoActual ?? '',
           idObraSocial: p.idObraSocial != null ? String(p.idObraSocial) : '',
@@ -99,6 +101,7 @@ const AdminPacienteEditPage = () => {
         email: form.email.trim(),
         telefono: form.telefono.trim(),
         fechaNacimiento: form.fechaNacimiento || null,
+        sexo: form.sexo,
         numeroAfiliado: form.numeroAfiliado.trim() || null,
         estadoActual: form.estadoActual,
         idObraSocial: parseInt(form.idObraSocial, 10),
@@ -213,13 +216,20 @@ const AdminPacienteEditPage = () => {
           />
         </div>
 
-        <div>
-          <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Fecha de nacimiento</label>
-          <input
-            type="date"
-            value={form.fechaNacimiento}
-            onChange={(e) => handleField('fechaNacimiento', e.target.value)}
-            className="w-full rounded-lg border border-slate-200 px-3 py-2"
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Fecha de nacimiento</label>
+            <input
+              type="date"
+              value={form.fechaNacimiento}
+              onChange={(e) => handleField('fechaNacimiento', e.target.value)}
+              className="w-full rounded-lg border border-slate-200 px-3 py-2"
+            />
+          </div>
+          <SexoSelectField
+            value={form.sexo}
+            onChange={(e) => handleField('sexo', e.target.value)}
+            inputClassName="w-full rounded-lg border border-slate-200 px-3 py-2"
           />
         </div>
 

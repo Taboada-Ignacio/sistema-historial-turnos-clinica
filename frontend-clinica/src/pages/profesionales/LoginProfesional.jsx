@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import clienteAxios from '../../api/axiosConfig';
 import PasswordVisibilityToggle from '../../components/PasswordVisibilityToggle';
@@ -7,8 +7,9 @@ import {
   savePortalSession,
   getUserEmailFromToken,
   hasActiveSession,
-  getSessionPortal,
+  getEffectiveSessionPortal,
   getDashboardRouteByPortal,
+  clearSession,
 } from '../../utils/auth';
 // Importamos también HOME_PATH
 import { PROFESIONAL_PATHS, HOME_PATH } from '../../utils/portalPaths';
@@ -22,13 +23,11 @@ const LoginProfesional = () => {
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
-
-  // Redirección automática si ya hay una sesión activa en el portal de profesionales
-  useEffect(() => {
-    if (hasActiveSession() && getSessionPortal() === 'profesional') {
-      navigate(getDashboardRouteByPortal('profesional'));
-    }
-  }, [navigate]);
+  const [mostrarFormularioLogin, setMostrarFormularioLogin] = useState(false);
+  const sesionProfesionalActiva =
+    !mostrarFormularioLogin &&
+    hasActiveSession() &&
+    getEffectiveSessionPortal() === 'profesional';
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -53,7 +52,7 @@ const LoginProfesional = () => {
           email: emailFromToken,
         });
         
-        navigate(getDashboardRouteByPortal('profesional'));
+        navigate(getDashboardRouteByPortal('profesional'), { replace: true });
       }
     } catch (err) {
       const data = err.response?.data || {};
@@ -61,6 +60,11 @@ const LoginProfesional = () => {
       const code = data.code;
       if (code === 'PORTAL_NO_PERMITIDO') {
         setError(msg || 'Esta cuenta no tiene acceso al portal profesional.');
+      } else if (
+        msg.toLowerCase().includes('no corresponde a un profesional') ||
+        msg.toLowerCase().includes('no corresponde al portal')
+      ) {
+        setError(msg || 'Esta cuenta no es de profesional. Usá el portal correspondiente.');
       } else if (msg.toLowerCase().includes('activada')) {
         setError(msg);
       } else if (err.response?.status === 401) {
@@ -116,6 +120,31 @@ const LoginProfesional = () => {
             </div>
             <h3 className="text-3xl sm:text-4xl md:text-5xl font-black text-gray-900 leading-[1.15]">Bienvenido, Profesional</h3>
           </div>
+
+          {sesionProfesionalActiva && (
+            <div className="mb-6 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+              <p className="font-semibold mb-2">Ya tenés una sesión activa en el portal profesional.</p>
+              <div className="flex flex-wrap gap-2">
+                <Link
+                  to={PROFESIONAL_PATHS.dashboard}
+                  className="px-4 py-2 rounded-lg bg-blue-600 text-white text-xs font-bold hover:bg-blue-700"
+                >
+                  Ir al panel
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => {
+                    clearSession();
+                    setError('');
+                    setMostrarFormularioLogin(true);
+                  }}
+                  className="px-4 py-2 rounded-lg border border-slate-300 text-xs font-semibold hover:bg-white"
+                >
+                  Usar otra cuenta
+                </button>
+              </div>
+            </div>
+          )}
 
           {error && (
             <div className="bg-amber-50 text-amber-700 p-4 rounded-2xl text-sm mb-6 border border-amber-200">

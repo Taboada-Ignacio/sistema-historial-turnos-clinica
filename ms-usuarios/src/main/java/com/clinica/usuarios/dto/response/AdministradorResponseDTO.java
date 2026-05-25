@@ -1,5 +1,6 @@
 package com.clinica.usuarios.dto.response;
 
+import com.clinica.usuarios.model.Sexo;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -23,7 +24,8 @@ public class AdministradorResponseDTO {
     private String email;
     private String telefono;
     private LocalDate fechaNacimiento;
-    
+    private Sexo sexo;
+
     // Cambiado de Boolean a String para reflejar el nombre del estado (ACTIVO, PENDIENTE, etc.)
     private String estadoActual; 
     

@@ -1,12 +1,14 @@
 import React, { useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ADMIN_PATHS } from '../../utils/portalPaths';
+import { ADMIN_PATHS } from '../../../utils/portalPaths';
+import { clearAdminOnboardingEmail } from '../../../utils/adminOnboarding';
 
 /** Tras confirmar email de administrador: mensaje y redirección al login del panel. */
-const RegistroExitosoAdmin = () => {
+const AdminCuentaActivadaPage = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    clearAdminOnboardingEmail();
     const t = setTimeout(() => navigate(ADMIN_PATHS.login, { replace: true }), 4500);
     return () => clearTimeout(t);
   }, [navigate]);
@@ -31,4 +33,4 @@ const RegistroExitosoAdmin = () => {
   );
 };
 
-export default RegistroExitosoAdmin;
+export default AdminCuentaActivadaPage;

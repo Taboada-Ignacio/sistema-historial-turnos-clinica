@@ -4,6 +4,7 @@ import com.clinica.usuarios.dto.request.ConfirmarCodigoDTO;
 import com.clinica.usuarios.dto.request.PacienteRegistroDTO;
 import com.clinica.usuarios.dto.request.PacienteUpdateDTO;
 import com.clinica.usuarios.dto.response.PacienteBusquedaResponseDTO;
+import com.clinica.usuarios.dto.response.PacientePortalSesionDTO;
 import com.clinica.usuarios.dto.response.PacienteResponseDTO;
 import com.clinica.usuarios.service.PacienteService;
 import jakarta.validation.Valid;
@@ -11,6 +12,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.view.RedirectView;
 
@@ -90,6 +93,19 @@ public class PacienteController {
             @RequestParam(required = false) Long idProvincia,
             @RequestParam(required = false) Long idLocalidad) {
         return ResponseEntity.ok(pacienteService.buscarPacientes(q, idProvincia, idLocalidad));
+    }
+
+    /**
+     * Perfil del paciente autenticado (portal paciente).
+     */
+    @PreAuthorize("hasAuthority('ROLE_PACIENTE')")
+    @GetMapping("/me")
+    public ResponseEntity<PacientePortalSesionDTO> obtenerSesion(
+            @AuthenticationPrincipal UserDetails principal) {
+        if (principal == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        return ResponseEntity.ok(pacienteService.obtenerPacienteSesion(principal.getUsername()));
     }
 
     /**

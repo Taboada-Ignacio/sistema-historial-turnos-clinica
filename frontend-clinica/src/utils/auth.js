@@ -75,12 +75,58 @@ export const getSessionPortal = () => {
   return localStorage.getItem(STORAGE_KEYS.portal) || sessionStorage.getItem(STORAGE_KEYS.portal);
 };
 
+const VALID_PORTALS = ['paciente', 'profesional', 'admin'];
+
+/** Storage activo (localStorage o sessionStorage) donde está el token. */
+const getActiveStorage = () => {
+  if (localStorage.getItem(STORAGE_KEYS.token) != null) return localStorage;
+  if (sessionStorage.getItem(STORAGE_KEYS.token) != null) return sessionStorage;
+  return null;
+};
+
+/**
+ * Portal efectivo: prioriza el claim `portal` del JWT (emisión del login) y alinea storage si difiere.
+ */
+export const getEffectiveSessionPortal = () => {
+  const storagePortal = getSessionPortal();
+  const jwtPortal = getJwtPortal();
+
+  if (jwtPortal && VALID_PORTALS.includes(jwtPortal)) {
+    const activeStorage = getActiveStorage();
+    if (activeStorage && storagePortal !== jwtPortal) {
+      activeStorage.setItem(STORAGE_KEYS.portal, jwtPortal);
+    }
+    return jwtPortal;
+  }
+
+  return storagePortal;
+};
+
+export const syncSessionPortalFromJwt = () => {
+  getEffectiveSessionPortal();
+};
+
 export const getSessionEmail = () => {
   const stored =
     localStorage.getItem(STORAGE_KEYS.email) || sessionStorage.getItem(STORAGE_KEYS.email);
   if (stored) return stored;
   const token = getSessionToken();
   return token ? getUserEmailFromToken(token) : null;
+};
+
+/** Roles del JWT (claim {@code authorities} emitido por ms-usuarios). */
+export const getJwtAuthorities = () => {
+  const payload = decodeJwtPayload(getSessionToken());
+  const authorities = payload?.authorities;
+  return Array.isArray(authorities) ? authorities : [];
+};
+
+export const hasJwtRole = (role) => getJwtAuthorities().includes(role);
+
+export const getJwtPortal = () => {
+  const payload = decodeJwtPayload(getSessionToken());
+  const portal = payload?.portal;
+  return typeof portal === 'string' ? portal : null;
 };
 
 export const hasActiveSession = () => {
@@ -95,9 +141,8 @@ export const isAdminSession = () => {
 export const getDashboardRouteByPortal = (portal) => {
   if (portal === 'profesional') return PROFESIONAL_PATHS.dashboard;
   if (portal === 'paciente') return PACIENTE_PATHS.dashboard;
-  if (portal === 'admin') return ADMIN_PATHS.profesionalesPendientes;
-  
-  return HOME_PATH; // Fallback centralizado
+  if (portal === 'admin') return ADMIN_PATHS.dashboard;
+  return HOME_PATH;
 };
 
 export const clearSession = () => {

@@ -35,11 +35,16 @@ public final class PublicRequestPaths {
         return path != null && (path.startsWith("/api/auth/") || "/api/auth".equals(path));
     }
 
+    public static boolean isAdminOnboardingPublicPath(String path) {
+        return path != null && path.startsWith("/api/onboarding/admin");
+    }
+
     public static boolean isRegistrationOrConfirmationPublicPath(String path) {
         if (path == null) {
             return false;
         }
-        return path.contains("/registro")
+        return isAdminOnboardingPublicPath(path)
+                || path.contains("/registro")
                 || path.contains("/confirmar")
                 || path.contains("/reenviar-confirmacion");
     }
@@ -57,6 +62,19 @@ public final class PublicRequestPaths {
                 || path.contains("/api/obras-sociales");
     }
 
+    public static boolean isPublicProfesionalCatalogGet(String path, String method) {
+        if (!"GET".equalsIgnoreCase(method) || path == null) {
+            return false;
+        }
+        if ("/api/profesionales/presentacion".equals(path)) {
+            return true;
+        }
+        if (path.matches("/api/profesionales/\\d+/presentacion")) {
+            return true;
+        }
+        return path.startsWith("/api/profesionales/fotos/public/");
+    }
+
     public static boolean shouldBypassJwtFilter(HttpServletRequest request) {
         if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
             return true;
@@ -64,6 +82,7 @@ public final class PublicRequestPaths {
         String path = normalizedPath(request);
         return isAuthPublicPath(path)
                 || isRegistrationOrConfirmationPublicPath(path)
-                || isPublicReferenceDataGet(path, request.getMethod());
+                || isPublicReferenceDataGet(path, request.getMethod())
+                || isPublicProfesionalCatalogGet(path, request.getMethod());
     }
 }

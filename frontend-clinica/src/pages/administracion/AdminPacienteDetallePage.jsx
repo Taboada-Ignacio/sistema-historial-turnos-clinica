@@ -4,6 +4,7 @@ import clienteAxios from '../../api/axiosConfig';
 import AdminConfirmModal from '../../components/AdminConfirmModal';
 import AdminPasswordConfirmModal from '../../components/AdminPasswordConfirmModal';
 import { adminApiErrorMessage } from '../../utils/adminApiError';
+import { formatSexoLabel } from '../../components/SexoSelectField';
 import { ADMIN_PATHS } from '../../utils/portalPaths';
 
 function formatFechaNacimiento(value) {
@@ -147,6 +148,10 @@ const AdminPacienteDetallePage = () => {
             <div>
               <dt className="text-slate-500">Fecha de nacimiento</dt>
               <dd className="font-medium text-slate-900">{formatFechaNacimiento(paciente.fechaNacimiento)}</dd>
+            </div>
+            <div>
+              <dt className="text-slate-500">Sexo</dt>
+              <dd className="font-medium text-slate-900">{formatSexoLabel(paciente.sexo)}</dd>
             </div>
           </dl>
         </div>

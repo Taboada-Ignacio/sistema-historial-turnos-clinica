@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import clienteAxios from '../../api/axiosConfig';
 import AdminPasswordConfirmModal from '../../components/AdminPasswordConfirmModal';
 import ProvinciaLocalidadFields from '../../components/ProvinciaLocalidadFields';
+import SexoSelectField from '../../components/SexoSelectField';
 import { adminApiErrorMessage } from '../../utils/adminApiError';
 import { formatEspecialidad } from '../../utils/formatEspecialidad';
 import { ADMIN_PATHS } from '../../utils/portalPaths';
@@ -39,6 +40,7 @@ const AdminProfesionalEditPage = () => {
           dni: p.dni != null ? String(p.dni) : '',
           email: p.email ?? '',
           telefono: p.telefono ?? '',
+          sexo: p.sexo ?? '',
           matricula: p.matricula ?? '',
           estadoActual: p.estadoActual ?? '',
           idEspecialidad: p.idEspecialidad != null ? String(p.idEspecialidad) : '',
@@ -102,6 +104,7 @@ const AdminProfesionalEditPage = () => {
         dni: parseInt(form.dni, 10),
         email: form.email.trim(),
         telefono: form.telefono.trim(),
+        sexo: form.sexo,
         matricula: form.matricula.trim(),
         estadoActual: form.estadoActual,
         idEspecialidad: parseInt(form.idEspecialidad, 10),
@@ -203,6 +206,11 @@ const AdminProfesionalEditPage = () => {
               className="w-full rounded-lg border border-slate-200 px-3 py-2"
             />
           </div>
+          <SexoSelectField
+            value={form.sexo}
+            onChange={(e) => handleField('sexo', e.target.value)}
+            inputClassName="w-full rounded-lg border border-slate-200 px-3 py-2"
+          />
         </div>
 
         <div>

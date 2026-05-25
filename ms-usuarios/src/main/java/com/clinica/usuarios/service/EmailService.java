@@ -10,4 +10,7 @@ public interface EmailService {
     void enviarEmailRechazoProfesionalPendiente(Usuario usuario, String motivo);
 
     void enviarEmailRecuperacionPassword(Usuario usuario, String linkRecuperacion, String tipoPortal);
+
+    /** Paciente cargado por profesional: activar cuenta y definir contraseña (solo enlace). */
+    void enviarEmailActivacionPaciente(Usuario usuario, String linkActivacion);
 }

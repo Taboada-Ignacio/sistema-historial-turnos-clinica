@@ -27,7 +27,7 @@ Paquete raíz: `com.clinica.usuarios`.
 | Clase | Prefijo | Responsabilidad |
 |-------|---------|-----------------|
 | `AuthController` | `/api/auth` | Login, refresh, cambio/recuperación contraseña |
-| `PacienteController` | `/api/pacientes` | Registro, confirmación, CRUD, búsqueda admin |
+| `PacienteController` | `/api/pacientes` | Registro, confirmación, CRUD, búsqueda admin, `/me` (sesión paciente) |
 | `ProfesionalController` | `/api/profesionales` | Registro multipart, membresía, búsqueda, `/me`, presentación, rechazo |
 | `AdministradorController` | `/api/administradores` | Registro con `X-System-Key`, CRUD, `/me` |
 | `CuentaSeguridadController` | `/api/seguridad` | Verificación contraseña actual (panel admin) |
@@ -98,11 +98,18 @@ Links en correos:
 
 ---
 
-## Registro de administrador (bootstrap)
+## Onboarding de administrador (bootstrap)
 
-`POST /api/administradores/registro` es **público** pero exige header **`X-System-Key`** con el valor de **`system.registration.secret`** (`ADMIN_REGISTRATION_SECRET` en env).
+Rutas públicas bajo **`/api/onboarding/admin`** (separadas del CRUD autenticado **`/api/administradores`**):
 
-Pantalla SPA: `/internal/admin/bootstrap-setup` (`AdminRegisterSecret.jsx`).
+| Método | Ruta | Notas |
+|--------|------|--------|
+| POST | `/registro` | Header **`X-System-Key`** = `system.registration.secret` |
+| GET | `/confirmar?token=` | Redirect SPA `/registro-exitoso-admin` |
+| POST | `/confirmar-codigo` | Body: `email`, `codigo` |
+| POST | `/reenviar-confirmacion?email=` | Reenvío de correo |
+
+Pantallas SPA: setup → verificar email → cuenta activada → login (`AdminAltaPage`, `AdminConfirmarEmailPage`, `AdminCuentaActivadaPage` en `frontend-clinica/src/pages/administracion/onboarding/`).
 
 ---
 
@@ -214,7 +221,7 @@ Endpoints adicionales:
 |--------|------|-------------|
 | POST | `/api/pacientes/confirmar-codigo` | Body: `email`, `codigo` |
 | POST | `/api/profesionales/confirmar-codigo` | Igual |
-| POST | `/api/administradores/confirmar-codigo` | Igual |
+| POST | `/api/onboarding/admin/confirmar-codigo` | Admin (onboarding) |
 
 Tabla `tokens_confirmacion`: columnas `token`, `codigo`, `fecha_expiracion`, `id_usuario`.
 
@@ -258,6 +265,7 @@ Seguridad: `SecurityConfig` + `PublicRequestPaths` + omisión en `JwtAuthFilter`
 | Método | Ruta | Criterios (al menos uno obligatorio según tabla) |
 |--------|------|--------------------------------------------------|
 | GET | `/api/pacientes/buscar` | `q` **o** `idProvincia`; opcional `idLocalidad` (con provincia) |
+| GET | `/api/pacientes/me` | `ROLE_PACIENTE` — perfil del JWT (email) |
 | GET | `/api/profesionales/buscar` | `q` **o** `idEspecialidad` **o** `idProvincia`; opcional `idLocalidad` (con provincia) |
 
 Respuesta: `{ total, pacientes|profesionales[], criteriosAplicados }` (máximo **500** resultados).

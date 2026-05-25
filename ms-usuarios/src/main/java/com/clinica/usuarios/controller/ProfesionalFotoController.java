@@ -1,6 +1,7 @@
 package com.clinica.usuarios.controller;
 
 import com.clinica.usuarios.service.ProfesionalFotoStorageService;
+import com.clinica.usuarios.service.ProfesionalService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
 import org.springframework.http.CacheControl;
@@ -24,6 +25,22 @@ import java.util.concurrent.TimeUnit;
 public class ProfesionalFotoController {
 
     private final ProfesionalFotoStorageService fotoStorage;
+    private final ProfesionalService profesionalService;
+
+    /**
+     * Foto de un profesional visible en el catálogo público (sin JWT).
+     */
+    @GetMapping("/public/{fileName}")
+    public ResponseEntity<Resource> obtenerFotoPublica(@PathVariable String fileName) {
+        if (!profesionalService.esFotoVisibleEnCatalogoPublico(fileName)) {
+            return ResponseEntity.notFound().build();
+        }
+        Resource resource = fotoStorage.cargarPorNombreArchivo(fileName);
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("image/webp"))
+                .cacheControl(CacheControl.maxAge(1, TimeUnit.HOURS).cachePublic())
+                .body(resource);
+    }
 
     @PreAuthorize("hasAnyAuthority('ROLE_PROFESIONAL', 'ROLE_ADMINISTRADOR')")
     @GetMapping("/{fileName}")

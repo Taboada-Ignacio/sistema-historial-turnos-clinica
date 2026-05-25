@@ -1,22 +1,31 @@
 import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
-import { hasActiveSession, getSessionPortal, getDashboardRouteByPortal } from '../../utils/auth';
+import {
+  hasActiveSession,
+  getEffectiveSessionPortal,
+  getDashboardRouteByPortal,
+  hasJwtRole,
+  clearSession,
+} from '../../utils/auth';
 import { PROFESIONAL_PATHS } from '../../utils/portalPaths';
 import { ProfesionalSessionProvider } from '../../context/ProfesionalSessionContext';
 
 const ProfesionalRoute = () => {
-  // 1. Verificamos si hay una sesión activa en general
   if (!hasActiveSession()) {
     return <Navigate to={PROFESIONAL_PATHS.login} replace />;
   }
 
-  // 2. Verificamos que el portal correspondiente sea el de profesional
-  const portal = getSessionPortal();
+  const portal = getEffectiveSessionPortal();
   if (portal !== 'profesional') {
-    return <Navigate to={getDashboardRouteByPortal(portal)} replace />;
+    const destino = portal ? getDashboardRouteByPortal(portal) : PROFESIONAL_PATHS.login;
+    return <Navigate to={destino} replace />;
   }
 
-  // 3. Si todo está ok, renderizamos las rutas hijas con sesión cacheada en memoria
+  if (!hasJwtRole('ROLE_PROFESIONAL')) {
+    clearSession();
+    return <Navigate to={PROFESIONAL_PATHS.login} replace />;
+  }
+
   return (
     <ProfesionalSessionProvider>
       <Outlet />

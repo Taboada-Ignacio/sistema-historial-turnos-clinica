@@ -1,22 +1,36 @@
 import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
-import { hasActiveSession, getSessionPortal, getDashboardRouteByPortal } from '../../utils/auth';
+import {
+  hasActiveSession,
+  getEffectiveSessionPortal,
+  getDashboardRouteByPortal,
+  hasJwtRole,
+  clearSession,
+} from '../../utils/auth';
 import { PACIENTE_PATHS } from '../../utils/portalPaths';
+import { PacienteSessionProvider } from '../../context/PacienteSessionContext';
 
 const PacienteRoute = () => {
-  // 1. Verificamos si hay una sesión activa en general
   if (!hasActiveSession()) {
     return <Navigate to={PACIENTE_PATHS.login} replace />;
   }
 
-  // 2. Verificamos que el portal correspondiente sea el de paciente
-  const portal = getSessionPortal();
+  const portal = getEffectiveSessionPortal();
   if (portal !== 'paciente') {
-    return <Navigate to={getDashboardRouteByPortal(portal)} replace />;
+    const destino = portal ? getDashboardRouteByPortal(portal) : PACIENTE_PATHS.login;
+    return <Navigate to={destino} replace />;
   }
 
-  // 3. Si todo está ok, renderizamos las rutas hijas
-  return <Outlet />;
+  if (!hasJwtRole('ROLE_PACIENTE')) {
+    clearSession();
+    return <Navigate to={PACIENTE_PATHS.login} replace />;
+  }
+
+  return (
+    <PacienteSessionProvider>
+      <Outlet />
+    </PacienteSessionProvider>
+  );
 };
 
 export default PacienteRoute;

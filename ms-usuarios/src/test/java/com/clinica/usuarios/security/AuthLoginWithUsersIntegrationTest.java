@@ -38,6 +38,7 @@ class AuthLoginWithUsersIntegrationTest {
 
     private static final String EMAIL_A = "paciente.auth.a@test.local";
     private static final String EMAIL_B = "paciente.auth.b@test.local";
+    private static final String EMAIL_PROF_DUAL = "prof.dual.auth@test.local";
     private static final String PASSWORD = "TestPass123!";
 
     @Autowired
@@ -70,8 +71,22 @@ class AuthLoginWithUsersIntegrationTest {
     @Autowired
     PacienteRepository pacienteRepository;
 
+    @Autowired
+    ProfesionalRepository profesionalRepository;
+
+    @Autowired
+    UsuarioRepository usuarioRepository;
+
+    @Autowired
+    EspecialidadRepository especialidadRepository;
+
+    @Autowired
+    MembresiaRepository membresiaRepository;
+
     private Long idPacienteA;
     private Long idPacienteB;
+    private Long idObraSocialSeed;
+    private Long idLocalidadSeed;
 
     @BeforeEach
     void seedPacientesActivos() {
@@ -85,11 +100,43 @@ class AuthLoginWithUsersIntegrationTest {
         Localidad loc = localidadRepository.save(Localidad.builder().nombre("LocAuthTest").provincia(prov).build());
         Direccion dir = direccionRepository.save(Direccion.builder().nombre("Calle Test 1").localidad(loc).build());
         ObraSocial os = obraSocialRepository.save(ObraSocial.builder().descripcion("ObraAuthTest").build());
+        idObraSocialSeed = os.getIdObraSocial();
+        idLocalidadSeed = loc.getIdLocalidad();
 
         Paciente a = buildPaciente(EMAIL_A, 91234501, activo, rolPaciente, loc, dir, os);
         Paciente b = buildPaciente(EMAIL_B, 91234502, activo, rolPaciente, loc, dir, os);
         idPacienteA = pacienteRepository.save(a).getIdUsuario();
         idPacienteB = pacienteRepository.save(b).getIdUsuario();
+
+        seedProfesionalDualRole(activo, prov, loc, dir);
+    }
+
+    private void seedProfesionalDualRole(Estado activo, Provincia prov, Localidad loc, Direccion dir) {
+        Rol rolPaciente = rolRepository.findByDescripcion("ROLE_PACIENTE")
+                .orElseGet(() -> rolRepository.save(Rol.builder().descripcion("ROLE_PACIENTE").build()));
+        Rol rolProfesional = rolRepository.findByDescripcion("ROLE_PROFESIONAL")
+                .orElseGet(() -> rolRepository.save(Rol.builder().descripcion("ROLE_PROFESIONAL").build()));
+        Especialidad esp = especialidadRepository.save(
+                Especialidad.builder().descripcion("MEDICINA GENERAL").build());
+        Membresia membresia = membresiaRepository.findByNombre("SIN_VERIFICAR")
+                .orElseGet(() -> membresiaRepository.save(Membresia.builder().nombre("SIN_VERIFICAR").build()));
+
+        Profesional prof = new Profesional();
+        prof.setEmail(EMAIL_PROF_DUAL);
+        prof.setPassword(passwordEncoder.encode(PASSWORD));
+        prof.setNombre("Pro");
+        prof.setApellido("Dual");
+        prof.setDni(91234999);
+        prof.setTelefono("+5491199999999");
+        prof.setFechaNacimiento(LocalDate.of(1985, 3, 10));
+        prof.setSexo(Sexo.MASCULINO);
+        prof.setEstadoActual(activo);
+        prof.setRoles(Set.of(rolPaciente, rolProfesional));
+        prof.setDireccion(dir);
+        prof.setMatricula("MAT-DUAL-999");
+        prof.setEspecialidad(esp);
+        prof.setMembresiaActual(membresia);
+        profesionalRepository.save(prof);
     }
 
     private Paciente buildPaciente(
@@ -108,6 +155,7 @@ class AuthLoginWithUsersIntegrationTest {
         p.setDni(dni);
         p.setTelefono("+5491122334455");
         p.setFechaNacimiento(LocalDate.of(1991, 6, 15));
+        p.setSexo(Sexo.MASCULINO);
         p.setEstadoActual(estado);
         p.setRoles(Set.of(rol));
         p.setDireccion(dir);
@@ -155,6 +203,63 @@ class AuthLoginWithUsersIntegrationTest {
         mockMvc.perform(get("/api/pacientes/" + idPacienteB)
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("JWT paciente → GET /api/pacientes/me devuelve su perfil")
+    void login_then_getMe_returnsOwnProfile() throws Exception {
+        String token = extractAccessToken(login(EMAIL_A));
+
+        mockMvc.perform(get("/api/pacientes/me")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value(EMAIL_A))
+                .andExpect(jsonPath("$.idUsuario").value(idPacienteA.intValue()))
+                .andExpect(jsonPath("$.perfilEditable").value(true))
+                .andExpect(jsonPath("$.tipoCuenta").value("PACIENTE"));
+    }
+
+    @Test
+    @DisplayName("Profesional con ROLE_PACIENTE → login portal paciente → GET /me UI limitada")
+    void profesionalDual_loginPacientePortal_meLimited() throws Exception {
+        MvcResult loginResult = mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(buildLoginJson(EMAIL_PROF_DUAL, PASSWORD, "paciente")))
+                .andExpect(status().isOk())
+                .andReturn();
+        String token = extractAccessToken(loginResult);
+
+        mockMvc.perform(get("/api/pacientes/me")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value(EMAIL_PROF_DUAL))
+                .andExpect(jsonPath("$.perfilEditable").value(false))
+                .andExpect(jsonPath("$.tipoCuenta").value("PROFESIONAL_EN_PORTAL_PACIENTE"));
+    }
+
+    @Test
+    @DisplayName("Profesional dual → PUT /api/pacientes/{id} → 400 PERFIL_PACIENTE_NO_DISPONIBLE")
+    void profesionalDual_putPacientePerfil_rejected() throws Exception {
+        Profesional prof = (Profesional) usuarioRepository.findByEmail(EMAIL_PROF_DUAL).orElseThrow();
+        String token = extractAccessToken(mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(buildLoginJson(EMAIL_PROF_DUAL, PASSWORD, "paciente")))
+                .andExpect(status().isOk())
+                .andReturn());
+
+        String body = """
+                {"nombre":"Pro","apellido":"Dual","dni":91234999,"email":"%s","telefono":"+5491199999999",
+                "fechaNacimiento":"1985-03-10","sexo":"MASCULINO","idObraSocial":%d,"idLocalidad":%d,"direccion":"Calle Test 1"}
+                """.formatted(EMAIL_PROF_DUAL, idObraSocialSeed, idLocalidadSeed);
+
+        mockMvc.perform(
+                        org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                                .put("/api/pacientes/" + prof.getIdUsuario())
+                                .header("Authorization", "Bearer " + token)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(body))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("PERFIL_PACIENTE_NO_DISPONIBLE"));
     }
 
     private MvcResult login(String email) throws Exception {

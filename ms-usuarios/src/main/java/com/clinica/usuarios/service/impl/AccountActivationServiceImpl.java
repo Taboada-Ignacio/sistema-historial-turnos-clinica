@@ -26,7 +26,7 @@ public class AccountActivationServiceImpl implements AccountActivationService {
     public void confirmarCuentaDesdeToken(VerificationToken verificationToken, Consumer<Usuario> registrarHistorialEstado) {
         if (verificationToken.getFechaExpiracion().isBefore(LocalDateTime.now())) {
             throw new ReglaDeNegocioException(
-                    "El código o el enlace de confirmación ha expirado (3 minutos). Solicitá uno nuevo.");
+                    "El código o el enlace de confirmación ha expirado (válido por 72 horas). Solicitá uno nuevo.");
         }
 
         Usuario usuario = verificationToken.getUsuario();

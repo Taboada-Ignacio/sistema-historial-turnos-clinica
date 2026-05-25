@@ -1,5 +1,6 @@
 package com.clinica.usuarios.dto.request;
 
+import com.clinica.usuarios.model.Sexo;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -36,6 +37,9 @@ public class AdministradorRegistroDTO {
 
     @NotNull(message = "La fecha de nacimiento es obligatoria")
     private LocalDate fechaNacimiento;
+
+    @NotNull(message = "El sexo es obligatorio")
+    private Sexo sexo;
 
     @NotNull(message = "La localidad es obligatoria")
     private Long idLocalidad;

@@ -14,6 +14,7 @@ export const ProfesionalSessionProvider = ({ children }) => {
   const [presentacion, setPresentacion] = useState(null);
   const [membresiaActual, setMembresiaActual] = useState(null);
   const [idUsuario, setIdUsuario] = useState(null);
+  const [ubicacion, setUbicacion] = useState(null);
   const [cargandoPerfil, setCargandoPerfil] = useState(true);
   const [error, setError] = useState(null);
   const cacheListoRef = useRef(false);
@@ -29,6 +30,10 @@ export const ProfesionalSessionProvider = ({ children }) => {
       const { data: me } = await clienteAxios.get('/usuarios/api/profesionales/me');
       setMembresiaActual(me?.membresiaActual ?? null);
       setIdUsuario(me?.idUsuario ?? null);
+      setUbicacion({
+        nombreProvincia: me?.nombreProvincia ?? null,
+        nombreLocalidad: me?.nombreLocalidad ?? null,
+      });
 
       if (!me?.idUsuario) {
         setPresentacion(null);
@@ -45,6 +50,7 @@ export const ProfesionalSessionProvider = ({ children }) => {
       setPresentacion(null);
       setMembresiaActual(null);
       setIdUsuario(null);
+      setUbicacion(null);
       setError(err);
       cacheListoRef.current = false;
     } finally {
@@ -63,6 +69,7 @@ export const ProfesionalSessionProvider = ({ children }) => {
     setPresentacion(null);
     setMembresiaActual(null);
     setIdUsuario(null);
+    setUbicacion(null);
     setCargandoPerfil(true);
     await cargarPresentacion(true);
   }, [cargarPresentacion]);
@@ -71,6 +78,7 @@ export const ProfesionalSessionProvider = ({ children }) => {
     presentacion,
     membresiaActual,
     idUsuario,
+    ubicacion,
     cargandoPerfil,
     error,
     refetch,

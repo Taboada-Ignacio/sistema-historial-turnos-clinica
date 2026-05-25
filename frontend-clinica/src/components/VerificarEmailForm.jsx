@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import clienteAxios from '../api/axiosConfig';
+import { clienteAxiosPublic } from '../api/axiosConfig';
 
 const RESEND_SECONDS = 180;
 
 /**
  * @param {object} props
  * @param {string} props.email
- * @param {'pacientes'|'profesionales'|'administradores'} props.apiRole
+ * @param {'pacientes'|'profesionales'} props.apiRole
  * @param {string} props.successPath - ruta SPA tras confirmar por código
- * @param {'paciente'|'profesional'|'admin'} props.variant
+ * @param {'paciente'|'profesional'} props.variant
  */
 const VerificarEmailForm = ({ email, apiRole, successPath, variant }) => {
   const navigate = useNavigate();
@@ -78,7 +78,7 @@ const VerificarEmailForm = ({ email, apiRole, successPath, variant }) => {
     try {
       setVerifying(true);
       setMessage('');
-      await clienteAxios.post(`/usuarios/api/${apiRole}/confirmar-codigo`, { email, codigo });
+      await clienteAxiosPublic.post(`/usuarios/api/${apiRole}/confirmar-codigo`, { email, codigo });
       navigate(successPath, { replace: true });
     } catch (error) {
       const backendMessage = error?.response?.data?.mensaje || '';
@@ -87,7 +87,7 @@ const VerificarEmailForm = ({ email, apiRole, successPath, variant }) => {
         setTimeLeft(0);
         setMessage('✓ Este registro ya fue confirmado.');
       } else if (backendMessage.toLowerCase().includes('expir')) {
-        setMessage('✗ El código expiró (3 minutos). Pedí un nuevo correo.');
+        setMessage('✗ El código expiró (72 horas). Pedí un nuevo correo.');
       } else {
         setMessage('✗ Código inválido. Revisá el correo o solicitá uno nuevo.');
       }
@@ -106,7 +106,7 @@ const VerificarEmailForm = ({ email, apiRole, successPath, variant }) => {
     try {
       setLoading(true);
       setMessage('');
-      await clienteAxios.post(
+      await clienteAxiosPublic.post(
         `/usuarios/api/${apiRole}/reenviar-confirmacion?email=${encodeURIComponent(email)}`
       );
       setTimeLeft(RESEND_SECONDS);
@@ -139,7 +139,7 @@ const VerificarEmailForm = ({ email, apiRole, successPath, variant }) => {
 
         {!cuentaConfirmada && (
           <div className={styles.timerBox}>
-            <p className="text-sm text-gray-600 mb-3">Válido por 3 min · reenviar en:</p>
+            <p className="text-sm text-gray-600 mb-3">Válido por 72 h · reenviar en:</p>
             <span className={styles.timerText}>
               {Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, '0')}
             </span>

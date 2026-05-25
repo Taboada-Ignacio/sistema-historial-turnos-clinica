@@ -45,6 +45,14 @@ public interface ProfesionalRepository extends JpaRepository<Profesional, Long>,
             """)
     Optional<Profesional> findWithUbicacionById(@Param("id") Long id);
 
+    @Query("""
+            SELECT p FROM Profesional p
+            JOIN FETCH p.estadoActual
+            JOIN FETCH p.roles
+            WHERE p.fotoPerfil LIKE CONCAT('%', :fileName)
+            """)
+    Optional<Profesional> findByFotoPerfilFileName(@Param("fileName") String fileName);
+
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE Profesional p SET p.especialidad.idEspecialidad = :sentinelId WHERE p.especialidad.idEspecialidad = :oldId")
     int reasignarEspecialidad(@Param("oldId") Long oldId, @Param("sentinelId") Long sentinelId);

@@ -3,19 +3,23 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 
 // IMPORTS DE COMPONENTES (Se mantienen igual)
 import Landing from './pages/general/Landing';
-import AdminRegisterSecret from './pages/general/AdminRegisterSecret';
+import CatalogoProfesionalesPage from './pages/general/CatalogoProfesionalesPage';
+import ProfesionalPublicoDetallePage from './pages/general/ProfesionalPublicoDetallePage';
+import AdminAltaPage from './pages/administracion/onboarding/AdminAltaPage';
 import Login from './pages/pacientes/Login';
 import Register from './pages/pacientes/Register';
 import VerificarEmailPaciente from './pages/pacientes/VerificarEmailPaciente';
 import RegistroExitosoPaciente from './pages/pacientes/RegistroExitosoPaciente';
-import VerificarEmailAdmin from './pages/administracion/VerificarEmailAdmin';
-import RegistroExitosoAdmin from './pages/administracion/RegistroExitosoAdmin';
+import AdminConfirmarEmailPage from './pages/administracion/onboarding/AdminConfirmarEmailPage';
+import AdminCuentaActivadaPage from './pages/administracion/onboarding/AdminCuentaActivadaPage';
 import ConfirmacionError from './pages/general/ConfirmacionError';
 import RecuperacionPasswordError from './pages/general/RecuperacionPasswordError';
 import SolicitarCambioPasswordPaciente from './pages/pacientes/SolicitarCambioPasswordPaciente';
 import CambiarPasswordPaciente from './pages/pacientes/CambiarPasswordPaciente';
 import PacienteRoute from './pages/pacientes/PacienteRoute';
 import DashboardPaciente from './pages/pacientes/DashboardPaciente';
+import PacientePerfilPage from './pages/pacientes/PacientePerfilPage';
+import PacienteModuloPlaceholder from './pages/pacientes/PacienteModuloPlaceholder';
 import LoginProfesional from './pages/profesionales/LoginProfesional';
 import RegistroProfesional from './pages/profesionales/RegistroProfesional';
 import VerificarEmailProfesional from './pages/profesionales/VerificarEmailProfesional';
@@ -24,6 +28,16 @@ import SolicitarCambioPasswordProfesional from './pages/profesionales/SolicitarC
 import CambiarPasswordProfesional from './pages/profesionales/CambiarPasswordProfesional';
 import ProfesionalRoute from './pages/profesionales/ProfesionalRoute';
 import DashboardProfesional from './pages/profesionales/DashboardProfesional';
+import ProfesionalPerfilPage from './pages/profesionales/ProfesionalPerfilPage';
+import ProfesionalAgendaPage from './pages/profesionales/ProfesionalAgendaPage';
+import ProfesionalPacientesPage from './pages/profesionales/ProfesionalPacientesPage';
+import ProfesionalPacientesBuscarPage from './pages/profesionales/ProfesionalPacientesBuscarPage';
+import ProfesionalPacienteDetallePage from './pages/profesionales/ProfesionalPacienteDetallePage';
+import ProfesionalPacientesBuscarGeneralPage from './pages/profesionales/ProfesionalPacientesBuscarGeneralPage';
+import ProfesionalCargarPacientePage from './pages/profesionales/ProfesionalCargarPacientePage';
+import ProfesionalPacienteHistorialPage from './pages/profesionales/ProfesionalPacienteHistorialPage';
+import ReenviarAccesoPacientePage from './pages/pacientes/ReenviarAccesoPacientePage';
+import ActivarCuentaPacientePage from './pages/pacientes/ActivarCuentaPacientePage';
 import LoginAdministrador from './pages/administracion/LoginAdministrador';
 import SolicitarCambioPasswordAdmin from './pages/administracion/SolicitarCambioPasswordAdmin';
 import CambiarPasswordAdmin from './pages/administracion/CambiarPasswordAdmin';
@@ -51,7 +65,7 @@ import AdminTurnosPage from './pages/administracion/AdminTurnosPage';
 import AdminHistorialesClinicosPage from './pages/administracion/AdminHistorialesClinicosPage';
 
 // UTILS / PATHS CENTRALIZADOS
-import { ADMIN_PATHS, PACIENTE_PATHS, PROFESIONAL_PATHS, HOME_PATH, RECUPERACION_PASSWORD_ERROR_PATH } from './utils/portalPaths';
+import { ADMIN_PATHS, PACIENTE_PATHS, PROFESIONAL_PATHS, PUBLIC_PATHS, HOME_PATH, RECUPERACION_PASSWORD_ERROR_PATH } from './utils/portalPaths';
 
 function App() {
   return (
@@ -60,8 +74,10 @@ function App() {
         
         {/* --- GENERALES --- */}
         <Route path={HOME_PATH} element={<Landing />} />
+        <Route path={PUBLIC_PATHS.catalogoProfesionales} element={<CatalogoProfesionalesPage />} />
+        <Route path="/profesionales/:idProfesional" element={<ProfesionalPublicoDetallePage />} />
         <Route path={RECUPERACION_PASSWORD_ERROR_PATH} element={<RecuperacionPasswordError />} />
-        <Route path={ADMIN_PATHS.setup} element={<AdminRegisterSecret />} />
+        <Route path={ADMIN_PATHS.setup} element={<AdminAltaPage />} />
         
         {/* --- PACIENTES --- */}
         <Route path={PACIENTE_PATHS.login} element={<Login />} />
@@ -70,11 +86,32 @@ function App() {
         <Route path={PACIENTE_PATHS.registroExitoso} element={<RegistroExitosoPaciente />} />
         <Route path={PACIENTE_PATHS.confirmacionError} element={<ConfirmacionError />} />
         <Route path={PACIENTE_PATHS.recuperarPassword} element={<SolicitarCambioPasswordPaciente />} />
+        <Route path={PACIENTE_PATHS.reenviarAcceso} element={<ReenviarAccesoPacientePage />} />
+        <Route path={PACIENTE_PATHS.activarCuenta} element={<ActivarCuentaPacientePage />} />
         <Route path={PACIENTE_PATHS.cambiarPassword} element={<CambiarPasswordPaciente />} />
         
         {/* RUTAS PROTEGIDAS PACIENTE */}
         <Route element={<PacienteRoute />}>
           <Route path={PACIENTE_PATHS.dashboard} element={<DashboardPaciente />} />
+          <Route path={PACIENTE_PATHS.perfil} element={<PacientePerfilPage />} />
+          <Route
+            path={PACIENTE_PATHS.turnos}
+            element={
+              <PacienteModuloPlaceholder
+                titulo="Mis turnos"
+                descripcion="El módulo de turnos estará disponible cuando se integre el microservicio de agenda. Mientras tanto, podés volver al panel o al inicio del sitio."
+              />
+            }
+          />
+          <Route
+            path={PACIENTE_PATHS.historial}
+            element={
+              <PacienteModuloPlaceholder
+                titulo="Historial clínico"
+                descripcion="El acceso a estudios y evoluciones se habilitará con el microservicio de historial clínico. Mientras tanto, podés volver al panel o al inicio del sitio."
+              />
+            }
+          />
         </Route>
         
         {/* --- PROFESIONALES --- */}
@@ -88,11 +125,19 @@ function App() {
         {/* RUTAS PROTEGIDAS PROFESIONAL */}
         <Route element={<ProfesionalRoute />}>
           <Route path={PROFESIONAL_PATHS.dashboard} element={<DashboardProfesional />} />
+          <Route path={PROFESIONAL_PATHS.perfil} element={<ProfesionalPerfilPage />} />
+          <Route path={PROFESIONAL_PATHS.turnos} element={<ProfesionalAgendaPage />} />
+          <Route path={PROFESIONAL_PATHS.pacientes} element={<ProfesionalPacientesPage />} />
+          <Route path={PROFESIONAL_PATHS.pacientesCargar} element={<ProfesionalCargarPacientePage />} />
+          <Route path={PROFESIONAL_PATHS.pacientesBuscar} element={<ProfesionalPacientesBuscarPage />} />
+          <Route path={PROFESIONAL_PATHS.pacientesBuscarGeneral} element={<ProfesionalPacientesBuscarGeneralPage />} />
+          <Route path={PROFESIONAL_PATHS.pacienteHistorial(':id')} element={<ProfesionalPacienteHistorialPage />} />
+          <Route path={PROFESIONAL_PATHS.pacienteDetalle(':id')} element={<ProfesionalPacienteDetallePage />} />
         </Route>
 
         {/* --- ADMINISTRACIÓN --- */}
-        <Route path={ADMIN_PATHS.verificarEmail} element={<VerificarEmailAdmin />} />
-        <Route path={ADMIN_PATHS.registroExitoso} element={<RegistroExitosoAdmin />} />
+        <Route path={ADMIN_PATHS.verificarEmail} element={<AdminConfirmarEmailPage />} />
+        <Route path={ADMIN_PATHS.registroExitoso} element={<AdminCuentaActivadaPage />} />
         <Route path={ADMIN_PATHS.login} element={<LoginAdministrador />} />
         <Route path={ADMIN_PATHS.recuperarPassword} element={<SolicitarCambioPasswordAdmin />} />
         <Route path={ADMIN_PATHS.cambiarPassword} element={<CambiarPasswordAdmin />} />

@@ -21,6 +21,9 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, String>> handleReglaDeNegocio(ReglaDeNegocioException ex) {
         Map<String, String> error = new HashMap<>();
         error.put("mensaje", ex.getMessage());
+        if (ex.getCode() != null && !ex.getCode().isBlank()) {
+            error.put("code", ex.getCode());
+        }
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
 

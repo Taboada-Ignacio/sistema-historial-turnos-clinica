@@ -31,7 +31,9 @@ Tecnologías principales: Java 21, Spring Boot 3, Spring Security, JWT, React (V
 | [docs/CAMBIOS-REGISTRO-Y-RECHAZO-PROFESIONAL.md](docs/CAMBIOS-REGISTRO-Y-RECHAZO-PROFESIONAL.md) | Registro profesional (email duplicado en UI), rechazo admin de pendientes con motivo y correo |
 | [docs/CAMBIOS-ADMIN-PACIENTES-PROFESIONALES.md](docs/CAMBIOS-ADMIN-PACIENTES-PROFESIONALES.md) | Admin: consultar/editar/eliminar pacientes y profesionales; búsquedas combinables; unicidad email/DNI |
 | [docs/CAMBIOS-ADMIN-ADMINISTRADORES.md](docs/CAMBIOS-ADMIN-ADMINISTRADORES.md) | Admin: listar y ver todos los administradores; editar/eliminar solo la cuenta propia |
+| [docs/CAMBIOS-CATALOGO-PUBLICO-PROFESIONALES.md](docs/CAMBIOS-CATALOGO-PUBLICO-PROFESIONALES.md) | Catálogo público `/profesionales`, API presentación y fotos sin JWT |
 | [docs/CAMBIOS-PORTAL-PROFESIONAL-DASHBOARD.md](docs/CAMBIOS-PORTAL-PROFESIONAL-DASHBOARD.md) | Dashboard profesional, caché `ProfesionalSessionContext`, `GET /me`, presentación, matriz membresía/estado |
+| [docs/CAMBIOS-PORTAL-PACIENTE-PERFIL.md](docs/CAMBIOS-PORTAL-PACIENTE-PERFIL.md) | Portal paciente: `GET /api/pacientes/me`, caché `PacienteSessionContext`, dashboard dinámico y edición de perfil |
 
 ---
 
@@ -115,8 +117,8 @@ Variable clave: **`VITE_API_BASE_URL`** (sin barra final), p. ej. `http://localh
 |--------|------|--------|
 | POST | `/api/auth/login` | Body: `email`, `password`, `portal`. Setea cookie **HttpOnly** `refreshToken` (si corresponde). |
 | POST | `/api/auth/refresh` | Renueva access token; usa cookie de refresh; **rotación** del refresh en BD. |
-| GET | `/api/profesionales/presentacion` | Catálogo reducido (sin datos sensibles); excluye cuentas con rol administrador y no ACTIVOS. |
-| GET | `/api/profesionales/{id}/presentacion` | Ficha pública. |
+| GET | `/api/profesionales/presentacion` | Catálogo reducido (público, sin JWT): profesionales ACTIVOS sin rol admin. |
+| GET | `/api/profesionales/{id}/presentacion` | Ficha pública (público); ver [`docs/CAMBIOS-CATALOGO-PUBLICO-PROFESIONALES.md`](docs/CAMBIOS-CATALOGO-PUBLICO-PROFESIONALES.md). |
 
 Listados completos de profesionales con datos sensibles: solo **`ROLE_ADMINISTRADOR`** en las rutas definidas.
 
@@ -191,7 +193,7 @@ Perfil **`test`** y **H2** en memoria (`ms-usuarios/src/test/resources/applicati
 cd ms-usuarios && mvn test
 ```
 
-Cobertura principal: **`JwtUtil`** (claims y expiración), cadena de seguridad con **MockMvc** (rutas públicas vs protegidas, JWT inválido, login sin portal / portal inválido, refresh sin cookie, validación de **Origin**), **login real** con pacientes ACTIVOS creados vía repositorios (`AuthLoginWithUsersIntegrationTest`: token + cookie, `PORTAL_NO_PERMITIDO`, ownership `GET /api/pacientes/{id}`), y **`@PreAuthorize`** en listado de pacientes con **`@WithMockUser`** (`PacientesMethodSecurityIntegrationTest`).
+Cobertura principal: **`JwtUtil`** (claims y expiración), cadena de seguridad con **MockMvc** (rutas públicas vs protegidas, JWT inválido, login sin portal / portal inválido, refresh sin cookie, validación de **Origin**), **login real** con pacientes ACTIVOS creados vía repositorios (`AuthLoginWithUsersIntegrationTest`: token + cookie, `PORTAL_NO_PERMITIDO`, ownership `GET /api/pacientes/{id}`, **`GET /api/pacientes/me`**), y **`@PreAuthorize`** en listado de pacientes con **`@WithMockUser`** (`PacientesMethodSecurityIntegrationTest`).
 
 ---
 

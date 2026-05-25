@@ -46,7 +46,7 @@ erDiagram
 
 | Entidad | Tabla | Descripción |
 |---------|-------|-------------|
-| **`Usuario`** | `usuarios` | Email, password (hash), nombre, apellido, DNI, teléfono, fecha nacimiento, FK **`id_direccion`** (obligatoria), FK estado actual, roles N:N. La localidad se obtiene vía `direccion.localidad`. |
+| **`Usuario`** | `usuarios` | Email, password (hash), nombre, apellido, DNI, teléfono, **sexo** (`MASCULINO` \| `FEMENINO`, obligatorio), fecha nacimiento, FK **`id_direccion`** (obligatoria), FK estado actual, roles N:N. La localidad se obtiene vía `direccion.localidad`. |
 | **`Paciente`** | `pacientes` | Extiende `Usuario`; FK obligatoria **obra social**, `numero_afiliado` opcional. |
 | **`Profesional`** | `profesionales` | Matrícula única, FK **especialidad**, foto perfil (ruta), FK **membresía actual**, historial cambios membresía. |
 | **`Administrador`** | `administradores` | Sin campos extra por ahora; extiende `Usuario`. |

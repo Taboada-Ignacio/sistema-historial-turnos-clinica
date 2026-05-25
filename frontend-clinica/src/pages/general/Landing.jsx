@@ -1,11 +1,12 @@
 import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom'; // Solo necesitamos Link
-import { 
-  hasActiveSession, 
-  getSessionPortal, 
-  clearSession 
+import {
+  hasActiveSession,
+  getEffectiveSessionPortal,
+  clearSession,
+  syncSessionPortalFromJwt,
 } from '../../utils/auth';
-import { PACIENTE_PATHS, PROFESIONAL_PATHS } from '../../utils/portalPaths';
+import { PACIENTE_PATHS, PROFESIONAL_PATHS, PUBLIC_PATHS } from '../../utils/portalPaths';
 
 const VALID_PORTALS = ['paciente', 'profesional', 'admin'];
 
@@ -13,7 +14,8 @@ const Landing = () => {
   useEffect(() => {
     // Solo mantenemos la lógica para limpiar sesiones corruptas o "huérfanas"
     if (hasActiveSession()) {
-      const portal = getSessionPortal();
+      syncSessionPortalFromJwt();
+      const portal = getEffectiveSessionPortal();
       if (!VALID_PORTALS.includes(portal)) {
         clearSession();
       }
@@ -39,6 +41,9 @@ const Landing = () => {
           </div>
           <div className="hidden md:flex items-center gap-7 text-sm font-semibold text-slate-500">
             <a href="#inicio" className="hover:text-clinica-dark transition-colors">Inicio</a>
+            <Link to={PUBLIC_PATHS.catalogoProfesionales} className="hover:text-clinica-dark transition-colors">
+              Profesionales
+            </Link>
             <a href="#accesos" className="hover:text-clinica-dark transition-colors">Accesos</a>
             <a href="#beneficios" className="hover:text-clinica-dark transition-colors">Beneficios</a>
             <a href="#nosotros" className="hover:text-clinica-dark transition-colors">Nosotros</a>
@@ -64,6 +69,12 @@ const Landing = () => {
               <a href="#accesos" className="px-6 py-3 rounded-xl bg-clinica-dark text-white font-bold hover:bg-clinica-hover transition-colors shadow-lg shadow-slate-900/20">
                 Ir a accesos
               </a>
+              <Link
+                to={PUBLIC_PATHS.catalogoProfesionales}
+                className="px-6 py-3 rounded-xl border border-slate-300 text-slate-700 font-semibold hover:border-slate-400 transition-colors"
+              >
+                Ver profesionales
+              </Link>
               <a href="#beneficios" className="px-6 py-3 rounded-xl border border-slate-300 text-slate-700 font-semibold hover:border-slate-400 transition-colors">
                 Ver beneficios
               </a>

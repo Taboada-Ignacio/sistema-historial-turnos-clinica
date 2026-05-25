@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import clienteAxios from '../../api/axiosConfig';
 import ProfesionalFoto from '../../components/ProfesionalFoto';
 import { formatEspecialidad } from '../../utils/formatEspecialidad';
+import { formatSexoLabel } from '../../components/SexoSelectField';
 import { ADMIN_PATHS } from '../../utils/portalPaths';
 
 const apiErrorMessage = (err) =>
@@ -158,6 +159,10 @@ const ProfesionalPendienteDetallePage = () => {
                 <div>
                   <dt className="text-slate-500">Fecha de nacimiento</dt>
                   <dd className="font-medium text-slate-900">{formatFechaNacimiento(profesional.fechaNacimiento)}</dd>
+                </div>
+                <div>
+                  <dt className="text-slate-500">Sexo</dt>
+                  <dd className="font-medium text-slate-900">{formatSexoLabel(profesional.sexo)}</dd>
                 </div>
               </dl>
             </div>

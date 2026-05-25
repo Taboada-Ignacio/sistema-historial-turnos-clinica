@@ -185,6 +185,7 @@ public class AdministradorServiceImpl implements AdministradorService {
         admin.setEmail(dto.getEmail());
         admin.setTelefono(dto.getTelefono());
         admin.setFechaNacimiento(dto.getFechaNacimiento());
+        admin.setSexo(dto.getSexo());
 
         if (dto.getEstadoActual() != null) {
             Estado nuevoEstado = estadoRepository.findByNombre(dto.getEstadoActual())

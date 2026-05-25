@@ -38,6 +38,12 @@ public class UserDetailsServiceImpl implements UserDetailsService {
             throw new DisabledException("Su cuenta aún no ha sido activada. Por favor, confirme su correo electrónico para ingresar.");
         }
 
+        if ("SIN_CONTRASENA".equalsIgnoreCase(nombreEstado)) {
+            throw new DisabledException(
+                    "Tu cuenta está pendiente de activación. Revisá el correo que te enviamos para crear tu contraseña, "
+                            + "o usá «Reenviar correo» en el login.");
+        }
+
         // 3. Mapeo de roles
         Collection<? extends GrantedAuthority> authorities = usuario.getRoles().stream()
                 .map(rol -> new SimpleGrantedAuthority(rol.getDescripcion()))

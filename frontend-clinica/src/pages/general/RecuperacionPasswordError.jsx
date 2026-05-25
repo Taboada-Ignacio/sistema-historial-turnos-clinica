@@ -4,7 +4,7 @@ import { ADMIN_PATHS, HOME_PATH, PACIENTE_PATHS, PROFESIONAL_PATHS } from '../..
 
 const textos = {
   invalido: 'Este enlace ya fue utilizado o no es válido. Si necesitás cambiar la contraseña, solicitá un nuevo correo.',
-  expirado: 'El enlace expiró (válido por 30 minutos). Solicitá un nuevo correo desde la pantalla de recuperación.',
+  expirado: 'El enlace expiró (válido por 72 horas). Solicitá un nuevo correo desde la pantalla de recuperación.',
 };
 
 const RecuperacionPasswordError = () => {

@@ -1,9 +1,13 @@
 package com.clinica.usuarios.controller;
 
 import com.clinica.usuarios.dto.request.ConfirmarCodigoDTO;
+import com.clinica.usuarios.dto.request.PacienteCargaProfesionalDTO;
 import com.clinica.usuarios.dto.request.ProfesionalRegistroDTO;
+import com.clinica.usuarios.dto.response.PacienteCargaProfesionalResponseDTO;
 import com.clinica.usuarios.dto.request.ProfesionalUpdateDTO;
 import com.clinica.usuarios.dto.request.RechazarProfesionalPendienteDTO;
+import com.clinica.usuarios.dto.response.PersonaEnZonaBusquedaResponseDTO;
+import com.clinica.usuarios.dto.response.PersonaEnZonaDetalleDTO;
 import com.clinica.usuarios.dto.response.ProfesionalBusquedaResponseDTO;
 import com.clinica.usuarios.dto.response.ProfesionalPresentacionDTO;
 import com.clinica.usuarios.dto.response.ProfesionalResponseDTO;
@@ -109,18 +113,17 @@ public class ProfesionalController {
 
     /**
      * Catálogo público: nombre, apellido, especialidad y dirección compuesta.
-     * No incluye usuarios con rol administrador ni profesionales que no estén ACTIVOS.
+     * Sin JWT. No incluye administradores ni profesionales que no estén en estado ACTIVO.
      */
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRADOR', 'ROLE_PACIENTE', 'ROLE_PROFESIONAL')")
     @GetMapping("/presentacion")
     public ResponseEntity<List<ProfesionalPresentacionDTO>> listarParaPresentacion() {
         return ResponseEntity.ok(profesionalService.listarParaPresentacion());
     }
 
     /**
-     * Ficha pública de un profesional (mismas reglas de exclusión que {@link #listarParaPresentacion()}).
+     * Ficha pública de un profesional (mismas reglas que {@link #listarParaPresentacion()}).
+     * Sin JWT. Usuarios autenticados pueden ver su propia ficha aunque no estén ACTIVOS.
      */
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMINISTRADOR', 'ROLE_PACIENTE', 'ROLE_PROFESIONAL')")
     @GetMapping("/{id}/presentacion")
     public ResponseEntity<ProfesionalPresentacionDTO> obtenerParaPresentacion(
             @PathVariable Long id,
@@ -140,6 +143,73 @@ public class ProfesionalController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
         return ResponseEntity.ok(profesionalService.obtenerProfesionalSesion(principal.getUsername()));
+    }
+
+    /**
+     * Carga un paciente con usuario (estado SIN_CONTRASENA) y envía correo de activación (72 h).
+     */
+    @PreAuthorize("hasAuthority('ROLE_PROFESIONAL')")
+    @PostMapping("/me/pacientes")
+    public ResponseEntity<PacienteCargaProfesionalResponseDTO> cargarPaciente(
+            @AuthenticationPrincipal UserDetails principal,
+            @Valid @RequestBody PacienteCargaProfesionalDTO dto) {
+        if (principal == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(profesionalService.cargarPacientePorProfesional(principal.getUsername(), dto));
+    }
+
+    /**
+     * Búsqueda de pacientes, profesionales y administradores en la misma provincia y localidad
+     * del profesional autenticado. Parámetro {@code q}: apellido, nombre o DNI.
+     */
+    @PreAuthorize("hasAuthority('ROLE_PROFESIONAL')")
+    @GetMapping("/me/pacientes/buscar")
+    public ResponseEntity<PersonaEnZonaBusquedaResponseDTO> buscarPersonasEnMiUbicacion(
+            @AuthenticationPrincipal UserDetails principal,
+            @RequestParam(name = "q") String q) {
+        if (principal == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        return ResponseEntity.ok(
+                profesionalService.buscarPersonasEnMiUbicacion(principal.getUsername(), q));
+    }
+
+    /**
+     * Búsqueda general: pacientes, profesionales y administradores en la provincia y localidad elegidas.
+     * Parámetros obligatorios: {@code q}, {@code idProvincia}, {@code idLocalidad}.
+     */
+    @PreAuthorize("hasAuthority('ROLE_PROFESIONAL')")
+    @GetMapping("/me/pacientes/buscar-general")
+    public ResponseEntity<PersonaEnZonaBusquedaResponseDTO> buscarPersonasEnUbicacionGeneral(
+            @AuthenticationPrincipal UserDetails principal,
+            @RequestParam(name = "q") String q,
+            @RequestParam(name = "idProvincia") Long idProvincia,
+            @RequestParam(name = "idLocalidad") Long idLocalidad) {
+        if (principal == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        return ResponseEntity.ok(profesionalService.buscarPersonasEnUbicacionGeneral(
+                principal.getUsername(), q, idProvincia, idLocalidad));
+    }
+
+    /**
+     * Detalle de una persona en una zona. Sin parámetros de ubicación usa la ciudad del profesional;
+     * con {@code idProvincia} e {@code idLocalidad} valida contra esa zona (búsqueda general).
+     */
+    @PreAuthorize("hasAuthority('ROLE_PROFESIONAL')")
+    @GetMapping("/me/pacientes/{id}")
+    public ResponseEntity<PersonaEnZonaDetalleDTO> obtenerPersonaEnUbicacion(
+            @AuthenticationPrincipal UserDetails principal,
+            @PathVariable Long id,
+            @RequestParam(name = "idProvincia", required = false) Long idProvincia,
+            @RequestParam(name = "idLocalidad", required = false) Long idLocalidad) {
+        if (principal == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        return ResponseEntity.ok(profesionalService.obtenerPersonaEnUbicacion(
+                principal.getUsername(), id, idProvincia, idLocalidad));
     }
 
     /**

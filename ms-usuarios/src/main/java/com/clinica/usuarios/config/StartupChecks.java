@@ -122,6 +122,8 @@ public class StartupChecks implements ApplicationRunner {
                 .orElseThrow(() -> new IllegalStateException("Estado 'ACTIVO' missing"));
         estadoRepository.findByNombre("BLOQUEADO")
                 .orElseThrow(() -> new IllegalStateException("Estado 'BLOQUEADO' missing"));
+        estadoRepository.findByNombre("SIN_CONTRASENA")
+                .orElseThrow(() -> new IllegalStateException("Estado 'SIN_CONTRASENA' missing"));
 
         // Membresias
         membresiaRepository.findByNombre("SIN_VERIFICAR")

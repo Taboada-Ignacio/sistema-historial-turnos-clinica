@@ -33,6 +33,33 @@ class SecurityAndAuthIntegrationTest {
     }
 
     @Test
+    @DisplayName("GET catálogo público de profesionales sin JWT → 200")
+    void getProfesionalesPresentacion_withoutAuth_isOk() throws Exception {
+        mockMvc.perform(get("/api/profesionales/presentacion"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("POST /api/onboarding/admin/registro sin JWT pero con X-System-Key → no 401")
+    void postAdministradorOnboardingRegistro_withoutJwt_isNotUnauthorized() throws Exception {
+        String body = """
+                {"nombre":"Admin","apellido":"Test","dni":87654321,"email":"admin-reg-test@test.com",
+                "password":"Test1234!","telefono":"+5491100000099","fechaNacimiento":"1990-05-15",
+                "sexo":"MASCULINO","idLocalidad":1,"direccion":"Calle Test 100"}
+                """;
+        mockMvc.perform(post("/api/onboarding/admin/registro")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-System-Key", "utn_frc_2026_secret_key")
+                        .content(body))
+                .andExpect(result -> {
+                    int status = result.getResponse().getStatus();
+                    if (status == 401) {
+                        throw new AssertionError("Onboarding admin no debe devolver 401: " + result.getResponse().getContentAsString());
+                    }
+                });
+    }
+
+    @Test
     @DisplayName("GET recurso protegido sin JWT → 401")
     void getPacientes_withoutAuth_isUnauthorized() throws Exception {
         mockMvc.perform(get("/api/pacientes"))

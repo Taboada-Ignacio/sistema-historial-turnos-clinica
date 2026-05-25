@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import clienteAxios from '../../api/axiosConfig';
+import clienteAxios, { clienteAxiosPublic } from '../../api/axiosConfig';
 import { formatEspecialidad } from '../../utils/formatEspecialidad';
 import PasswordVisibilityToggle from '../../components/PasswordVisibilityToggle';
 import ProvinciaLocalidadFields from '../../components/ProvinciaLocalidadFields';
+import SexoSelectField from '../../components/SexoSelectField';
 import { getMaxBirthDateString, isAtLeastAge } from '../../utils/ageValidation';
 import imageCompression from 'browser-image-compression'; 
 
@@ -16,7 +17,7 @@ const RegistroProfesional = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [formData, setFormData] = useState({
-    nombre: '', apellido: '', dni: '', telefono: '', fechaNacimiento: '',
+    nombre: '', apellido: '', dni: '', telefono: '', fechaNacimiento: '', sexo: '',
     provincia: '', localidad: '', direccion: '', especialidad: '', matricula: '',
     email: '', password: '', confirmarPassword: '', foto: null
   });
@@ -131,7 +132,7 @@ const RegistroProfesional = () => {
   const nextStep = () => setStep(step + 1);
   const prevStep = () => setStep(step - 1);
 
-  const isFormValid = isPasswordValid && passwordsMatch && formData.foto && formData.fechaNacimiento && isAtLeastAge(formData.fechaNacimiento)
+  const isFormValid = isPasswordValid && passwordsMatch && formData.foto && formData.fechaNacimiento && formData.sexo && isAtLeastAge(formData.fechaNacimiento)
     && formData.localidad && formData.direccion?.trim();
 
   const handleStepAdvance = (e) => {
@@ -169,6 +170,7 @@ const RegistroProfesional = () => {
         password: formData.password,
         telefono: formData.telefono,
         fechaNacimiento: formData.fechaNacimiento,
+        sexo: formData.sexo,
         matricula: formData.matricula,
         idLocalidad: Number(formData.localidad),
         direccion: formData.direccion.trim(),
@@ -183,7 +185,7 @@ const RegistroProfesional = () => {
 
       console.log("[DEBUG] Foto en el FormData:", dataToSend.get('foto').name);
 
-      const response = await clienteAxios.post('/usuarios/api/profesionales/registro', dataToSend);
+      const response = await clienteAxiosPublic.post('/usuarios/api/profesionales/registro', dataToSend);
       console.log("[DEBUG] Respuesta exitosa:", response.data);
       
       navigate('/verificar-email-profesional', { state: { email: formData.email } });
@@ -258,11 +260,16 @@ const RegistroProfesional = () => {
                 <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Teléfono</label>
                 <input type="tel" name="telefono" required value={formData.telefono} onChange={handleChange} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50 transition-all" />
               </div>
-              <div className="md:col-span-2">
+              <div>
                 <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Fecha de Nacimiento</label>
                 <input type="date" name="fechaNacimiento" required max={getMaxBirthDateString()} value={formData.fechaNacimiento} onChange={handleChange} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50 transition-all" />
                 <p className="text-xs text-gray-500 mt-1">Mayor de 18 años.</p>
               </div>
+              <SexoSelectField
+                value={formData.sexo}
+                onChange={handleChange}
+                inputClassName="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50 transition-all"
+              />
               <div className="md:col-span-2">
                 <ProvinciaLocalidadFields
                   showLabels

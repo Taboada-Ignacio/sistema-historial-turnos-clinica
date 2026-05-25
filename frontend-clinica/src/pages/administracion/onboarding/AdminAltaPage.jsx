@@ -1,20 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import clienteAxios from '../../api/axiosConfig';
-import PasswordVisibilityToggle from '../../components/PasswordVisibilityToggle';
-import { getMaxBirthDateString, isAtLeastAge } from '../../utils/ageValidation';
-import { ADMIN_PATHS } from '../../utils/portalPaths';
-import ProvinciaLocalidadFields from '../../components/ProvinciaLocalidadFields';
+import { clienteAxiosPublic } from '../../../api/axiosConfig';
+import PasswordVisibilityToggle from '../../../components/PasswordVisibilityToggle';
+import { getMaxBirthDateString, isAtLeastAge } from '../../../utils/ageValidation';
+import { ADMIN_PATHS } from '../../../utils/portalPaths';
+import ProvinciaLocalidadFields from '../../../components/ProvinciaLocalidadFields';
+import SexoSelectField from '../../../components/SexoSelectField';
+import { ADMIN_ONBOARDING_API, persistAdminOnboardingEmail } from '../../../utils/adminOnboarding';
 
-const AdminRegisterSecret = () => {
+const AdminAltaPage = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  
+
   const [systemKey, setSystemKey] = useState('');
   const [showSystemKey, setShowSystemKey] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  
+
   const [provinciaSeleccionada, setProvinciaSeleccionada] = useState('');
 
   const [formData, setFormData] = useState({
@@ -25,8 +27,9 @@ const AdminRegisterSecret = () => {
     password: '',
     telefono: '',
     fechaNacimiento: '',
+    sexo: '',
     idLocalidad: '',
-    direccion: ''
+    direccion: '',
   });
 
   const handleChange = (e) => {
@@ -34,7 +37,7 @@ const AdminRegisterSecret = () => {
     setFormData((prev) => ({
       ...prev,
       [name]: value,
-      ...(name === 'idLocalidad' ? { direccion: '' } : {})
+      ...(name === 'idLocalidad' ? { direccion: '' } : {}),
     }));
   };
 
@@ -43,7 +46,7 @@ const AdminRegisterSecret = () => {
     mayuscula: /[A-Z]/.test(formData.password),
     minuscula: /[a-z]/.test(formData.password),
     numero: /[0-9]/.test(formData.password),
-    especial: /[@#$%^&+=!]/.test(formData.password)
+    especial: /[@#$%^&+=!]/.test(formData.password),
   };
 
   const isPasswordValid = Object.values(validaciones).every(Boolean);
@@ -69,8 +72,9 @@ const AdminRegisterSecret = () => {
     try {
       const dni = Number(formData.dni);
       const idLocalidad = Number(formData.idLocalidad);
-      if (!Number.isInteger(dni) || !Number.isInteger(idLocalidad) || !formData.direccion?.trim()) {
-        setError('DNI, localidad o dirección inválidos.');
+      if (!Number.isInteger(dni) || !Number.isInteger(idLocalidad) || !formData.direccion?.trim() || !formData.sexo) {
+        setError('Completá DNI, sexo, localidad y dirección.');
+        setLoading(false);
         return;
       }
 
@@ -78,24 +82,30 @@ const AdminRegisterSecret = () => {
         ...formData,
         dni,
         idLocalidad,
-        direccion: formData.direccion.trim()
+        direccion: formData.direccion.trim(),
       };
 
-      const response = await clienteAxios.post('/usuarios/api/administradores/registro', payload, {
-        headers: { 
+      const response = await clienteAxiosPublic.post(ADMIN_ONBOARDING_API.registro, payload, {
+        headers: {
           'X-System-Key': systemKey.trim(),
-          'Content-Type': 'application/json'
-        }
+          'Content-Type': 'application/json',
+        },
       });
 
-      if (response.status === 201) {
-        navigate(ADMIN_PATHS.verificarEmail, { state: { email: formData.email } });
+      if (response.status >= 200 && response.status < 300) {
+        const email = formData.email.trim();
+        persistAdminOnboardingEmail(email);
+        navigate(ADMIN_PATHS.verificarEmail, { replace: true, state: { email } });
       }
     } catch (err) {
-      if (err.response && err.response.status === 403) {
-        setError('Acceso denegado: X-System-Key incorrecta o inválida.');
+      const status = err?.response?.status;
+      const backendMessage = err?.response?.data?.mensaje || err?.response?.data?.message || '';
+      if (status === 400 || status === 403) {
+        setError(backendMessage || 'Acceso denegado: X-System-Key incorrecta o inválida.');
+      } else if (status === 401) {
+        setError('No autorizado por seguridad. Reintentá y verificá que el backend esté actualizado.');
       } else {
-        setError(err.response?.data?.message || 'Error en el registro. Verificá si el email ya existe.');
+        setError(backendMessage || 'Error en el registro. Verificá si el email ya existe.');
       }
     } finally {
       setLoading(false);
@@ -117,28 +127,26 @@ const AdminRegisterSecret = () => {
         <div className="p-8">
           <div className="text-center mb-6">
             <h1 className="text-2xl font-bold text-gray-900 uppercase tracking-wider">Setup de Administrador</h1>
-            <p className="text-red-600 text-xs font-bold uppercase tracking-tight">Registro Maestro de Sistema</p>
+            <p className="text-red-600 text-xs font-bold uppercase tracking-tight">Registro maestro de sistema</p>
           </div>
 
           {error && (
-            <div className="bg-red-50 text-red-700 p-3 rounded-lg text-xs mb-4 border border-red-200 animate-shake">
+            <div className="bg-red-50 text-red-700 p-3 rounded-lg text-xs mb-4 border border-red-200">
               {error}
             </div>
           )}
-          
+
           <form onSubmit={handleRegister} className="space-y-4">
-            
-            {/* SECCIÓN X-SYSTEM-KEY (Ingreso manual solicitado) */}
             <div className="bg-gray-100 p-4 rounded-lg border border-gray-300">
               <label className="block text-xs font-bold text-gray-700 mb-1 uppercase">X-System-Key</label>
               <div className="relative">
-                <input 
-                  type={showSystemKey ? "text" : "password"} 
-                  required 
-                  value={systemKey} 
+                <input
+                  type={showSystemKey ? 'text' : 'password'}
+                  required
+                  value={systemKey}
                   onChange={(e) => setSystemKey(e.target.value)}
                   className="w-full px-4 py-2 pr-12 rounded border border-gray-400 focus:ring-2 focus:ring-red-500 outline-none text-center font-mono"
-                  placeholder="Ingrese Clave Maestra"
+                  placeholder="Ingrese clave maestra"
                 />
                 <PasswordVisibilityToggle visible={showSystemKey} onToggle={() => setShowSystemKey(!showSystemKey)} />
               </div>
@@ -157,6 +165,11 @@ const AdminRegisterSecret = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <input type="email" name="email" placeholder="Email" required value={formData.email} onChange={handleChange} className="px-3 py-2 border rounded outline-none focus:border-gray-400" />
               <input type="date" name="fechaNacimiento" required max={getMaxBirthDateString()} value={formData.fechaNacimiento} onChange={handleChange} className="px-3 py-2 border rounded outline-none text-gray-500" title="Mayor de 18 años" />
+              <SexoSelectField
+                value={formData.sexo}
+                onChange={handleChange}
+                inputClassName="px-3 py-2 border rounded outline-none focus:border-gray-400 bg-white w-full"
+              />
             </div>
 
             <div className="space-y-4">
@@ -188,18 +201,18 @@ const AdminRegisterSecret = () => {
             <div className="bg-gray-50 p-4 rounded-lg border">
               <label className="block text-xs font-bold text-gray-600 mb-1 uppercase">Contraseña</label>
               <div className="relative mb-3">
-                <input 
-                  type={showPassword ? "text" : "password"} 
-                  name="password" 
-                  required 
-                  value={formData.password} 
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  name="password"
+                  required
+                  value={formData.password}
                   onChange={handleChange}
                   className="w-full px-3 py-2 pr-12 border rounded outline-none focus:border-red-500"
                   placeholder="Defina su clave"
                 />
                 <PasswordVisibilityToggle visible={showPassword} onToggle={() => setShowPassword(!showPassword)} />
               </div>
-              
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
                 <ChecklistItem cumple={validaciones.longitud} texto="8+ caracteres" />
                 <ChecklistItem cumple={validaciones.mayuscula} texto="Mayúscula" />
@@ -214,7 +227,7 @@ const AdminRegisterSecret = () => {
               disabled={loading || !isPasswordValid || !systemKey || !formData.idLocalidad || !formData.direccion?.trim()}
               className="w-full bg-red-600 text-white font-bold py-3 mt-4 rounded hover:bg-red-700 transition-colors disabled:opacity-50 uppercase tracking-wide"
             >
-              {loading ? "Sincronizando..." : "Ejecutar Alta Administrativa"}
+              {loading ? 'Sincronizando...' : 'Ejecutar alta administrativa'}
             </button>
           </form>
         </div>
@@ -223,4 +236,4 @@ const AdminRegisterSecret = () => {
   );
 };
 
-export default AdminRegisterSecret;
+export default AdminAltaPage;

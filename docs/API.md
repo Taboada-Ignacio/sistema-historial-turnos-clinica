@@ -40,9 +40,13 @@ Este documento **complementa** OpenAPI con convenciones de **seguridad**, **cook
 | POST | `/api/auth/login` | Público | Body: `email`, `password`, **`portal`**: `paciente` \| `profesional` \| `admin`. Set-Cookie **`refreshToken`** (HttpOnly). Respuesta JSON: **`token`** (JWT), **`email`**, **`rol`**. Origen validado si `app.allowed-origins` no está vacío. |
 | POST | `/api/auth/refresh` | Público (cookie) | Cookie **`refreshToken`** obligatoria; validación de origen igual que login. |
 | POST | `/api/auth/cambiar-password` | Público | Email + contraseña actual + nueva (revoca refresh tokens). |
-| POST | `/api/auth/solicitar-cambio-password/paciente` | Público | Body `{ "email" }`. Usuario ACTIVO con rol paciente. Invalida tokens previos; nuevo token **30 min**. |
-| POST | `/api/auth/solicitar-cambio-password/profesional` | Público | Igual, rol profesional. |
-| POST | `/api/auth/solicitar-cambio-password/admin` | Público | Igual, rol administrador. |
+| POST | `/api/auth/solicitar-cambio-password/paciente` | Público | Body `{ "email" }`. Según estado: **PENDIENTE** → correo confirmación (código + enlace, **72 h**); **SIN_CONTRASENA** → correo activación (solo enlace, **72 h**); **ACTIVO** → recuperación de contraseña (**72 h**); **BLOQUEADO** → **400** con mensaje explícito. |
+| POST | `/api/auth/reenviar-acceso-paciente` | Público | Body `{ "email" }`. Misma lógica por estado que solicitar cambio (sin rama recuperación para ACTIVO: mensaje para usar «olvidé contraseña»). |
+| GET | `/api/auth/confirmar-activacion-paciente` | Público | Query `token`. Redirect SPA → `/activar-cuenta-paciente?token=`. |
+| GET | `/api/auth/datos-activacion-paciente` | Público | Query `token`. Datos del paciente en **SIN_CONTRASENA** para pantalla de activación. |
+| POST | `/api/auth/establecer-password-inicial/paciente` | Público | Body `{ "token", "passwordNueva" }`. Activa cuenta (**SIN_CONTRASENA** → **ACTIVO**). |
+| POST | `/api/auth/solicitar-cambio-password/profesional` | Público | Body `{ "email" }`. Usuario ACTIVO con rol profesional. Token **72 h**. |
+| POST | `/api/auth/solicitar-cambio-password/admin` | Público | Igual, rol administrador. Token **72 h**. |
 | GET | `/api/auth/confirmar-cambio-password` | Público | Query: `token`, `tipo` (`paciente` \| `profesional` \| `admin`). Redirect SPA: éxito → `/cambiar-password/{tipo}?token=`; error → `/recuperacion-password-error?tipo=&motivo=invalido\|expirado`. |
 | POST | `/api/auth/cambiar-password-con-token/paciente` | Público | Body `{ "token", "passwordNueva" }`. Un solo uso del token; revoca refresh tokens. |
 | POST | `/api/auth/cambiar-password-con-token/profesional` | Público | Igual. |
@@ -62,6 +66,7 @@ Flujo detallado, front y anti-doble-submit: [`RECUPERACION-CONTRASENA.md`](RECUP
 | POST | `/reenviar-confirmacion` | Público | Query `email`. No aplica si usuario ya `ACTIVO`. |
 | GET | `/` | ADMIN | Listado completo. |
 | GET | `/buscar` | ADMIN | Query opcionales: `q`, `idProvincia`, `idLocalidad` (localidad exige provincia). Al menos `q` o `idProvincia`. Respuesta: `{ total, pacientes[], criteriosAplicados }` (máx. 500). Ver [`CAMBIOS-ADMIN-PACIENTES-PROFESIONALES.md`](CAMBIOS-ADMIN-PACIENTES-PROFESIONALES.md). |
+| GET | `/me` | PACIENTE | Perfil de sesión del portal paciente. Respuesta `PacientePortalSesionDTO` con `perfilEditable`, `tipoCuenta` (`PACIENTE` o `PROFESIONAL_EN_PORTAL_PACIENTE`). Profesional con rol paciente: UI limitada, sin edición vía este endpoint. Ver [`CAMBIOS-PORTAL-PACIENTE-PERFIL.md`](CAMBIOS-PORTAL-PACIENTE-PERFIL.md). |
 | GET | `/{id}` | ADMIN o PACIENTE **y** mismo usuario |
 | PUT | `/{id}` | ADMIN o PACIENTE **y** mismo usuario | Unicidad email/DNI al editar (`UnicidadUsuarioValidator`). |
 | DELETE | `/{id}` | ADMIN |
@@ -79,8 +84,12 @@ Flujo detallado, front y anti-doble-submit: [`RECUPERACION-CONTRASENA.md`](RECUP
 | GET | `/` | ADMIN | Sin query: todos. Query **`membresia=<NOMBRE>`** (p. ej. `SIN_VERIFICAR`, `INACTIVA`, `ACTIVA`): filtra por membresía actual; el nombre se normaliza a mayúsculas y debe existir en catálogo → si no existe **404**. `membresia` vacío → **400**. |
 | GET | `/buscar` | ADMIN | Query opcionales: `q`, `idEspecialidad`, `idProvincia`, `idLocalidad` (localidad exige provincia). Al menos `q`, `idEspecialidad` o `idProvincia`. Respuesta: `{ total, profesionales[], criteriosAplicados }` con `fotoPerfil` en cada ítem (máx. 500). |
 | GET | `/me` | PROFESIONAL | Perfil del usuario autenticado (`membresiaActual`, especialidad, foto, etc.). |
-| GET | `/presentacion` | ADMIN, PACIENTE o PROFESIONAL | Catálogo reducido (solo profesionales ACTIVO). |
-| GET | `/{id}/presentacion` | ADMIN, PACIENTE o PROFESIONAL | Ficha pública; el **propio** profesional puede consultar su ficha aunque no esté ACTIVO (p. ej. `SIN_VERIFICAR`). |
+| GET | `/me/pacientes/buscar` | PROFESIONAL | Query **`q`** obligatorio: apellido, nombre o DNI. Filtra **pacientes, profesionales y administradores** de la **misma provincia y localidad** que el profesional. **Pacientes y profesionales con estado `BLOQUEADO` quedan excluidos**; administradores sin filtro de estado. Membresía del profesional logueado `SIN_VERIFICAR` → **400**. Respuesta: `{ total, personas[], criteriosAplicados }` con `tipoCuenta` (máx. 500). |
+| GET | `/me/pacientes/buscar-general` | PROFESIONAL | Igual criterio de personas y exclusión de bloqueados, pero **`q`**, **`idProvincia`** e **`idLocalidad`** obligatorios. |
+| GET | `/me/pacientes/{id}` | PROFESIONAL | Detalle en una zona: sin query usa la ciudad del profesional; con **`idProvincia`** + **`idLocalidad`** valida la zona de búsqueda general. Paciente/profesional **BLOQUEADO** → **404**. Campos: nombre, apellido, DNI, teléfono, fecha de nacimiento, dirección, localidad, provincia, `tipoCuenta`. Fuera de zona → **404**. |
+| POST | `/me/pacientes` | PROFESIONAL | Alta de paciente **sin contraseña** (`SIN_CONTRASENA`). Body: datos de registro (sin password). Envía correo de activación (**72 h**). Respuesta **201**: `{ idUsuario, mensaje }`. Membresía `SIN_VERIFICAR` → **400**. |
+| GET | `/presentacion` | **Público** | Catálogo reducido (profesionales con estado ACTIVO, sin rol admin). |
+| GET | `/{id}/presentacion` | **Público** (ficha en catálogo) | JWT opcional: el **propio** profesional puede consultar su ficha aunque no esté ACTIVO (p. ej. `SIN_VERIFICAR`). |
 | GET | `/{id}` | ADMIN o PROFESIONAL **y** mismo usuario |
 | GET | `/membresia/inactiva` | ADMIN |
 | PUT | `/{id}` | ADMIN o PROFESIONAL **y** mismo usuario | JSON o multipart con foto; unicidad email/DNI, matrícula única, `idEspecialidad`. |
@@ -142,7 +151,7 @@ Patrón habitual:
 | PUT | `/api/direcciones/{id}` | ADMIN | Solo `nombre` (no cambia localidad). |
 | DELETE | `/api/direcciones/{id}` | ADMIN | Usuarios → dirección `SIN ESPECIFICAR` de esa localidad; luego borra la fila. |
 
-Los **registros** de paciente, profesional y administrador incluyen **`direccion`** (texto, obligatorio, máx. 500 caracteres) junto con **`idLocalidad`**. El backend **crea o reutiliza** una fila en `direcciones` y asigna **`id_direccion`** al usuario (no hay `id_localidad` en `usuarios`).
+Los **registros** de paciente, profesional y administrador incluyen **`sexo`** (`MASCULINO` o `FEMENINO`, obligatorio en altas y ediciones) y **`direccion`** (texto, obligatorio, máx. 500 caracteres) junto con **`idLocalidad`**. El backend **crea o reutiliza** una fila en `direcciones` y asigna **`id_direccion`** al usuario (no hay `id_localidad` en `usuarios`).
 
 **Seguridad admin (panel):** `POST /api/seguridad/verificar-password-actual` — body `{ "password": "..." }` antes de mutaciones sensibles en el front.
 
@@ -152,6 +161,7 @@ Los **registros** de paciente, profesional y administrador incluyen **`direccion
 
 | Método | Ruta | Acceso |
 |--------|------|--------|
+| GET | `/api/profesionales/fotos/public/{fileName}` | **Público** | Solo si la foto pertenece a un profesional visible en el catálogo (`esFotoVisibleEnCatalogoPublico`). |
 | GET | `/api/profesionales/fotos/{fileName}` | `ROLE_PROFESIONAL` o `ROLE_ADMINISTRADOR` (JWT). Solo nombres `{uuid}.webp`. Máx. **2 MB** en subida. |
 
 ---

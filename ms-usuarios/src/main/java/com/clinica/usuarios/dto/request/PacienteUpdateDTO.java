@@ -1,5 +1,6 @@
 package com.clinica.usuarios.dto.request;
 
+import com.clinica.usuarios.model.Sexo;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -19,6 +20,8 @@ public class PacienteUpdateDTO {
     private String email;
     private String telefono;
     private LocalDate fechaNacimiento;
+    @NotNull(message = "El sexo es obligatorio")
+    private Sexo sexo;
     private String numeroAfiliado;
     private String estadoActual; // <--- AGREGAR ESTO
     private Long idLocalidad;

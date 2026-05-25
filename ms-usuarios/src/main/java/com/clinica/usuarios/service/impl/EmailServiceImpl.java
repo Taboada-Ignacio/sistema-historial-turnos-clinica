@@ -39,7 +39,7 @@ public class EmailServiceImpl implements EmailService {
                     .anyMatch(r -> r.getDescripcion().equals("ROLE_PROFESIONAL"));
 
             if (esAdmin) {
-                endpoint = "administradores";
+                endpoint = "onboarding/admin";
             } else if (esProfesional) {
                 endpoint = "profesionales";
             }
@@ -177,7 +177,7 @@ public class EmailServiceImpl implements EmailService {
                             "<p style='font-size: 0.9em; color: #555;'>Si no solicitaste este cambio, ignorá este correo.</p>" +
                             "<p style='word-break: break-all; color: #3498db; font-size: 0.85em;'>%s</p>" +
                             "<hr style='border: 0; border-top: 1px solid #ecf0f1; margin-top: 30px;'>" +
-                            "<p style='font-size: 0.8em; color: #777; text-align: center;'>Este enlace es válido por 30 minutos. Si expira, solicitá uno nuevo desde la pantalla de recuperación.</p>" +
+                            "<p style='font-size: 0.8em; color: #777; text-align: center;'>Este enlace es válido por 72 horas. Si expira, solicitá uno nuevo desde la pantalla de recuperación.</p>" +
                             "</div>",
                     color, color, titulo, usuario.getNombre(), linkRecuperacion, color, boton, linkRecuperacion
             );
@@ -199,7 +199,7 @@ public class EmailServiceImpl implements EmailService {
             "<div style='text-align: center; margin: 24px 0; padding: 20px; background-color: #f8fafc; border-radius: 8px;'>"
                     + "<p style='margin: 0 0 8px; font-size: 14px; color: #555;'>Tu código de verificación es:</p>"
                     + "<p style='margin: 0; font-size: 36px; font-weight: bold; letter-spacing: 10px; color: %s;'>%s</p>"
-                    + "<p style='margin: 12px 0 0; font-size: 12px; color: #777;'>Válido por <strong>3 minutos</strong>. Ingresalo en la pantalla de verificación.</p>"
+                    + "<p style='margin: 12px 0 0; font-size: 12px; color: #777;'>Válido por <strong>72 horas</strong>. Ingresalo en la pantalla de verificación.</p>"
                     + "</div>",
             color, codigo);
     }
@@ -251,6 +251,40 @@ public class EmailServiceImpl implements EmailService {
             "</div>",
             usuario.getNombre(), bloqueCodigo, linkConfirmacion, linkConfirmacion
         );
+    }
+
+    @Override
+    @Async
+    public void enviarEmailActivacionPaciente(Usuario usuario, String linkActivacion) {
+        try {
+            MimeMessage mimeMessage = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, "utf-8");
+
+            String htmlMsg = String.format(
+                    "<div style='font-family: Arial, sans-serif; padding: 20px; border: 1px solid #27ae60; max-width: 600px; margin: auto; border-radius: 8px;'>"
+                            + "<h2 style='color: #27ae60;'>Activá tu cuenta de paciente</h2>"
+                            + "<p>Hola <strong>%s</strong>,</p>"
+                            + "<p>Un profesional de la <strong>Clínica UTN</strong> registró tu usuario en el sistema. "
+                            + "Para ingresar al portal, creá tu contraseña desde el siguiente enlace:</p>"
+                            + "<div style='text-align: center; margin: 30px 0;'>"
+                            + "  <a href='%s' style='background-color: #27ae60; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;'>Crear mi contraseña</a>"
+                            + "</div>"
+                            + "<p style='font-size: 0.9em; color: #555;'>Si el botón no funciona, copiá este link:</p>"
+                            + "<p style='word-break: break-all; color: #3498db; font-size: 0.85em;'>%s</p>"
+                            + "<hr style='border: 0; border-top: 1px solid #ecf0f1; margin-top: 30px;'>"
+                            + "<p style='font-size: 0.8em; color: #777; text-align: center;'>El enlace es válido por 72 horas.</p>"
+                            + "</div>",
+                    usuario.getNombre(), linkActivacion, linkActivacion);
+
+            helper.setText(htmlMsg, true);
+            helper.setTo(usuario.getEmail());
+            helper.setSubject("Activá tu cuenta - Clínica UTN");
+            helper.setFrom(sender);
+            mailSender.send(mimeMessage);
+            log.info("Email de activación de paciente enviado a: {}", usuario.getEmail());
+        } catch (MessagingException e) {
+            log.error("Error al enviar email de activación a {}: {}", usuario.getEmail(), e.getMessage());
+        }
     }
 
     private String generarEmailPaciente(Usuario usuario, String codigo, String linkConfirmacion) {

@@ -43,6 +43,10 @@ public class Usuario {
     @Column(name = "fecha_nacimiento")
     private LocalDate fechaNacimiento;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private Sexo sexo;
+
     // --- NUEVAS RELACIONES DE ESTADO ---
 
     // Estado actual para consultas rápidas de seguridad

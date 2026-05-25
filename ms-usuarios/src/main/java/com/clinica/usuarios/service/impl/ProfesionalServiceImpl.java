@@ -1,8 +1,13 @@
 package com.clinica.usuarios.service.impl;
 
+import com.clinica.usuarios.dto.request.PacienteCargaProfesionalDTO;
 import com.clinica.usuarios.dto.request.ProfesionalRegistroDTO;
+import com.clinica.usuarios.dto.response.PacienteCargaProfesionalResponseDTO;
 import com.clinica.usuarios.dto.request.ProfesionalUpdateDTO;
 import com.clinica.usuarios.dto.request.RechazarProfesionalPendienteDTO;
+import com.clinica.usuarios.dto.response.PersonaEnZonaBusquedaResponseDTO;
+import com.clinica.usuarios.dto.response.PersonaEnZonaDetalleDTO;
+import com.clinica.usuarios.dto.response.PersonaEnZonaListadoDTO;
 import com.clinica.usuarios.dto.response.ProfesionalBusquedaResponseDTO;
 import com.clinica.usuarios.dto.response.ProfesionalListadoDTO;
 import com.clinica.usuarios.dto.response.ProfesionalPresentacionDTO;
@@ -17,6 +22,7 @@ import com.clinica.usuarios.service.AccountActivationService;
 import com.clinica.usuarios.service.DireccionService;
 import com.clinica.usuarios.service.EmailService;
 import com.clinica.usuarios.service.ProfesionalFotoStorageService;
+import com.clinica.usuarios.service.PacienteService;
 import com.clinica.usuarios.service.ProfesionalService;
 import com.clinica.usuarios.service.VerificationTokenService;
 import com.clinica.usuarios.service.support.UnicidadUsuarioValidator;
@@ -32,6 +38,8 @@ import java.util.stream.Collectors;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -67,6 +75,15 @@ public class ProfesionalServiceImpl implements ProfesionalService {
     private final PasswordEncoder passwordEncoder;
     private final DireccionService direccionService;
     private final ProfesionalFotoStorageService fotoStorage;
+    private final PacienteService pacienteService;
+
+    @Override
+    @Transactional
+    public PacienteCargaProfesionalResponseDTO cargarPacientePorProfesional(
+            String emailProfesional, PacienteCargaProfesionalDTO dto) {
+        validarProfesionalPuedeBuscar(emailProfesional);
+        return pacienteService.cargarPacienteSinPassword(dto);
+    }
 
     @Override
     @Transactional
@@ -257,6 +274,225 @@ public class ProfesionalServiceImpl implements ProfesionalService {
 
     @Override
     @Transactional(readOnly = true)
+    public PersonaEnZonaBusquedaResponseDTO buscarPersonasEnMiUbicacion(String emailProfesional, String texto) {
+        if (texto == null || texto.isBlank()) {
+            throw new ReglaDeNegocioException("Indicá apellido, nombre o DNI para buscar.");
+        }
+        UbicacionProfesional zona = resolverUbicacionProfesionalLogueado(emailProfesional);
+        return ejecutarBusquedaPersonasEnUbicacion(texto.trim(), zona);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PersonaEnZonaBusquedaResponseDTO buscarPersonasEnUbicacionGeneral(
+            String emailProfesional, String texto, Long idProvincia, Long idLocalidad) {
+        validarProfesionalPuedeBuscar(emailProfesional);
+        if (texto == null || texto.isBlank()) {
+            throw new ReglaDeNegocioException("Indicá apellido, nombre o DNI para buscar.");
+        }
+        if (idProvincia == null || idLocalidad == null) {
+            throw new ReglaDeNegocioException("Seleccioná provincia y localidad para la búsqueda.");
+        }
+        UbicacionProfesional zona = resolverUbicacionPorIds(idProvincia, idLocalidad);
+        return ejecutarBusquedaPersonasEnUbicacion(texto.trim(), zona);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PersonaEnZonaDetalleDTO obtenerPersonaEnUbicacion(
+            String emailProfesional, Long idUsuario, Long idProvincia, Long idLocalidad) {
+        UbicacionProfesional zona;
+        if (idProvincia == null && idLocalidad == null) {
+            zona = resolverUbicacionProfesionalLogueado(emailProfesional);
+        } else {
+            validarProfesionalPuedeBuscar(emailProfesional);
+            if (idProvincia == null || idLocalidad == null) {
+                throw new ReglaDeNegocioException("Indicá provincia y localidad para ver el detalle.");
+            }
+            zona = resolverUbicacionPorIds(idProvincia, idLocalidad);
+        }
+        return obtenerPersonaEnZona(idUsuario, zona);
+    }
+
+    private PersonaEnZonaBusquedaResponseDTO ejecutarBusquedaPersonasEnUbicacion(
+            String textoNorm, UbicacionProfesional zona) {
+        Specification<Usuario> spec = UsuarioSpecifications.busquedaPersonasEnUbicacion(
+                textoNorm, zona.idProvincia(), zona.idLocalidad());
+        Sort sort = Sort.by("apellido").ascending().and(Sort.by("nombre").ascending());
+
+        List<PersonaEnZonaListadoDTO> personas = usuarioRepository.findAll(spec, sort).stream()
+                .limit(500)
+                .map(this::toPersonaEnZonaListado)
+                .collect(Collectors.toList());
+
+        String criterios = textoNorm.matches("\\d+")
+                ? "DNI: \"" + textoNorm + "\", " + zona.nombreLocalidad() + " (" + zona.nombreProvincia() + ")"
+                : "Apellido/nombre: \"" + textoNorm + "\", " + zona.nombreLocalidad() + " (" + zona.nombreProvincia() + ")";
+
+        return PersonaEnZonaBusquedaResponseDTO.builder()
+                .total(personas.size())
+                .personas(personas)
+                .criteriosAplicados(criterios)
+                .build();
+    }
+
+    private PersonaEnZonaDetalleDTO obtenerPersonaEnZona(Long idUsuario, UbicacionProfesional zona) {
+        Usuario persona = usuarioRepository.findWithUbicacionById(idUsuario)
+                .orElseThrow(() -> new RecursoNoEncontradoException("No se encontró la persona en la zona indicada."));
+
+        if (!(persona instanceof Paciente)
+                && !(persona instanceof Profesional)
+                && !(persona instanceof Administrador)) {
+            throw new RecursoNoEncontradoException("No se encontró la persona en la zona indicada.");
+        }
+
+        if (!estaEnMismaZona(persona, zona.idProvincia(), zona.idLocalidad())) {
+            throw new RecursoNoEncontradoException("No se encontró la persona en la zona indicada.");
+        }
+
+        if (estaBloqueadoParaBusquedaProfesional(persona)) {
+            throw new RecursoNoEncontradoException("No se encontró la persona en la zona indicada.");
+        }
+
+        return toPersonaEnZonaDetalle(persona);
+    }
+
+    /** Pacientes y profesionales bloqueados no son visibles en búsqueda del portal profesional. */
+    private static boolean estaBloqueadoParaBusquedaProfesional(Usuario persona) {
+        if (!(persona instanceof Paciente) && !(persona instanceof Profesional)) {
+            return false;
+        }
+        return persona.getEstadoActual() != null
+                && "BLOQUEADO".equalsIgnoreCase(persona.getEstadoActual().getNombre());
+    }
+
+    private void validarProfesionalPuedeBuscar(String emailProfesional) {
+        Usuario usuario = usuarioRepository.findByEmail(emailProfesional)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Usuario no encontrado."));
+        if (!(usuario instanceof Profesional profesional)) {
+            throw new ReglaDeNegocioException("La cuenta no corresponde a un profesional de la salud.");
+        }
+        Profesional conMembresia = profesionalRepository.findWithUbicacionById(profesional.getIdUsuario())
+                .orElseThrow(() -> new RecursoNoEncontradoException("Profesional no encontrado."));
+        if (conMembresia.getMembresiaActual() != null
+                && "SIN_VERIFICAR".equalsIgnoreCase(conMembresia.getMembresiaActual().getNombre())) {
+            throw new ReglaDeNegocioException(
+                    "Tu cuenta está pendiente de verificación. No podés buscar pacientes hasta que un administrador habilite tu matrícula.");
+        }
+    }
+
+    private UbicacionProfesional resolverUbicacionProfesionalLogueado(String emailProfesional) {
+        validarProfesionalPuedeBuscar(emailProfesional);
+        Usuario usuario = usuarioRepository.findByEmail(emailProfesional)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Usuario no encontrado."));
+        Profesional profesional = (Profesional) usuario;
+
+        Profesional conUbicacion = profesionalRepository.findWithUbicacionById(profesional.getIdUsuario())
+                .orElseThrow(() -> new RecursoNoEncontradoException("Profesional no encontrado."));
+
+        if (conUbicacion.getDireccion() == null || conUbicacion.getDireccion().getLocalidad() == null) {
+            throw new ReglaDeNegocioException(
+                    "Completá provincia y localidad en tu perfil profesional para buscar pacientes de tu zona.");
+        }
+
+        Long idLocalidad = conUbicacion.getDireccion().getLocalidad().getIdLocalidad();
+        Long idProvincia = conUbicacion.getDireccion().getLocalidad().getProvincia().getIdProvincia();
+        String nombreLocalidad = conUbicacion.getDireccion().getLocalidad().getNombre();
+        String nombreProvincia = conUbicacion.getDireccion().getLocalidad().getProvincia().getNombre();
+
+        return new UbicacionProfesional(idProvincia, idLocalidad, nombreProvincia, nombreLocalidad);
+    }
+
+    private UbicacionProfesional resolverUbicacionPorIds(Long idProvincia, Long idLocalidad) {
+        Localidad localidad = localidadRepository.findById(idLocalidad)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Localidad no encontrada."));
+        if (!localidad.getProvincia().getIdProvincia().equals(idProvincia)) {
+            throw new ReglaDeNegocioException("La localidad no pertenece a la provincia indicada.");
+        }
+        Provincia provincia = provinciaRepository.findById(idProvincia)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Provincia no encontrada."));
+        return new UbicacionProfesional(
+                idProvincia, idLocalidad, provincia.getNombre(), localidad.getNombre());
+    }
+
+    private boolean estaEnMismaZona(Usuario persona, Long idProvincia, Long idLocalidad) {
+        if (persona.getDireccion() == null || persona.getDireccion().getLocalidad() == null) {
+            return false;
+        }
+        Localidad loc = persona.getDireccion().getLocalidad();
+        return loc.getIdLocalidad().equals(idLocalidad)
+                && loc.getProvincia() != null
+                && loc.getProvincia().getIdProvincia().equals(idProvincia);
+    }
+
+    private PersonaEnZonaListadoDTO toPersonaEnZonaListado(Usuario u) {
+        String nombreProvincia = null;
+        String nombreLocalidad = null;
+        if (u.getDireccion() != null && u.getDireccion().getLocalidad() != null) {
+            Localidad loc = u.getDireccion().getLocalidad();
+            nombreLocalidad = loc.getNombre();
+            if (loc.getProvincia() != null) {
+                nombreProvincia = loc.getProvincia().getNombre();
+            }
+        }
+        return PersonaEnZonaListadoDTO.builder()
+                .idUsuario(u.getIdUsuario())
+                .apellido(u.getApellido())
+                .nombre(u.getNombre())
+                .dni(u.getDni())
+                .tipoCuenta(tipoCuentaDe(u))
+                .nombreProvincia(nombreProvincia)
+                .nombreLocalidad(nombreLocalidad)
+                .build();
+    }
+
+    private PersonaEnZonaDetalleDTO toPersonaEnZonaDetalle(Usuario u) {
+        String nombreProvincia = null;
+        String nombreLocalidad = null;
+        String direccion = null;
+        if (u.getDireccion() != null) {
+            direccion = u.getDireccion().getNombre();
+            if (u.getDireccion().getLocalidad() != null) {
+                Localidad loc = u.getDireccion().getLocalidad();
+                nombreLocalidad = loc.getNombre();
+                if (loc.getProvincia() != null) {
+                    nombreProvincia = loc.getProvincia().getNombre();
+                }
+            }
+        }
+        return PersonaEnZonaDetalleDTO.builder()
+                .idUsuario(u.getIdUsuario())
+                .nombre(u.getNombre())
+                .apellido(u.getApellido())
+                .dni(u.getDni())
+                .telefono(u.getTelefono())
+                .fechaNacimiento(u.getFechaNacimiento())
+                .sexo(u.getSexo())
+                .nombreLocalidad(nombreLocalidad)
+                .nombreProvincia(nombreProvincia)
+                .direccion(direccion)
+                .tipoCuenta(tipoCuentaDe(u))
+                .build();
+    }
+
+    private static String tipoCuentaDe(Usuario u) {
+        if (u instanceof Paciente) {
+            return "PACIENTE";
+        }
+        if (u instanceof Profesional) {
+            return "PROFESIONAL";
+        }
+        if (u instanceof Administrador) {
+            return "ADMINISTRADOR";
+        }
+        return "DESCONOCIDO";
+    }
+
+    private record UbicacionProfesional(
+            Long idProvincia, Long idLocalidad, String nombreProvincia, String nombreLocalidad) {}
+
+    @Override
+    @Transactional(readOnly = true)
     public List<ProfesionalResponseDTO> obtenerTodosLosProfesionales() {
         return profesionalRepository.findAll().stream()
                 .map(profesionalMapper::toResponseDTO)
@@ -301,8 +537,19 @@ public class ProfesionalServiceImpl implements ProfesionalService {
         return toPresentacionDTO(profesional);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public boolean esFotoVisibleEnCatalogoPublico(String fileName) {
+        if (fileName == null || fileName.isBlank() || fileName.contains("..") || fileName.contains("/")) {
+            return false;
+        }
+        return profesionalRepository.findByFotoPerfilFileName(fileName.trim())
+                .map(this::incluirEnCatalogoPresentacion)
+                .orElse(false);
+    }
+
     /**
-     * Catálogo público: solo cuenta ACTIVA y sin rol de administrador (cuentas admin no se listan).
+     * Catálogo público: estado ACTIVO y sin rol de administrador (cuentas admin no se listan).
      */
     private boolean incluirEnCatalogoPresentacion(Profesional p) {
         if (p.getRoles().stream().anyMatch(r -> "ROLE_ADMINISTRADOR".equals(r.getDescripcion()))) {
@@ -368,6 +615,7 @@ public class ProfesionalServiceImpl implements ProfesionalService {
         profesional.setDni(dto.getDni()); 
         profesional.setEmail(dto.getEmail()); 
         profesional.setTelefono(dto.getTelefono());
+        profesional.setSexo(dto.getSexo());
         profesional.setMatricula(dto.getMatricula());
 
         if (dto.getIdEspecialidad() != null) {
@@ -392,8 +640,8 @@ public class ProfesionalServiceImpl implements ProfesionalService {
             }
         }
 
-        // Actualización de estado si viene en el DTO
-        if (dto.getEstadoActual() != null) {
+        // Actualización de estado: solo administrador
+        if (dto.getEstadoActual() != null && callerIsAdministrador()) {
             Estado nuevoEstado = estadoRepository.findByNombre(dto.getEstadoActual())
                     .orElseThrow(() -> new RecursoNoEncontradoException("Estado solicitado no válido"));
             
@@ -401,6 +649,10 @@ public class ProfesionalServiceImpl implements ProfesionalService {
                 profesional.setEstadoActual(nuevoEstado);
                 registrarHistorialEstado(profesional, nuevoEstado);
             }
+        }
+
+        if (dto.getRolesIds() != null && callerIsAdministrador()) {
+            profesional.setRoles(buscarRoles(dto.getRolesIds()));
         }
 
         if (foto != null && !foto.isEmpty()) {
@@ -528,6 +780,16 @@ public class ProfesionalServiceImpl implements ProfesionalService {
 
     private void registrarHistorialTrasActivacion(Usuario usuario) {
         registrarHistorialEstado(usuario, usuario.getEstadoActual());
+    }
+
+    private boolean callerIsAdministrador() {
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null) {
+            return false;
+        }
+        return auth.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .anyMatch("ROLE_ADMINISTRADOR"::equals);
     }
 
     private Set<Rol> buscarRoles(Set<Long> rolesIds) {

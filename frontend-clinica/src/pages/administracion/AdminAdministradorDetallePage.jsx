@@ -6,6 +6,7 @@ import AdminPasswordConfirmModal from '../../components/AdminPasswordConfirmModa
 import useAdminSesion from '../../hooks/useAdminSesion';
 import { adminApiErrorMessage } from '../../utils/adminApiError';
 import { clearSession } from '../../utils/auth';
+import { formatSexoLabel } from '../../components/SexoSelectField';
 import { ADMIN_PATHS } from '../../utils/portalPaths';
 
 function formatFechaNacimiento(value) {
@@ -162,6 +163,10 @@ const AdminAdministradorDetallePage = () => {
               <div>
                 <dt className="text-slate-500">Fecha de nacimiento</dt>
                 <dd className="font-medium">{formatFechaNacimiento(admin.fechaNacimiento)}</dd>
+              </div>
+              <div>
+                <dt className="text-slate-500">Sexo</dt>
+                <dd className="font-medium">{formatSexoLabel(admin.sexo)}</dd>
               </div>
             </dl>
           </div>

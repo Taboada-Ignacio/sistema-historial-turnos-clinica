@@ -16,7 +16,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class VerificationTokenServiceImpl implements VerificationTokenService {
 
-    private static final int MINUTOS_VALIDEZ = 3;
+    private static final String CODIGO_SIN_USO_EN_MAIL = "000000";
     private static final SecureRandom RANDOM = new SecureRandom();
 
     private final VerificationTokenRepository tokenRepository;
@@ -24,20 +24,46 @@ public class VerificationTokenServiceImpl implements VerificationTokenService {
     @Override
     @Transactional
     public DatosConfirmacion crearTokenConfirmacion(Usuario usuario) {
-        tokenRepository.deleteByUsuario(usuario);
-        return guardarNuevoToken(usuario);
-    }
-
-    private DatosConfirmacion guardarNuevoToken(Usuario usuario) {
+        invalidarTokensPrevios(usuario);
         String token = UUID.randomUUID().toString();
         String codigo = String.format("%06d", RANDOM.nextInt(1_000_000));
+        guardarToken(usuario, token, codigo);
+        return new DatosConfirmacion(token, codigo);
+    }
+
+    @Override
+    @Transactional
+    public String crearTokenActivacionPaciente(Usuario usuario) {
+        invalidarTokensPrevios(usuario);
+        String token = UUID.randomUUID().toString();
+        guardarToken(usuario, token, CODIGO_SIN_USO_EN_MAIL);
+        return token;
+    }
+
+    @Override
+    @Transactional
+    public String crearTokenRecuperacionPassword(Usuario usuario) {
+        invalidarTokensPrevios(usuario);
+        String token = UUID.randomUUID().toString();
+        guardarToken(usuario, token, CODIGO_SIN_USO_EN_MAIL);
+        return token;
+    }
+
+    private void invalidarTokensPrevios(Usuario usuario) {
+        if (usuario.getIdUsuario() != null) {
+            tokenRepository.deleteByUsuario_IdUsuario(usuario.getIdUsuario());
+        } else {
+            tokenRepository.deleteByUsuario(usuario);
+        }
+    }
+
+    private void guardarToken(Usuario usuario, String token, String codigo) {
         VerificationToken vToken = VerificationToken.builder()
                 .token(token)
                 .codigo(codigo)
                 .usuario(usuario)
-                .fechaExpiracion(LocalDateTime.now().plusMinutes(MINUTOS_VALIDEZ))
+                .fechaExpiracion(LocalDateTime.now().plusHours(HORAS_VALIDEZ))
                 .build();
         tokenRepository.save(vToken);
-        return new DatosConfirmacion(token, codigo);
     }
 }

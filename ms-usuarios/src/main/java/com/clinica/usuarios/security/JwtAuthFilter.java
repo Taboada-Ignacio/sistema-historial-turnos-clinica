@@ -46,11 +46,17 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             return;
         }
 
+        // Rutas públicas: no rechazar por JWT inválido (p. ej. registro con sesión vieja en el navegador).
+        if (PublicRequestPaths.shouldBypassJwtFilter(request)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         try {
             jwt = authHeader.substring(7);
             userEmail = jwtUtil.extractUsername(jwt);
 
-            if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            if (userEmail != null) {
                 UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
 
                 if (jwtUtil.isTokenValid(jwt, userDetails)) {
@@ -61,6 +67,13 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                     );
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authToken);
+                } else {
+                    handleException(
+                            response,
+                            "Token inválido o expirado.",
+                            HttpServletResponse.SC_UNAUTHORIZED,
+                            "TOKEN_INVALID");
+                    return;
                 }
             }
             filterChain.doFilter(request, response);

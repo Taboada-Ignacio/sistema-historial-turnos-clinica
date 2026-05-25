@@ -1,5 +1,6 @@
 package com.clinica.usuarios.dto.response;
 
+import com.clinica.usuarios.model.Sexo;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -22,7 +23,8 @@ public class PacienteResponseDTO {
     private String email;
     private String telefono;
     private LocalDate fechaNacimiento;
-    
+    private Sexo sexo;
+
     // Cambiado de Boolean a String
     @NotNull(message = "El estado actual es obligatorio")
     private String estadoActual; 

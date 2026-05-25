@@ -71,6 +71,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
     dni INTEGER UNIQUE NOT NULL, -- INTEGER según tu entidad Java
     telefono VARCHAR(20) NOT NULL,
     fecha_nacimiento DATE,
+    sexo VARCHAR(20) NOT NULL CHECK (sexo IN ('MASCULINO', 'FEMENINO')),
     id_direccion BIGINT NOT NULL REFERENCES direcciones(id_direccion),
     id_estado_actual BIGINT NOT NULL REFERENCES estados(id_estado)
 );
@@ -145,7 +146,7 @@ CREATE TABLE IF NOT EXISTS cambios_membresia (
 -- CARGA DE DATOS INICIALES
 -- ==========================================
 
-INSERT INTO estados (nombre) VALUES ('PENDIENTE'), ('ACTIVO'), ('BLOQUEADO') ON CONFLICT (nombre) DO NOTHING;
+INSERT INTO estados (nombre) VALUES ('PENDIENTE'), ('ACTIVO'), ('BLOQUEADO'), ('SIN_CONTRASENA') ON CONFLICT (nombre) DO NOTHING;
 INSERT INTO roles (descripcion) VALUES ('ROLE_PROFESIONAL'), ('ROLE_PACIENTE'), ('ROLE_ADMINISTRADOR') ON CONFLICT (descripcion) DO NOTHING;
 
 INSERT INTO especialidades (descripcion) VALUES ('MEDICINA GENERAL'), ('COSMIATRA'), ('ODONTOLOGO'), ('PSICOLOGO') ON CONFLICT (descripcion) DO NOTHING;
@@ -361,5 +362,21 @@ WHERE NOT EXISTS (
     SELECT 1 FROM direcciones d
     WHERE d.id_localidad = l.id_localidad AND d.nombre = 'SIN ESPECIFICAR'
 );
+
+-- ==========================================
+-- Migración: columna sexo (bases ya creadas sin este campo)
+-- ==========================================
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS sexo VARCHAR(20);
+UPDATE usuarios SET sexo = 'MASCULINO' WHERE sexo IS NULL;
+ALTER TABLE usuarios ALTER COLUMN sexo SET NOT NULL;
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'usuarios_sexo_check'
+    ) THEN
+        ALTER TABLE usuarios ADD CONSTRAINT usuarios_sexo_check
+            CHECK (sexo IN ('MASCULINO', 'FEMENINO'));
+    END IF;
+END $$;
 
 -- Fin init.sql unificado (esquema + semilla + geo Argentina + direcciones sentinel)

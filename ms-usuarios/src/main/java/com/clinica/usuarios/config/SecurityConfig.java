@@ -1,96 +1,150 @@
 package com.clinica.usuarios.config;
 
+
+
 import com.clinica.usuarios.security.JwtAuthFilter;
+
+import com.clinica.usuarios.security.PublicRequestPaths;
+
+import jakarta.servlet.http.HttpServletRequest;
+
 import jakarta.servlet.http.HttpServletResponse;
+
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.context.annotation.Bean;
+
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
-import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
-import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+
 import org.springframework.http.HttpMethod;
 
+import org.springframework.security.authentication.AuthenticationManager;
+
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+
+import org.springframework.security.config.http.SessionCreationPolicy;
+
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+
+import org.springframework.security.crypto.password.PasswordEncoder;
+
+import org.springframework.security.web.SecurityFilterChain;
+
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
+
+
+
 @Configuration
+
 @EnableWebSecurity
+
 @EnableMethodSecurity
+
 @RequiredArgsConstructor
+
 public class SecurityConfig {
+
+
 
     private final JwtAuthFilter jwtAuthFilter;
 
+
+
     @Bean
+
     public PasswordEncoder passwordEncoder() {
+
         return new BCryptPasswordEncoder();
+
     }
 
+
+
     @Bean
+
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+
         return config.getAuthenticationManager();
+
     }
 
-    @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http
-            .csrf(AbstractHttpConfigurer::disable)
-            .exceptionHandling(ex -> ex
-                .authenticationEntryPoint((request, response, authException) -> {
-                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                    response.setContentType("application/json");
-                    response.getWriter().write("{\"error\": \"No autorizado\", \"message\": \"" + authException.getMessage() + "\"}");
-                })
-            )
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                
-                // --- AUTH (recuperación de contraseña, login, refresh; sin Bearer) ---
-                .requestMatchers("/api/auth/**").permitAll()
-                .requestMatchers("/usuarios/api/auth/**").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/auth/cambiar-password-con-token/**").permitAll()
-                .requestMatchers(HttpMethod.POST, "/usuarios/api/auth/cambiar-password-con-token/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/auth/confirmar-cambio-password").permitAll()
-                .requestMatchers(HttpMethod.GET, "/usuarios/api/auth/confirmar-cambio-password").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/auth/solicitar-cambio-password/**").permitAll()
-                .requestMatchers(HttpMethod.POST, "/usuarios/api/auth/solicitar-cambio-password/**").permitAll()
-                .requestMatchers("/api/pacientes/registro/**").permitAll()
-                .requestMatchers("/api/administradores/registro/**").permitAll()
-                // Aseguramos que cubra tanto "/registro" como "/registro/"
-                .requestMatchers("/api/profesionales/registro", "/api/profesionales/registro/**").permitAll()
-                
-                // --- CONFIRMACIONES Y REENVÍOS ---
-                .requestMatchers(HttpMethod.GET, "/api/pacientes/confirmar/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/profesionales/confirmar/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/administradores/confirmar/**").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/pacientes/confirmar-codigo").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/profesionales/confirmar-codigo").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/administradores/confirmar-codigo").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/profesionales/reenviar-confirmacion").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/pacientes/reenviar-confirmacion").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/administradores/reenviar-confirmacion").permitAll()
 
-                // --- DATOS MAESTROS (Públicos para los formularios de registro) ---
-                .requestMatchers(HttpMethod.GET, "/api/obras-sociales/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/roles/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/estados/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/especialidades/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/provincias/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/localidades/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/direcciones/**").permitAll()
+
+    /**
+
+     * Misma lógica que {@link PublicRequestPaths#shouldBypassJwtFilter(HttpServletRequest)}:
+
+     * los matchers MVC de Spring Security no estaban aplicando {@code permitAll} en POST /registro.
+
+     */
+
+    private static boolean isPublicApiRequest(HttpServletRequest request) {
+
+        return PublicRequestPaths.shouldBypassJwtFilter(request);
+
+    }
+
+
+
+    @Bean
+
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+
+        http
+
+            .csrf(AbstractHttpConfigurer::disable)
+
+            .exceptionHandling(ex -> ex
+
+                .authenticationEntryPoint((request, response, authException) -> {
+
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+
+                    response.setContentType("application/json");
+
+                    response.getWriter().write("{\"error\": \"No autorizado\", \"message\": \"" + authException.getMessage() + "\"}");
+
+                })
+
+            )
+
+            .authorizeHttpRequests(auth -> auth
+
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+                // Onboarding admin (alta + confirmación): público; X-System-Key solo en POST /registro.
+                .requestMatchers(
+                        new AntPathRequestMatcher("/api/onboarding/admin/**"),
+                        new AntPathRequestMatcher("/usuarios/api/onboarding/admin/**")
+                ).permitAll()
+
+                .requestMatchers(SecurityConfig::isPublicApiRequest).permitAll()
 
                 .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
-                
+
                 .anyRequest().authenticated()
+
             )
+
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
-        
+
+
+
         return http.build();
+
     }
+
 }
+
+

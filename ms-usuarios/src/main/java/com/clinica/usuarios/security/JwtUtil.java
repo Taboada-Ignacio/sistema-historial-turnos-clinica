@@ -37,15 +37,23 @@ public class JwtUtil {
         return claimsResolver.apply(claims);
     }
 
-    /** Incluye claim {@code authorities} para el cliente (la seguridad sigue validando en servidor). */
-    public String generateToken(UserDetails userDetails) {
+    /** Incluye claim {@code authorities} y {@code portal} activo en el login. */
+    public String generateToken(UserDetails userDetails, String portal) {
         Map<String, Object> claims = new HashMap<>();
         claims.put(
                 "authorities",
                 userDetails.getAuthorities().stream()
                         .map(GrantedAuthority::getAuthority)
                         .collect(Collectors.toList()));
+        if (portal != null && !portal.isBlank()) {
+            claims.put("portal", portal);
+        }
         return generateToken(claims, userDetails);
+    }
+
+    /** Incluye claim {@code authorities} para el cliente (la seguridad sigue validando en servidor). */
+    public String generateToken(UserDetails userDetails) {
+        return generateToken(userDetails, null);
     }
 
     // Genera el token permitiendo agregar claims (datos extra) personalizados
