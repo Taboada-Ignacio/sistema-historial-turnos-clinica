@@ -146,7 +146,7 @@ Paquete base: `com.clinica.usuarios`.
 | `controller/` | 13 controladores REST (`Auth`, `Paciente`, `Profesional`, `Administrador`, catálogos, `CuentaSeguridad`, `ProfesionalFoto`) |
 | `service/` + `service/impl/` | Lógica de negocio, email, tokens, almacenamiento de fotos |
 | `repository/` | Spring Data JPA |
-| `model/` | Entidades JPA (herencia JOINED en `Usuario`) |
+| `model/` | Entidades JPA (`Usuario` + composición 1:1 con Paciente/Profesional/Administrador) |
 | `dto/` | Request/response y DTOs de auth |
 | `mapper/` | MapStruct o mappers manuales entre entidad y DTO |
 | `security/` | `SecurityConfig`, `JwtAuthFilter`, `JwtUtil`, `PublicRequestPaths`, `AuthorizationRules` |

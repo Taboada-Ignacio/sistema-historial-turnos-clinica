@@ -2,6 +2,7 @@ package com.clinica.usuarios.security;
 
 import com.clinica.usuarios.model.*;
 import com.clinica.usuarios.repository.*;
+import com.clinica.usuarios.testsupport.TestEntidadFactory;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -97,74 +98,37 @@ class ProfesionalPacientesBusquedaIntegrationTest {
         Direccion dir = direccionRepository.save(Direccion.builder().nombre("Calle Busq 1").localidad(loc).build());
         ObraSocial os = obraSocialRepository.save(ObraSocial.builder().descripcion("ObraBusqProf").build());
 
-        Paciente paciente = new Paciente();
-        paciente.setEmail(EMAIL_PACIENTE_ZONA);
-        paciente.setPassword(passwordEncoder.encode(PASSWORD));
-        paciente.setNombre("Carlos");
-        paciente.setApellido("Rodriguez");
-        paciente.setDni(30111222);
-        paciente.setTelefono("+5491100000001");
-        paciente.setFechaNacimiento(LocalDate.of(1990, 1, 1));
-        paciente.setSexo(Sexo.MASCULINO);
-        paciente.setEstadoActual(activo);
-        paciente.setRoles(Set.of(rolPaciente));
-        paciente.setDireccion(dir);
-        paciente.setObraSocial(os);
-        pacienteRepository.save(paciente);
+        Usuario usuarioPaciente = usuarioRepository.save(TestEntidadFactory.nuevoUsuario(
+                EMAIL_PACIENTE_ZONA, passwordEncoder.encode(PASSWORD), activo, Set.of(rolPaciente)));
+        pacienteRepository.save(TestEntidadFactory.paciente(
+                usuarioPaciente, "Carlos", "Rodriguez", 30111222, "+5491100000001",
+                LocalDate.of(1990, 1, 1), Sexo.MASCULINO, dir, os));
 
         Especialidad esp = especialidadRepository.save(
                 Especialidad.builder().descripcion("CLINICA MEDICA").build());
         Membresia inactiva = membresiaRepository.findByNombre("INACTIVA")
                 .orElseGet(() -> membresiaRepository.save(Membresia.builder().nombre("INACTIVA").build()));
 
-        Profesional prof = new Profesional();
-        prof.setEmail(EMAIL_PROF);
-        prof.setPassword(passwordEncoder.encode(PASSWORD));
-        prof.setNombre("Ana");
-        prof.setApellido("Medica");
-        prof.setDni(28999888);
-        prof.setTelefono("+5491100000002");
-        prof.setFechaNacimiento(LocalDate.of(1980, 5, 5));
-        prof.setSexo(Sexo.MASCULINO);
-        prof.setEstadoActual(activo);
-        prof.setRoles(Set.of(rolProfesional));
-        prof.setDireccion(dir);
-        prof.setMatricula("MAT-BUSQ-001");
-        prof.setEspecialidad(esp);
-        prof.setMembresiaActual(inactiva);
-        profesionalRepository.save(prof);
+        Usuario usuarioProf = usuarioRepository.save(TestEntidadFactory.nuevoUsuario(
+                EMAIL_PROF, passwordEncoder.encode(PASSWORD), activo, Set.of(rolProfesional)));
+        profesionalRepository.save(TestEntidadFactory.profesional(
+                usuarioProf, "Ana", "Medica", 28999888, "+5491100000002",
+                LocalDate.of(1980, 5, 5), Sexo.MASCULINO, dir, "MAT-BUSQ-001", esp, inactiva));
 
-        Administrador admin = new Administrador();
-        admin.setEmail("admin.zona.busq@test.local");
-        admin.setPassword(passwordEncoder.encode(PASSWORD));
-        admin.setNombre("Luis");
-        admin.setApellido("ZonaAdmin");
-        admin.setDni(27777111);
-        admin.setTelefono("+5491100000003");
-        admin.setFechaNacimiento(LocalDate.of(1975, 3, 10));
-        admin.setSexo(Sexo.MASCULINO);
-        admin.setEstadoActual(activo);
-        admin.setRoles(Set.of(rolAdmin));
-        admin.setDireccion(dir);
-        administradorRepository.save(admin);
+        Usuario usuarioAdmin = usuarioRepository.save(TestEntidadFactory.nuevoUsuario(
+                "admin.zona.busq@test.local", passwordEncoder.encode(PASSWORD), activo, Set.of(rolAdmin)));
+        administradorRepository.save(TestEntidadFactory.administrador(
+                usuarioAdmin, "Luis", "ZonaAdmin", 27777111, "+5491100000003",
+                LocalDate.of(1975, 3, 10), Sexo.MASCULINO, dir));
 
         Estado bloqueado = estadoRepository.findByNombre("BLOQUEADO")
                 .orElseGet(() -> estadoRepository.save(Estado.builder().nombre("BLOQUEADO").build()));
 
-        Paciente pacienteBloqueado = new Paciente();
-        pacienteBloqueado.setEmail("paciente.bloqueado.busq@test.local");
-        pacienteBloqueado.setPassword(passwordEncoder.encode(PASSWORD));
-        pacienteBloqueado.setNombre("Oculto");
-        pacienteBloqueado.setApellido("BloqueadoZona");
-        pacienteBloqueado.setDni(30999999);
-        pacienteBloqueado.setTelefono("+5491100000099");
-        pacienteBloqueado.setFechaNacimiento(LocalDate.of(1988, 8, 8));
-        pacienteBloqueado.setSexo(Sexo.FEMENINO);
-        pacienteBloqueado.setEstadoActual(bloqueado);
-        pacienteBloqueado.setRoles(Set.of(rolPaciente));
-        pacienteBloqueado.setDireccion(dir);
-        pacienteBloqueado.setObraSocial(os);
-        pacienteRepository.save(pacienteBloqueado);
+        Usuario usuarioBloqueado = usuarioRepository.save(TestEntidadFactory.nuevoUsuario(
+                "paciente.bloqueado.busq@test.local", passwordEncoder.encode(PASSWORD), bloqueado, Set.of(rolPaciente)));
+        pacienteRepository.save(TestEntidadFactory.paciente(
+                usuarioBloqueado, "Oculto", "BloqueadoZona", 30999999, "+5491100000099",
+                LocalDate.of(1988, 8, 8), Sexo.FEMENINO, dir, os));
     }
 
     private Long idPacienteEnZona() {

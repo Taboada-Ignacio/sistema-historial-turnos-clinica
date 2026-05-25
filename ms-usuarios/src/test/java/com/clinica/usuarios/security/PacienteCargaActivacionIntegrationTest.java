@@ -2,6 +2,7 @@ package com.clinica.usuarios.security;
 
 import com.clinica.usuarios.model.*;
 import com.clinica.usuarios.repository.*;
+import com.clinica.usuarios.testsupport.TestEntidadFactory;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -69,6 +70,9 @@ class PacienteCargaActivacionIntegrationTest {
     ProfesionalRepository profesionalRepository;
 
     @Autowired
+    UsuarioRepository usuarioRepository;
+
+    @Autowired
     EspecialidadRepository especialidadRepository;
 
     @Autowired
@@ -115,22 +119,11 @@ class PacienteCargaActivacionIntegrationTest {
             Membresia inactiva = membresiaRepository.findByNombre("INACTIVA")
                     .orElseGet(() -> membresiaRepository.save(Membresia.builder().nombre("INACTIVA").build()));
 
-            Profesional prof = new Profesional();
-            prof.setEmail(emailProf);
-            prof.setPassword(passwordEncoder.encode(PASSWORD));
-            prof.setNombre("Pro");
-            prof.setApellido("Carga");
-            prof.setDni(dniProf);
-            prof.setTelefono("+5491100000100");
-            prof.setFechaNacimiento(LocalDate.of(1985, 1, 1));
-            prof.setSexo(Sexo.MASCULINO);
-            prof.setEstadoActual(activo);
-            prof.setRoles(Set.of(rolProf));
-            prof.setDireccion(dir);
-            prof.setMatricula("MAT-CARGA-" + uniq);
-            prof.setEspecialidad(esp);
-            prof.setMembresiaActual(inactiva);
-            profesionalRepository.save(prof);
+            Usuario usuarioProf = usuarioRepository.save(TestEntidadFactory.nuevoUsuario(
+                    emailProf, passwordEncoder.encode(PASSWORD), activo, Set.of(rolProf)));
+            profesionalRepository.save(TestEntidadFactory.profesional(
+                    usuarioProf, "Pro", "Carga", dniProf, "+5491100000100",
+                    LocalDate.of(1985, 1, 1), Sexo.MASCULINO, dir, "MAT-CARGA-" + uniq, esp, inactiva));
         });
     }
 
@@ -174,20 +167,11 @@ class PacienteCargaActivacionIntegrationTest {
         Direccion dir = direccionRepository.findAll().stream().findFirst().orElseThrow();
         ObraSocial os = obraSocialRepository.findById(idObraSocial).orElseThrow();
 
-        Paciente pac = new Paciente();
-        pac.setEmail(EMAIL_BLOQUEADO);
-        pac.setPassword(passwordEncoder.encode(PASSWORD));
-        pac.setNombre("Bloq");
-        pac.setApellido("User");
-        pac.setDni(29999111);
-        pac.setTelefono("+5491100000300");
-        pac.setFechaNacimiento(LocalDate.of(1990, 1, 1));
-        pac.setSexo(Sexo.MASCULINO);
-        pac.setEstadoActual(bloqueado);
-        pac.setRoles(Set.of(rolPac));
-        pac.setDireccion(dir);
-        pac.setObraSocial(os);
-        pacienteRepository.save(pac);
+        Usuario usuarioBloqueado = usuarioRepository.save(TestEntidadFactory.nuevoUsuario(
+                EMAIL_BLOQUEADO, passwordEncoder.encode(PASSWORD), bloqueado, Set.of(rolPac)));
+        pacienteRepository.save(TestEntidadFactory.paciente(
+                usuarioBloqueado, "Bloq", "User", 29999111, "+5491100000300",
+                LocalDate.of(1990, 1, 1), Sexo.MASCULINO, dir, os));
 
         mockMvc.perform(post("/api/auth/solicitar-cambio-password/paciente")
                         .contentType(MediaType.APPLICATION_JSON)

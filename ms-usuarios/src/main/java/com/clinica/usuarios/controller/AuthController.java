@@ -11,10 +11,8 @@ import com.clinica.usuarios.service.PacienteService;
 import com.clinica.usuarios.exception.RecursoNoEncontradoException;
 import com.clinica.usuarios.exception.ReglaDeNegocioException;
 import com.clinica.usuarios.model.Usuario;
-import com.clinica.usuarios.model.Paciente;
-import com.clinica.usuarios.model.Profesional;
-import com.clinica.usuarios.model.Administrador;
 import com.clinica.usuarios.model.VerificationToken;
+import com.clinica.usuarios.service.support.EntidadPortalHelper;
 import com.clinica.usuarios.repository.VerificationTokenRepository;
 import com.clinica.usuarios.repository.UsuarioRepository;
 import com.clinica.usuarios.security.JwtUtil;
@@ -63,6 +61,7 @@ public class AuthController {
     private final AccountConfirmationRedirectHelper confirmRedirect;
     private final PacienteService pacienteService;
     private final VerificationTokenService verificationTokenService;
+    private final EntidadPortalHelper entidadPortalHelper;
 
     @Value("${app.url}")
     private String appUrl;
@@ -414,14 +413,7 @@ public class AuthController {
      * Profesional con ROLE_PACIENTE puede ingresar al portal paciente (UI limitada, sin edición de perfil vía paciente).
      */
     private void validarTipoEntidadParaPortal(Usuario usuario, String portal) {
-        boolean valido = switch (portal) {
-            case "paciente" -> usuario instanceof Paciente
-                    || (usuario instanceof Profesional && tieneRol(usuario, "ROLE_PACIENTE"));
-            case "profesional" -> usuario instanceof Profesional && tieneRol(usuario, "ROLE_PROFESIONAL");
-            case "admin" -> usuario instanceof Administrador;
-            default -> false;
-        };
-        if (!valido) {
+        if (!entidadPortalHelper.puedeAccederPortal(usuario, portal)) {
             throw new ReglaDeNegocioException(
                     switch (portal) {
                         case "paciente" -> "La cuenta no tiene acceso al portal de pacientes.";

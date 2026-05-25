@@ -25,7 +25,8 @@ import com.clinica.usuarios.service.ProfesionalFotoStorageService;
 import com.clinica.usuarios.service.PacienteService;
 import com.clinica.usuarios.service.ProfesionalService;
 import com.clinica.usuarios.service.VerificationTokenService;
-import com.clinica.usuarios.service.support.UnicidadUsuarioValidator;
+import com.clinica.usuarios.service.support.CuentaEntidadHelper;
+import com.clinica.usuarios.service.support.EntidadPortalHelper;
 import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDateTime;
@@ -51,7 +52,11 @@ public class ProfesionalServiceImpl implements ProfesionalService {
 
     // --- REPOSITORIOS DE IDENTIDAD Y ACCESO ---
     private final ProfesionalRepository profesionalRepository;
+    private final PacienteRepository pacienteRepository;
+    private final AdministradorRepository administradorRepository;
     private final UsuarioRepository usuarioRepository;
+    private final CuentaEntidadHelper cuentaEntidadHelper;
+    private final EntidadPortalHelper entidadPortalHelper;
     private final RolRepository rolRepository;
     private final LocalidadRepository localidadRepository;
     private final ProvinciaRepository provinciaRepository;
@@ -89,7 +94,7 @@ public class ProfesionalServiceImpl implements ProfesionalService {
     @Transactional
     public ProfesionalResponseDTO registrarProfesional(ProfesionalRegistroDTO dto, MultipartFile foto) {
         // 1. Validaciones de Identidad
-        UnicidadUsuarioValidator.validarAlta(usuarioRepository, dto.getEmail(), dto.getDni());
+        cuentaEntidadHelper.validarAlta(dto.getEmail(), dto.getDni());
 
         // 2. Obtención de dependencias (Localidad, Especialidad, Roles)
         Set<Rol> rolesAsignados = buscarRoles(dto.getRolesIds());
@@ -107,16 +112,12 @@ public class ProfesionalServiceImpl implements ProfesionalService {
 
         // 4. Mapeo y Configuración Base
         Profesional profesional = profesionalMapper.toEntity(dto);
-        profesional.setRoles(rolesAsignados);
         profesional.setDireccion(direccionService.obtenerOCrearPorTextoYLocalidad(dto.getDireccion(), localidad));
         profesional.setEspecialidad(especialidad);
-        // Hasheamos el password antes de guardar
-        profesional.setPassword(passwordEncoder.encode(dto.getPassword()));
-        profesional.setEstadoActual(estadoPendiente);
         profesional.setMembresiaActual(membresiaSinVerificar);
 
-        // 5. Guardado inicial en BD (foto después, para evitar archivos huérfanos si falla el alta)
-        Profesional profesionalGuardado = profesionalRepository.save(profesional);
+        Profesional profesionalGuardado = cuentaEntidadHelper.guardarProfesional(
+                profesional, dto.getEmail(), passwordEncoder.encode(dto.getPassword()), estadoPendiente, rolesAsignados);
 
         if (foto != null && !foto.isEmpty()) {
             String rutaFoto = fotoStorage.guardar(foto);
@@ -125,11 +126,12 @@ public class ProfesionalServiceImpl implements ProfesionalService {
         }
 
         // 7. Auditoría de estado, membresía y generación de Token
-        registrarHistorialEstado(profesionalGuardado, estadoPendiente);
+        registrarHistorialEstado(profesionalGuardado.getUsuario(), estadoPendiente);
         registrarCambioMembresia(profesionalGuardado, membresiaSinVerificar, LocalDateTime.now(), null);
-        
-        VerificationTokenService.DatosConfirmacion datos = verificationTokenService.crearTokenConfirmacion(profesionalGuardado);
-        emailService.enviarEmailConfirmacion(profesionalGuardado, datos.token(), datos.codigo());
+
+        VerificationTokenService.DatosConfirmacion datos =
+                verificationTokenService.crearTokenConfirmacion(profesionalGuardado.getUsuario());
+        emailService.enviarEmailConfirmacion(profesionalGuardado.getUsuario(), datos.token(), datos.codigo());
 
         return profesionalMapper.toResponseDTO(profesionalGuardado);
     }
@@ -148,7 +150,7 @@ public class ProfesionalServiceImpl implements ProfesionalService {
         VerificationToken vToken = tokenRepository.findByUsuario_EmailAndCodigo(email, codigo)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Código de confirmación inválido."));
 
-        if (!(vToken.getUsuario() instanceof Profesional)) {
+        if (!entidadPortalHelper.esProfesional(vToken.getUsuario())) {
             throw new ReglaDeNegocioException("El correo no corresponde a un profesional registrado.");
         }
 
@@ -266,9 +268,11 @@ public class ProfesionalServiceImpl implements ProfesionalService {
     public ProfesionalResponseDTO obtenerProfesionalSesion(String email) {
         Usuario usuario = usuarioRepository.findByEmail(email)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Usuario no encontrado."));
-        if (!(usuario instanceof Profesional profesional)) {
+        if (!entidadPortalHelper.esProfesional(usuario)) {
             throw new ReglaDeNegocioException("La cuenta no corresponde a un profesional de la salud.");
         }
+        Profesional profesional = profesionalRepository.findWithUbicacionById(usuario.getIdUsuario())
+                .orElseThrow(() -> new RecursoNoEncontradoException("Profesional no encontrado."));
         return profesionalMapper.toResponseDTO(profesional);
     }
 
@@ -316,13 +320,30 @@ public class ProfesionalServiceImpl implements ProfesionalService {
 
     private PersonaEnZonaBusquedaResponseDTO ejecutarBusquedaPersonasEnUbicacion(
             String textoNorm, UbicacionProfesional zona) {
-        Specification<Usuario> spec = UsuarioSpecifications.busquedaPersonasEnUbicacion(
-                textoNorm, zona.idProvincia(), zona.idLocalidad());
         Sort sort = Sort.by("apellido").ascending().and(Sort.by("nombre").ascending());
+        List<PersonaEnZonaListadoDTO> acumulado = new ArrayList<>();
 
-        List<PersonaEnZonaListadoDTO> personas = usuarioRepository.findAll(spec, sort).stream()
+        pacienteRepository.findAll(
+                        PacienteSpecifications.busquedaEnUbicacion(
+                                textoNorm, zona.idProvincia(), zona.idLocalidad()),
+                        sort)
+                .forEach(p -> acumulado.add(toPersonaEnZonaListado(p, "PACIENTE")));
+        profesionalRepository.findAll(
+                        ProfesionalSpecifications.busquedaEnUbicacion(
+                                textoNorm, zona.idProvincia(), zona.idLocalidad()),
+                        sort)
+                .forEach(p -> acumulado.add(toPersonaEnZonaListado(p, "PROFESIONAL")));
+        administradorRepository.findAll(
+                        AdministradorSpecifications.busquedaEnUbicacion(
+                                textoNorm, zona.idProvincia(), zona.idLocalidad()),
+                        sort)
+                .forEach(a -> acumulado.add(toPersonaEnZonaListado(a, "ADMINISTRADOR")));
+
+        List<PersonaEnZonaListadoDTO> personas = acumulado.stream()
+                .sorted(Comparator
+                        .comparing(PersonaEnZonaListadoDTO::getApellido, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER))
+                        .thenComparing(PersonaEnZonaListadoDTO::getNombre, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)))
                 .limit(500)
-                .map(this::toPersonaEnZonaListado)
                 .collect(Collectors.toList());
 
         String criterios = textoNorm.matches("\\d+")
@@ -337,42 +358,31 @@ public class ProfesionalServiceImpl implements ProfesionalService {
     }
 
     private PersonaEnZonaDetalleDTO obtenerPersonaEnZona(Long idUsuario, UbicacionProfesional zona) {
-        Usuario persona = usuarioRepository.findWithUbicacionById(idUsuario)
+        return pacienteRepository.findWithUbicacionById(idUsuario)
+                .filter(p -> estaEnMismaZona(p.getDireccion(), zona) && !estaBloqueado(p.getUsuario()))
+                .map(p -> toPersonaEnZonaDetalle(p, "PACIENTE"))
+                .or(() -> profesionalRepository.findWithUbicacionById(idUsuario)
+                        .filter(p -> estaEnMismaZona(p.getDireccion(), zona) && !estaBloqueado(p.getUsuario()))
+                        .map(p -> toPersonaEnZonaDetalle(p, "PROFESIONAL")))
+                .or(() -> administradorRepository.findWithUbicacionById(idUsuario)
+                        .filter(a -> estaEnMismaZona(a.getDireccion(), zona))
+                        .map(a -> toPersonaEnZonaDetalle(a, "ADMINISTRADOR")))
                 .orElseThrow(() -> new RecursoNoEncontradoException("No se encontró la persona en la zona indicada."));
-
-        if (!(persona instanceof Paciente)
-                && !(persona instanceof Profesional)
-                && !(persona instanceof Administrador)) {
-            throw new RecursoNoEncontradoException("No se encontró la persona en la zona indicada.");
-        }
-
-        if (!estaEnMismaZona(persona, zona.idProvincia(), zona.idLocalidad())) {
-            throw new RecursoNoEncontradoException("No se encontró la persona en la zona indicada.");
-        }
-
-        if (estaBloqueadoParaBusquedaProfesional(persona)) {
-            throw new RecursoNoEncontradoException("No se encontró la persona en la zona indicada.");
-        }
-
-        return toPersonaEnZonaDetalle(persona);
     }
 
-    /** Pacientes y profesionales bloqueados no son visibles en búsqueda del portal profesional. */
-    private static boolean estaBloqueadoParaBusquedaProfesional(Usuario persona) {
-        if (!(persona instanceof Paciente) && !(persona instanceof Profesional)) {
-            return false;
-        }
-        return persona.getEstadoActual() != null
-                && "BLOQUEADO".equalsIgnoreCase(persona.getEstadoActual().getNombre());
+    private static boolean estaBloqueado(Usuario usuario) {
+        return usuario != null
+                && usuario.getEstadoActual() != null
+                && "BLOQUEADO".equalsIgnoreCase(usuario.getEstadoActual().getNombre());
     }
 
     private void validarProfesionalPuedeBuscar(String emailProfesional) {
         Usuario usuario = usuarioRepository.findByEmail(emailProfesional)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Usuario no encontrado."));
-        if (!(usuario instanceof Profesional profesional)) {
+        if (!entidadPortalHelper.esProfesional(usuario)) {
             throw new ReglaDeNegocioException("La cuenta no corresponde a un profesional de la salud.");
         }
-        Profesional conMembresia = profesionalRepository.findWithUbicacionById(profesional.getIdUsuario())
+        Profesional conMembresia = profesionalRepository.findWithUbicacionById(usuario.getIdUsuario())
                 .orElseThrow(() -> new RecursoNoEncontradoException("Profesional no encontrado."));
         if (conMembresia.getMembresiaActual() != null
                 && "SIN_VERIFICAR".equalsIgnoreCase(conMembresia.getMembresiaActual().getNombre())) {
@@ -385,9 +395,8 @@ public class ProfesionalServiceImpl implements ProfesionalService {
         validarProfesionalPuedeBuscar(emailProfesional);
         Usuario usuario = usuarioRepository.findByEmail(emailProfesional)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Usuario no encontrado."));
-        Profesional profesional = (Profesional) usuario;
 
-        Profesional conUbicacion = profesionalRepository.findWithUbicacionById(profesional.getIdUsuario())
+        Profesional conUbicacion = profesionalRepository.findWithUbicacionById(usuario.getIdUsuario())
                 .orElseThrow(() -> new RecursoNoEncontradoException("Profesional no encontrado."));
 
         if (conUbicacion.getDireccion() == null || conUbicacion.getDireccion().getLocalidad() == null) {
@@ -415,45 +424,81 @@ public class ProfesionalServiceImpl implements ProfesionalService {
                 idProvincia, idLocalidad, provincia.getNombre(), localidad.getNombre());
     }
 
-    private boolean estaEnMismaZona(Usuario persona, Long idProvincia, Long idLocalidad) {
-        if (persona.getDireccion() == null || persona.getDireccion().getLocalidad() == null) {
+    private boolean estaEnMismaZona(Direccion direccion, UbicacionProfesional zona) {
+        if (direccion == null || direccion.getLocalidad() == null) {
             return false;
         }
-        Localidad loc = persona.getDireccion().getLocalidad();
-        return loc.getIdLocalidad().equals(idLocalidad)
+        Localidad loc = direccion.getLocalidad();
+        return loc.getIdLocalidad().equals(zona.idLocalidad())
                 && loc.getProvincia() != null
-                && loc.getProvincia().getIdProvincia().equals(idProvincia);
+                && loc.getProvincia().getIdProvincia().equals(zona.idProvincia());
     }
 
-    private PersonaEnZonaListadoDTO toPersonaEnZonaListado(Usuario u) {
+    private PersonaEnZonaListadoDTO toPersonaEnZonaListado(Paciente p, String tipo) {
+        return toPersonaEnZonaListado(
+                p.getIdUsuario(), p.getApellido(), p.getNombre(), p.getDni(), p.getDireccion(), tipo);
+    }
+
+    private PersonaEnZonaListadoDTO toPersonaEnZonaListado(Profesional p, String tipo) {
+        return toPersonaEnZonaListado(
+                p.getIdUsuario(), p.getApellido(), p.getNombre(), p.getDni(), p.getDireccion(), tipo);
+    }
+
+    private PersonaEnZonaListadoDTO toPersonaEnZonaListado(Administrador a, String tipo) {
+        return toPersonaEnZonaListado(
+                a.getIdUsuario(), a.getApellido(), a.getNombre(), a.getDni(), a.getDireccion(), tipo);
+    }
+
+    private PersonaEnZonaListadoDTO toPersonaEnZonaListado(
+            Long idUsuario, String apellido, String nombre, Integer dni, Direccion direccion, String tipo) {
         String nombreProvincia = null;
         String nombreLocalidad = null;
-        if (u.getDireccion() != null && u.getDireccion().getLocalidad() != null) {
-            Localidad loc = u.getDireccion().getLocalidad();
+        if (direccion != null && direccion.getLocalidad() != null) {
+            Localidad loc = direccion.getLocalidad();
             nombreLocalidad = loc.getNombre();
             if (loc.getProvincia() != null) {
                 nombreProvincia = loc.getProvincia().getNombre();
             }
         }
         return PersonaEnZonaListadoDTO.builder()
-                .idUsuario(u.getIdUsuario())
-                .apellido(u.getApellido())
-                .nombre(u.getNombre())
-                .dni(u.getDni())
-                .tipoCuenta(tipoCuentaDe(u))
+                .idUsuario(idUsuario)
+                .apellido(apellido)
+                .nombre(nombre)
+                .dni(dni)
+                .tipoCuenta(tipo)
                 .nombreProvincia(nombreProvincia)
                 .nombreLocalidad(nombreLocalidad)
                 .build();
     }
 
-    private PersonaEnZonaDetalleDTO toPersonaEnZonaDetalle(Usuario u) {
+    private PersonaEnZonaDetalleDTO toPersonaEnZonaDetalle(Paciente p, String tipo) {
+        return toPersonaEnZonaDetalle(
+                p.getIdUsuario(), p.getNombre(), p.getApellido(), p.getDni(), p.getTelefono(),
+                p.getFechaNacimiento(), p.getSexo(), p.getDireccion(), tipo);
+    }
+
+    private PersonaEnZonaDetalleDTO toPersonaEnZonaDetalle(Profesional p, String tipo) {
+        return toPersonaEnZonaDetalle(
+                p.getIdUsuario(), p.getNombre(), p.getApellido(), p.getDni(), p.getTelefono(),
+                p.getFechaNacimiento(), p.getSexo(), p.getDireccion(), tipo);
+    }
+
+    private PersonaEnZonaDetalleDTO toPersonaEnZonaDetalle(Administrador a, String tipo) {
+        return toPersonaEnZonaDetalle(
+                a.getIdUsuario(), a.getNombre(), a.getApellido(), a.getDni(), a.getTelefono(),
+                a.getFechaNacimiento(), a.getSexo(), a.getDireccion(), tipo);
+    }
+
+    private PersonaEnZonaDetalleDTO toPersonaEnZonaDetalle(
+            Long idUsuario, String nombre, String apellido, Integer dni, String telefono,
+            java.time.LocalDate fechaNacimiento, String sexo, Direccion direccion, String tipo) {
         String nombreProvincia = null;
         String nombreLocalidad = null;
-        String direccion = null;
-        if (u.getDireccion() != null) {
-            direccion = u.getDireccion().getNombre();
-            if (u.getDireccion().getLocalidad() != null) {
-                Localidad loc = u.getDireccion().getLocalidad();
+        String direccionTexto = null;
+        if (direccion != null) {
+            direccionTexto = direccion.getNombre();
+            if (direccion.getLocalidad() != null) {
+                Localidad loc = direccion.getLocalidad();
                 nombreLocalidad = loc.getNombre();
                 if (loc.getProvincia() != null) {
                     nombreProvincia = loc.getProvincia().getNombre();
@@ -461,31 +506,18 @@ public class ProfesionalServiceImpl implements ProfesionalService {
             }
         }
         return PersonaEnZonaDetalleDTO.builder()
-                .idUsuario(u.getIdUsuario())
-                .nombre(u.getNombre())
-                .apellido(u.getApellido())
-                .dni(u.getDni())
-                .telefono(u.getTelefono())
-                .fechaNacimiento(u.getFechaNacimiento())
-                .sexo(u.getSexo())
+                .idUsuario(idUsuario)
+                .nombre(nombre)
+                .apellido(apellido)
+                .dni(dni)
+                .telefono(telefono)
+                .fechaNacimiento(fechaNacimiento)
+                .sexo(CuentaEntidadHelper.sexoAsEnum(sexo))
                 .nombreLocalidad(nombreLocalidad)
                 .nombreProvincia(nombreProvincia)
-                .direccion(direccion)
-                .tipoCuenta(tipoCuentaDe(u))
+                .direccion(direccionTexto)
+                .tipoCuenta(tipo)
                 .build();
-    }
-
-    private static String tipoCuentaDe(Usuario u) {
-        if (u instanceof Paciente) {
-            return "PACIENTE";
-        }
-        if (u instanceof Profesional) {
-            return "PROFESIONAL";
-        }
-        if (u instanceof Administrador) {
-            return "ADMINISTRADOR";
-        }
-        return "DESCONOCIDO";
     }
 
     private record UbicacionProfesional(
@@ -529,8 +561,8 @@ public class ProfesionalServiceImpl implements ProfesionalService {
         Profesional profesional = profesionalRepository.findWithUbicacionById(id)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Profesional no encontrado con ID: " + id));
         boolean esPropio = emailSolicitante != null
-                && profesional.getEmail() != null
-                && emailSolicitante.equalsIgnoreCase(profesional.getEmail());
+                && profesional.getUsuario() != null
+                && emailSolicitante.equalsIgnoreCase(CuentaEntidadHelper.emailDe(profesional));
         if (!esPropio && !incluirEnCatalogoPresentacion(profesional)) {
             throw new RecursoNoEncontradoException("Profesional no encontrado con ID: " + id);
         }
@@ -552,11 +584,15 @@ public class ProfesionalServiceImpl implements ProfesionalService {
      * Catálogo público: estado ACTIVO y sin rol de administrador (cuentas admin no se listan).
      */
     private boolean incluirEnCatalogoPresentacion(Profesional p) {
-        if (p.getRoles().stream().anyMatch(r -> "ROLE_ADMINISTRADOR".equals(r.getDescripcion()))) {
+        Usuario usuario = p.getUsuario();
+        if (usuario == null || usuario.getRoles() == null) {
             return false;
         }
-        return p.getEstadoActual() != null
-                && "ACTIVO".equalsIgnoreCase(p.getEstadoActual().getNombre());
+        if (usuario.getRoles().stream().anyMatch(r -> "ROLE_ADMINISTRADOR".equals(r.getDescripcion()))) {
+            return false;
+        }
+        return usuario.getEstadoActual() != null
+                && "ACTIVO".equalsIgnoreCase(usuario.getEstadoActual().getNombre());
     }
 
     private ProfesionalPresentacionDTO toPresentacionDTO(Profesional p) {
@@ -570,21 +606,22 @@ public class ProfesionalServiceImpl implements ProfesionalService {
                 .build();
     }
 
-    private String formatDireccionPresentacion(Usuario u) {
+    private String formatDireccionPresentacion(Profesional p) {
         List<String> partes = new ArrayList<>();
-        if (u.getDireccion() != null && u.getDireccion().getNombre() != null && !u.getDireccion().getNombre().isBlank()) {
-            partes.add(u.getDireccion().getNombre().trim());
+        Direccion dir = p.getDireccion();
+        if (dir != null && dir.getNombre() != null && !dir.getNombre().isBlank()) {
+            partes.add(dir.getNombre().trim());
         }
-        if (u.getDireccion() != null && u.getDireccion().getLocalidad() != null
-                && u.getDireccion().getLocalidad().getNombre() != null
-                && !u.getDireccion().getLocalidad().getNombre().isBlank()) {
-            partes.add(u.getDireccion().getLocalidad().getNombre().trim());
+        if (dir != null && dir.getLocalidad() != null
+                && dir.getLocalidad().getNombre() != null
+                && !dir.getLocalidad().getNombre().isBlank()) {
+            partes.add(dir.getLocalidad().getNombre().trim());
         }
-        if (u.getDireccion() != null && u.getDireccion().getLocalidad() != null
-                && u.getDireccion().getLocalidad().getProvincia() != null
-                && u.getDireccion().getLocalidad().getProvincia().getNombre() != null
-                && !u.getDireccion().getLocalidad().getProvincia().getNombre().isBlank()) {
-            partes.add(u.getDireccion().getLocalidad().getProvincia().getNombre().trim());
+        if (dir != null && dir.getLocalidad() != null
+                && dir.getLocalidad().getProvincia() != null
+                && dir.getLocalidad().getProvincia().getNombre() != null
+                && !dir.getLocalidad().getProvincia().getNombre().isBlank()) {
+            partes.add(dir.getLocalidad().getProvincia().getNombre().trim());
         }
         return String.join(" - ", partes);
     }
@@ -606,16 +643,16 @@ public class ProfesionalServiceImpl implements ProfesionalService {
         Profesional profesional = profesionalRepository.findWithUbicacionById(id)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Profesional no encontrado con ID: " + id));
 
-        UnicidadUsuarioValidator.validarActualizacion(
-                usuarioRepository, profesional.getIdUsuario(), dto.getEmail(), dto.getDni());
+        cuentaEntidadHelper.validarActualizacion(profesional.getIdUsuario(), dto.getEmail(), dto.getDni());
         validarMatriculaUnica(dto.getMatricula(), profesional.getIdUsuario());
 
+        Usuario usuario = profesional.getUsuario();
         profesional.setNombre(dto.getNombre());
         profesional.setApellido(dto.getApellido());
-        profesional.setDni(dto.getDni()); 
-        profesional.setEmail(dto.getEmail()); 
+        profesional.setDni(dto.getDni());
+        usuario.setEmail(dto.getEmail());
         profesional.setTelefono(dto.getTelefono());
-        profesional.setSexo(dto.getSexo());
+        profesional.setSexo(CuentaEntidadHelper.sexoAsString(dto.getSexo()));
         profesional.setMatricula(dto.getMatricula());
 
         if (dto.getIdEspecialidad() != null) {
@@ -645,14 +682,14 @@ public class ProfesionalServiceImpl implements ProfesionalService {
             Estado nuevoEstado = estadoRepository.findByNombre(dto.getEstadoActual())
                     .orElseThrow(() -> new RecursoNoEncontradoException("Estado solicitado no válido"));
             
-            if (!profesional.getEstadoActual().equals(nuevoEstado)) {
-                profesional.setEstadoActual(nuevoEstado);
-                registrarHistorialEstado(profesional, nuevoEstado);
+            if (!usuario.getEstadoActual().equals(nuevoEstado)) {
+                usuario.setEstadoActual(nuevoEstado);
+                registrarHistorialEstado(usuario, nuevoEstado);
             }
         }
 
         if (dto.getRolesIds() != null && callerIsAdministrador()) {
-            profesional.setRoles(buscarRoles(dto.getRolesIds()));
+            usuario.setRoles(buscarRoles(dto.getRolesIds()));
         }
 
         if (foto != null && !foto.isEmpty()) {
@@ -663,17 +700,24 @@ public class ProfesionalServiceImpl implements ProfesionalService {
             fotoStorage.borrarSiExiste(anterior);
         }
 
+        usuarioRepository.save(usuario);
         return profesionalMapper.toResponseDTO(profesionalRepository.save(profesional));
     }
 
     @Override
     @Transactional
     public void eliminarSoloProfesional(Long id) {
-        if (!profesionalRepository.existsById(id)) {
-            throw new RecursoNoEncontradoException("El profesional con ID " + id + " no fue encontrado.");
-        }
+        Profesional profesional = profesionalRepository.findByUsuario_IdUsuario(id)
+                .orElseThrow(() -> new RecursoNoEncontradoException("El profesional con ID " + id + " no fue encontrado."));
+        Usuario usuario = profesional.getUsuario();
+        fotoStorage.borrarSiExiste(profesional.getFotoPerfil());
+        tokenRepository.deleteByUsuario(usuario);
+        refreshTokenRepository.deleteByUsuario(usuario);
+        cambioMembresiaRepository.deleteByProfesional_IdProfesional(profesional.getIdProfesional());
+        cambioEstadoRepository.deleteByUsuario_IdUsuario(id);
         try {
-            profesionalRepository.deleteById(id);
+            profesionalRepository.delete(profesional);
+            usuarioRepository.delete(usuario);
         } catch (DataIntegrityViolationException e) {
             throw new ReglaDeNegocioException(
                 "No se puede eliminar el profesional porque tiene turnos asignados o historiales asociados."
@@ -699,19 +743,21 @@ public class ProfesionalServiceImpl implements ProfesionalService {
         }
 
         String motivo = dto.getMotivo().trim();
-        emailService.enviarEmailRechazoProfesionalPendiente(profesional, motivo);
+        emailService.enviarEmailRechazoProfesionalPendiente(profesional.getUsuario(), motivo);
         eliminarProfesionalPendienteEnCascada(profesional);
     }
 
     private void eliminarProfesionalPendienteEnCascada(Profesional profesional) {
-        Long id = profesional.getIdUsuario();
+        Long idUsuario = profesional.getIdUsuario();
+        Usuario usuario = profesional.getUsuario();
         fotoStorage.borrarSiExiste(profesional.getFotoPerfil());
-        tokenRepository.deleteByUsuario(profesional);
-        refreshTokenRepository.deleteByUsuario(profesional);
-        cambioMembresiaRepository.deleteByProfesional_IdUsuario(id);
-        cambioEstadoRepository.deleteByUsuario_IdUsuario(id);
+        tokenRepository.deleteByUsuario(usuario);
+        refreshTokenRepository.deleteByUsuario(usuario);
+        cambioMembresiaRepository.deleteByProfesional_IdProfesional(profesional.getIdProfesional());
+        cambioEstadoRepository.deleteByUsuario_IdUsuario(idUsuario);
         try {
             profesionalRepository.delete(profesional);
+            usuarioRepository.delete(usuario);
         } catch (DataIntegrityViolationException e) {
             throw new ReglaDeNegocioException(
                     "No se puede eliminar el profesional porque tiene registros asociados en el sistema.");
@@ -732,7 +778,7 @@ public class ProfesionalServiceImpl implements ProfesionalService {
         if (!profesional.getMembresiaActual().equals(membresiaInactiva)) {
             actualizarMembresia(profesional, membresiaInactiva, null);
             // Enviar email de aprobación
-            emailService.enviarEmailAprobacion(profesional);
+            emailService.enviarEmailAprobacion(profesional.getUsuario());
         }
     }
 
@@ -831,11 +877,11 @@ public class ProfesionalServiceImpl implements ProfesionalService {
         // 3. (Opcional pero recomendado) Eliminar tokens anteriores para ese usuario 
         // para que no se acumulen en la base de datos si pide el reenvío muchas veces.
         // Si no tenés este método en tokenRepository, podés crearlo: void deleteByUsuario(Usuario usuario);
-        if (!(usuario instanceof Profesional profesional)) {
+        if (!entidadPortalHelper.esProfesional(usuario)) {
             throw new ReglaDeNegocioException("El correo no corresponde a un profesional registrado.");
         }
 
-        VerificationTokenService.DatosConfirmacion datos = verificationTokenService.crearTokenConfirmacion(profesional);
-        emailService.enviarEmailConfirmacion(profesional, datos.token(), datos.codigo());
+        VerificationTokenService.DatosConfirmacion datos = verificationTokenService.crearTokenConfirmacion(usuario);
+        emailService.enviarEmailConfirmacion(usuario, datos.token(), datos.codigo());
     }
 }

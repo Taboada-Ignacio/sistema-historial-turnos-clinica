@@ -59,41 +59,54 @@ CREATE TABLE IF NOT EXISTS direcciones (
 );
 
 -- ==========================================
--- NIVEL 3: Tabla Padre (Herencia JOINED)
+-- NIVEL 3: Usuario (cuenta) + roles por entidad (composición 1:1)
 -- ==========================================
 
 CREATE TABLE IF NOT EXISTS usuarios (
     id_usuario BIGSERIAL PRIMARY KEY,
     email VARCHAR(100) UNIQUE NOT NULL,
     password VARCHAR(255) NOT NULL,
-    nombre VARCHAR(100) NOT NULL,
-    apellido VARCHAR(100) NOT NULL,
-    dni INTEGER UNIQUE NOT NULL, -- INTEGER según tu entidad Java
-    telefono VARCHAR(20) NOT NULL,
-    fecha_nacimiento DATE,
-    sexo VARCHAR(20) NOT NULL CHECK (sexo IN ('MASCULINO', 'FEMENINO')),
-    id_direccion BIGINT NOT NULL REFERENCES direcciones(id_direccion),
     id_estado_actual BIGINT NOT NULL REFERENCES estados(id_estado)
 );
 
--- ==========================================
--- NIVEL 4: Tablas Hijas (Específicas de la Herencia)
--- ==========================================
-
 CREATE TABLE IF NOT EXISTS administradores (
-    id_usuario BIGINT PRIMARY KEY REFERENCES usuarios(id_usuario)
+    id_administrador BIGSERIAL PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL,
+    apellido VARCHAR(100) NOT NULL,
+    dni INTEGER UNIQUE NOT NULL,
+    telefono VARCHAR(20) NOT NULL,
+    fecha_nacimiento DATE,
+    sexo VARCHAR(20) NOT NULL CHECK (sexo IN ('MASCULINO', 'FEMENINO')),
+    id_usuario BIGINT NOT NULL UNIQUE REFERENCES usuarios(id_usuario),
+    id_direccion BIGINT NOT NULL REFERENCES direcciones(id_direccion)
 );
 
 CREATE TABLE IF NOT EXISTS pacientes (
-    id_paciente BIGINT PRIMARY KEY REFERENCES usuarios(id_usuario),
+    id_paciente BIGSERIAL PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL,
+    apellido VARCHAR(100) NOT NULL,
+    dni INTEGER UNIQUE NOT NULL,
+    telefono VARCHAR(20) NOT NULL,
+    fecha_nacimiento DATE,
+    sexo VARCHAR(20) NOT NULL CHECK (sexo IN ('MASCULINO', 'FEMENINO')),
+    id_usuario BIGINT NOT NULL UNIQUE REFERENCES usuarios(id_usuario),
+    id_direccion BIGINT NOT NULL REFERENCES direcciones(id_direccion),
     numero_afiliado VARCHAR(50),
     id_obra_social BIGINT NOT NULL REFERENCES obras_sociales(id_obra_social)
 );
 
 CREATE TABLE IF NOT EXISTS profesionales (
-    id_profesional BIGINT PRIMARY KEY REFERENCES usuarios(id_usuario),
+    id_profesional BIGSERIAL PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL,
+    apellido VARCHAR(100) NOT NULL,
+    dni INTEGER UNIQUE NOT NULL,
+    telefono VARCHAR(20) NOT NULL,
+    fecha_nacimiento DATE,
+    sexo VARCHAR(20) NOT NULL CHECK (sexo IN ('MASCULINO', 'FEMENINO')),
+    id_usuario BIGINT NOT NULL UNIQUE REFERENCES usuarios(id_usuario),
+    id_direccion BIGINT NOT NULL REFERENCES direcciones(id_direccion),
     nro_matricula VARCHAR(50) UNIQUE NOT NULL,
-    foto_perfil VARCHAR(255), -- Ruta de la foto (.webp)
+    foto_perfil VARCHAR(255),
     id_especialidad BIGINT NOT NULL REFERENCES especialidades(id_especialidad),
     id_membresia_actual BIGINT NOT NULL REFERENCES membresias(id_membresia)
 );
@@ -362,21 +375,5 @@ WHERE NOT EXISTS (
     SELECT 1 FROM direcciones d
     WHERE d.id_localidad = l.id_localidad AND d.nombre = 'SIN ESPECIFICAR'
 );
-
--- ==========================================
--- Migración: columna sexo (bases ya creadas sin este campo)
--- ==========================================
-ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS sexo VARCHAR(20);
-UPDATE usuarios SET sexo = 'MASCULINO' WHERE sexo IS NULL;
-ALTER TABLE usuarios ALTER COLUMN sexo SET NOT NULL;
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM pg_constraint WHERE conname = 'usuarios_sexo_check'
-    ) THEN
-        ALTER TABLE usuarios ADD CONSTRAINT usuarios_sexo_check
-            CHECK (sexo IN ('MASCULINO', 'FEMENINO'));
-    END IF;
-END $$;
 
 -- Fin init.sql unificado (esquema + semilla + geo Argentina + direcciones sentinel)

@@ -2,6 +2,7 @@ package com.clinica.usuarios.service.impl;
 
 import com.clinica.usuarios.model.Usuario;
 import com.clinica.usuarios.service.EmailService;
+import com.clinica.usuarios.service.support.PersonaNombreResolver;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Service;
 public class EmailServiceImpl implements EmailService {
 
     private final JavaMailSender mailSender;
+    private final PersonaNombreResolver personaNombreResolver;
 
     // Asegurate que en application.yml app.url sea http://localhost:8080
     @Value("${app.url}")
@@ -93,7 +95,7 @@ public class EmailServiceImpl implements EmailService {
                 "<hr style='border: 0; border-top: 1px solid #ecf0f1; margin-top: 30px;'>" +
                 "<p style='font-size: 0.8em; color: #777; text-align: center;'>Este es un correo automático del Sistema de Gestión de Historial Clínico.</p>" +
                 "</div>",
-                usuario.getNombre(), appUrl
+                personaNombreResolver.resolverNombre(usuario), appUrl
             );
 
             helper.setText(htmlMsg, true);
@@ -130,7 +132,7 @@ public class EmailServiceImpl implements EmailService {
                 "<hr style='border: 0; border-top: 1px solid #ecf0f1; margin-top: 30px;'>" +
                 "<p style='font-size: 0.8em; color: #777; text-align: center;'>Este es un correo automático del Sistema de Gestión de Historial Clínico.</p>" +
                 "</div>",
-                usuario.getNombre(), motivoSeguro.replace("<", "&lt;").replace(">", "&gt;")
+                personaNombreResolver.resolverNombre(usuario), motivoSeguro.replace("<", "&lt;").replace(">", "&gt;")
             );
 
             helper.setText(htmlMsg, true);
@@ -179,7 +181,7 @@ public class EmailServiceImpl implements EmailService {
                             "<hr style='border: 0; border-top: 1px solid #ecf0f1; margin-top: 30px;'>" +
                             "<p style='font-size: 0.8em; color: #777; text-align: center;'>Este enlace es válido por 72 horas. Si expira, solicitá uno nuevo desde la pantalla de recuperación.</p>" +
                             "</div>",
-                    color, color, titulo, usuario.getNombre(), linkRecuperacion, color, boton, linkRecuperacion
+                    color, color, titulo, personaNombreResolver.resolverNombre(usuario), linkRecuperacion, color, boton, linkRecuperacion
             );
 
             helper.setText(htmlMsg, true);
@@ -226,7 +228,7 @@ public class EmailServiceImpl implements EmailService {
             "<hr style='border: 0; border-top: 1px solid #ecf0f1; margin-top: 30px;'>" +
             "<p style='font-size: 0.8em; color: #777; text-align: center;'>Este es un correo automático. No respondas a este mensaje.</p>" +
             "</div>",
-            usuario.getNombre(), bloqueCodigo, linkConfirmacion, linkConfirmacion
+            personaNombreResolver.resolverNombre(usuario), bloqueCodigo, linkConfirmacion, linkConfirmacion
         );
     }
 
@@ -249,7 +251,7 @@ public class EmailServiceImpl implements EmailService {
             "<hr style='border: 0; border-top: 1px solid #ecf0f1; margin-top: 30px;'>" +
             "<p style='font-size: 0.8em; color: #777; text-align: center;'>Este es un correo automático. No respondas a este mensaje.</p>" +
             "</div>",
-            usuario.getNombre(), bloqueCodigo, linkConfirmacion, linkConfirmacion
+            personaNombreResolver.resolverNombre(usuario), bloqueCodigo, linkConfirmacion, linkConfirmacion
         );
     }
 
@@ -274,7 +276,7 @@ public class EmailServiceImpl implements EmailService {
                             + "<hr style='border: 0; border-top: 1px solid #ecf0f1; margin-top: 30px;'>"
                             + "<p style='font-size: 0.8em; color: #777; text-align: center;'>El enlace es válido por 72 horas.</p>"
                             + "</div>",
-                    usuario.getNombre(), linkActivacion, linkActivacion);
+                    personaNombreResolver.resolverNombre(usuario), linkActivacion, linkActivacion);
 
             helper.setText(htmlMsg, true);
             helper.setTo(usuario.getEmail());
@@ -304,7 +306,7 @@ public class EmailServiceImpl implements EmailService {
             "<hr style='border: 0; border-top: 1px solid #ecf0f1; margin-top: 30px;'>" +
             "<p style='font-size: 0.8em; color: #777; text-align: center;'>Este es un correo automático del Sistema de Gestión de Historial Clínico.</p>" +
             "</div>",
-            usuario.getNombre(), bloqueCodigo, linkConfirmacion, linkConfirmacion
+            personaNombreResolver.resolverNombre(usuario), bloqueCodigo, linkConfirmacion, linkConfirmacion
         );
     }
 }

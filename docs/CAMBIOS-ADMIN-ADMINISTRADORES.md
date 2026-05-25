@@ -47,7 +47,7 @@ Registro público (`POST /registro`, confirmación, etc.) sin cambios de contrat
 
 ### 2.4 Seguridad
 
-`AuthorizationRules.esMismoUsuario(id)` compara el email del `Authentication` con `Usuario.idUsuario` (herencia JOINED: el `id` de ruta es `idUsuario`).
+`AuthorizationRules.esMismoUsuario(id)` compara el email del `Authentication` con `Usuario.idUsuario` (el `id` de ruta es `idUsuario`; modelo actual: composición 1:1 — ver [`CAMBIOS-MODELO-COMPOSICION-USUARIOS.md`](CAMBIOS-MODELO-COMPOSICION-USUARIOS.md)).
 
 ---
 

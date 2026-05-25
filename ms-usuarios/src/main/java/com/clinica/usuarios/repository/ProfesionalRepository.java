@@ -1,7 +1,7 @@
 package com.clinica.usuarios.repository;
 
-import com.clinica.usuarios.model.Profesional;
 import com.clinica.usuarios.model.Membresia;
+import com.clinica.usuarios.model.Profesional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
@@ -14,41 +14,49 @@ import java.util.Optional;
 
 @Repository
 public interface ProfesionalRepository extends JpaRepository<Profesional, Long>, JpaSpecificationExecutor<Profesional> {
-    
-    // Buscar un profesional por su matrícula
+
     Optional<Profesional> findByMatricula(String matricula);
 
-    // Buscar todos los profesionales que tengan una membresía específica (ej: listar los "SIN_VERIFICAR" para aprobarlos)
+    Optional<Profesional> findByDni(Integer dni);
+
+    Optional<Profesional> findByUsuario_Email(String email);
+
+    Optional<Profesional> findByUsuario_IdUsuario(Long idUsuario);
+
     List<Profesional> findByMembresiaActual_Nombre(String nombreMembresia);
 
-    // Buscar profesionales por objeto Membresia
     List<Profesional> findByMembresiaActual(Membresia membresia);
 
     @Query("""
             SELECT DISTINCT p FROM Profesional p
+            JOIN FETCH p.usuario u
+            JOIN FETCH u.estadoActual
             LEFT JOIN FETCH p.direccion dir
             LEFT JOIN FETCH dir.localidad loc
             LEFT JOIN FETCH loc.provincia
             JOIN FETCH p.especialidad
-            JOIN FETCH p.estadoActual
             """)
     List<Profesional> findAllWithUbicacionAndEspecialidad();
 
     @Query("""
             SELECT p FROM Profesional p
+            JOIN FETCH p.usuario u
+            JOIN FETCH u.estadoActual
             LEFT JOIN FETCH p.direccion dir
             LEFT JOIN FETCH dir.localidad loc
             LEFT JOIN FETCH loc.provincia
             JOIN FETCH p.especialidad
-            JOIN FETCH p.estadoActual
-            WHERE p.idUsuario = :id
+            WHERE u.idUsuario = :idUsuario
             """)
-    Optional<Profesional> findWithUbicacionById(@Param("id") Long id);
+    Optional<Profesional> findWithUbicacionByUsuarioId(@Param("idUsuario") Long idUsuario);
+
+    default Optional<Profesional> findWithUbicacionById(Long idUsuario) {
+        return findWithUbicacionByUsuarioId(idUsuario);
+    }
 
     @Query("""
             SELECT p FROM Profesional p
-            JOIN FETCH p.estadoActual
-            JOIN FETCH p.roles
+            JOIN FETCH p.usuario u
             WHERE p.fotoPerfil LIKE CONCAT('%', :fileName)
             """)
     Optional<Profesional> findByFotoPerfilFileName(@Param("fileName") String fileName);
@@ -56,4 +64,8 @@ public interface ProfesionalRepository extends JpaRepository<Profesional, Long>,
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE Profesional p SET p.especialidad.idEspecialidad = :sentinelId WHERE p.especialidad.idEspecialidad = :oldId")
     int reasignarEspecialidad(@Param("oldId") Long oldId, @Param("sentinelId") Long sentinelId);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE Profesional p SET p.direccion.idDireccion = :sentinelId WHERE p.direccion.idDireccion = :oldId")
+    int reasignarDireccion(@Param("oldId") Long oldId, @Param("sentinelId") Long sentinelId);
 }

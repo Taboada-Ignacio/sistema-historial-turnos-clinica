@@ -2,6 +2,7 @@ package com.clinica.usuarios.security;
 
 import com.clinica.usuarios.model.*;
 import com.clinica.usuarios.repository.*;
+import com.clinica.usuarios.testsupport.TestEntidadFactory;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -121,22 +122,11 @@ class AuthLoginWithUsersIntegrationTest {
         Membresia membresia = membresiaRepository.findByNombre("SIN_VERIFICAR")
                 .orElseGet(() -> membresiaRepository.save(Membresia.builder().nombre("SIN_VERIFICAR").build()));
 
-        Profesional prof = new Profesional();
-        prof.setEmail(EMAIL_PROF_DUAL);
-        prof.setPassword(passwordEncoder.encode(PASSWORD));
-        prof.setNombre("Pro");
-        prof.setApellido("Dual");
-        prof.setDni(91234999);
-        prof.setTelefono("+5491199999999");
-        prof.setFechaNacimiento(LocalDate.of(1985, 3, 10));
-        prof.setSexo(Sexo.MASCULINO);
-        prof.setEstadoActual(activo);
-        prof.setRoles(Set.of(rolPaciente, rolProfesional));
-        prof.setDireccion(dir);
-        prof.setMatricula("MAT-DUAL-999");
-        prof.setEspecialidad(esp);
-        prof.setMembresiaActual(membresia);
-        profesionalRepository.save(prof);
+        Usuario usuarioProf = usuarioRepository.save(TestEntidadFactory.nuevoUsuario(
+                EMAIL_PROF_DUAL, passwordEncoder.encode(PASSWORD), activo, Set.of(rolPaciente, rolProfesional)));
+        profesionalRepository.save(TestEntidadFactory.profesional(
+                usuarioProf, "Pro", "Dual", 91234999, "+5491199999999",
+                LocalDate.of(1985, 3, 10), Sexo.MASCULINO, dir, "MAT-DUAL-999", esp, membresia));
     }
 
     private Paciente buildPaciente(
@@ -147,20 +137,11 @@ class AuthLoginWithUsersIntegrationTest {
             Localidad loc,
             Direccion dir,
             ObraSocial os) {
-        Paciente p = new Paciente();
-        p.setEmail(email);
-        p.setPassword(passwordEncoder.encode(PASSWORD));
-        p.setNombre("Nombre");
-        p.setApellido("Apellido");
-        p.setDni(dni);
-        p.setTelefono("+5491122334455");
-        p.setFechaNacimiento(LocalDate.of(1991, 6, 15));
-        p.setSexo(Sexo.MASCULINO);
-        p.setEstadoActual(estado);
-        p.setRoles(Set.of(rol));
-        p.setDireccion(dir);
-        p.setObraSocial(os);
-        return p;
+        Usuario usuario = usuarioRepository.save(
+                TestEntidadFactory.nuevoUsuario(email, passwordEncoder.encode(PASSWORD), estado, Set.of(rol)));
+        return TestEntidadFactory.paciente(
+                usuario, "Nombre", "Apellido", dni, "+5491122334455",
+                LocalDate.of(1991, 6, 15), Sexo.MASCULINO, dir, os);
     }
 
     @Test
@@ -240,7 +221,7 @@ class AuthLoginWithUsersIntegrationTest {
     @Test
     @DisplayName("Profesional dual → PUT /api/pacientes/{id} → 400 PERFIL_PACIENTE_NO_DISPONIBLE")
     void profesionalDual_putPacientePerfil_rejected() throws Exception {
-        Profesional prof = (Profesional) usuarioRepository.findByEmail(EMAIL_PROF_DUAL).orElseThrow();
+        Profesional prof = profesionalRepository.findByUsuario_Email(EMAIL_PROF_DUAL).orElseThrow();
         String token = extractAccessToken(mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(buildLoginJson(EMAIL_PROF_DUAL, PASSWORD, "paciente")))

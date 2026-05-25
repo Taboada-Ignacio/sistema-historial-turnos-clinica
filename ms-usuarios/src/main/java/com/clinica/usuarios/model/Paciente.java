@@ -2,28 +2,59 @@ package com.clinica.usuarios.model;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
-import lombok.experimental.SuperBuilder;
+
+import java.time.LocalDate;
 
 @Entity
 @Table(name = "pacientes")
-// Vincula el ID de esta tabla hija con el ID de la tabla padre (usuarios)
-@PrimaryKeyJoinColumn(name = "id_paciente") 
 @Data
-@EqualsAndHashCode(callSuper = true) // Incluye los campos de Usuario en las comparaciones
 @NoArgsConstructor
 @AllArgsConstructor
-@SuperBuilder
-public class Paciente extends Usuario {
+@Builder
+public class Paciente {
 
-    // Relación: Muchos pacientes pueden pertenecer a una misma Obra Social
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id_paciente")
+    private Long idPaciente;
+
+    @Column(nullable = false)
+    private String nombre;
+
+    @Column(nullable = false)
+    private String apellido;
+
+    @Column(nullable = false, unique = true)
+    private Integer dni;
+
+    @Column(nullable = false)
+    private String telefono;
+
+    @Column(name = "fecha_nacimiento")
+    private LocalDate fechaNacimiento;
+
+    @Column(nullable = false, length = 20)
+    private String sexo;
+
+    @OneToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "id_usuario", nullable = false, unique = true)
+    private Usuario usuario;
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "id_direccion", nullable = false)
+    private Direccion direccion;
+
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "id_obra_social", nullable = false)
     private ObraSocial obraSocial;
 
-    // Dato extra (Opcional): En los sistemas reales se suele pedir el número de afiliado
     @Column(name = "numero_afiliado")
     private String numeroAfiliado;
+
+    public Long getIdUsuario() {
+        return usuario != null ? usuario.getIdUsuario() : null;
+    }
 }

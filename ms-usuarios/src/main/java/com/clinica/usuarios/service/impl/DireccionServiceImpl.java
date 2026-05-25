@@ -9,7 +9,9 @@ import com.clinica.usuarios.model.Direccion;
 import com.clinica.usuarios.model.Localidad;
 import com.clinica.usuarios.repository.DireccionRepository;
 import com.clinica.usuarios.repository.LocalidadRepository;
-import com.clinica.usuarios.repository.UsuarioRepository;
+import com.clinica.usuarios.repository.AdministradorRepository;
+import com.clinica.usuarios.repository.PacienteRepository;
+import com.clinica.usuarios.repository.ProfesionalRepository;
 import com.clinica.usuarios.service.DireccionService;
 import com.clinica.usuarios.util.DireccionTextoNormalizer;
 import lombok.RequiredArgsConstructor;
@@ -24,7 +26,9 @@ public class DireccionServiceImpl implements DireccionService {
 
     private final DireccionRepository direccionRepository;
     private final LocalidadRepository localidadRepository;
-    private final UsuarioRepository usuarioRepository;
+    private final PacienteRepository pacienteRepository;
+    private final ProfesionalRepository profesionalRepository;
+    private final AdministradorRepository administradorRepository;
     private final DireccionCatalogoWriter direccionCatalogoWriter;
     private final DireccionSentinelHelper direccionSentinelHelper;
 
@@ -77,7 +81,9 @@ public class DireccionServiceImpl implements DireccionService {
         }
         Long idLocalidad = direccion.getLocalidad().getIdLocalidad();
         Direccion sentinel = direccionSentinelHelper.obtenerSentinelPorIdLocalidad(idLocalidad);
-        usuarioRepository.reasignarDireccion(id, sentinel.getIdDireccion());
+        pacienteRepository.reasignarDireccion(id, sentinel.getIdDireccion());
+        profesionalRepository.reasignarDireccion(id, sentinel.getIdDireccion());
+        administradorRepository.reasignarDireccion(id, sentinel.getIdDireccion());
         direccionRepository.delete(direccion);
     }
 

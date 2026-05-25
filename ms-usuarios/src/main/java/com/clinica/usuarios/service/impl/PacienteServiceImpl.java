@@ -21,7 +21,8 @@ import com.clinica.usuarios.service.DireccionService;
 import com.clinica.usuarios.service.EmailService;
 import com.clinica.usuarios.service.PacienteService;
 import com.clinica.usuarios.service.VerificationTokenService;
-import com.clinica.usuarios.service.support.UnicidadUsuarioValidator;
+import com.clinica.usuarios.service.support.CuentaEntidadHelper;
+import com.clinica.usuarios.service.support.EntidadPortalHelper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -49,7 +50,10 @@ public class PacienteServiceImpl implements PacienteService {
     public static final String TIPO_CUENTA_PROFESIONAL_EN_PORTAL_PACIENTE = "PROFESIONAL_EN_PORTAL_PACIENTE";
 
     private final PacienteRepository pacienteRepository;
+    private final ProfesionalRepository profesionalRepository;
     private final UsuarioRepository usuarioRepository;
+    private final CuentaEntidadHelper cuentaEntidadHelper;
+    private final EntidadPortalHelper entidadPortalHelper;
     private final RolRepository rolRepository;
     private final LocalidadRepository localidadRepository;
     private final ProvinciaRepository provinciaRepository;
@@ -76,38 +80,26 @@ public class PacienteServiceImpl implements PacienteService {
     public PacienteResponseDTO registrarPaciente(PacienteRegistroDTO dto) {
         
         // 1. Validaciones de Identidad
-        UnicidadUsuarioValidator.validarAlta(usuarioRepository, dto.getEmail(), dto.getDni());
+        cuentaEntidadHelper.validarAlta(dto.getEmail(), dto.getDni());
 
-        // 2. Obtenci?n de dependencias
         Set<Rol> rolesAsignados = buscarRoles(dto.getRolesIds());
-        
         Localidad localidad = localidadRepository.findById(dto.getIdLocalidad())
                 .orElseThrow(() -> new RecursoNoEncontradoException("No se encontr? la localidad con ID: " + dto.getIdLocalidad()));
-
         ObraSocial obraSocial = obraSocialRepository.findById(dto.getIdObraSocial())
                 .orElseThrow(() -> new RecursoNoEncontradoException("No se encontr? la Obra Social con ID: " + dto.getIdObraSocial()));
-
-        // 3. Buscar el estado inicial "PENDIENTE"
         Estado estadoPendiente = estadoRepository.findByNombre("PENDIENTE")
                 .orElseThrow(() -> new ReglaDeNegocioException("El estado inicial PENDIENTE no est? configurado en la base de datos."));
 
-        // 4. Mapeo y Configuraci?n Extra
         Paciente paciente = pacienteMapper.toEntity(dto);
-        paciente.setRoles(rolesAsignados);
         paciente.setDireccion(direccionService.obtenerOCrearPorTextoYLocalidad(dto.getDireccion(), localidad));
         paciente.setObraSocial(obraSocial);
-        paciente.setPassword(passwordEncoder.encode(dto.getPassword()));
-        paciente.setEstadoActual(estadoPendiente); // Seteamos el objeto Estado
-        
-        // 5. Guardado del Paciente
-        Paciente pacienteGuardado = pacienteRepository.save(paciente);
+        Paciente pacienteGuardado = cuentaEntidadHelper.guardarPaciente(
+                paciente, dto.getEmail(), passwordEncoder.encode(dto.getPassword()), estadoPendiente, rolesAsignados);
 
-        // 6. Registrar Auditor?a de Estado
-        registrarCambioEstado(pacienteGuardado, estadoPendiente);
-
-        // 7. Generar token/código y enviar correo
-        VerificationTokenService.DatosConfirmacion datos = verificationTokenService.crearTokenConfirmacion(pacienteGuardado);
-        emailService.enviarEmailConfirmacion(pacienteGuardado, datos.token(), datos.codigo());
+        registrarCambioEstado(pacienteGuardado.getUsuario(), estadoPendiente);
+        VerificationTokenService.DatosConfirmacion datos =
+                verificationTokenService.crearTokenConfirmacion(pacienteGuardado.getUsuario());
+        emailService.enviarEmailConfirmacion(pacienteGuardado.getUsuario(), datos.token(), datos.codigo());
 
         return pacienteMapper.toResponseDTO(pacienteGuardado);
     }
@@ -126,7 +118,7 @@ public class PacienteServiceImpl implements PacienteService {
         VerificationToken vToken = tokenRepository.findByUsuario_EmailAndCodigo(email, codigo)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Código de confirmación inválido."));
 
-        if (!(vToken.getUsuario() instanceof Paciente)) {
+        if (!entidadPortalHelper.esPaciente(vToken.getUsuario())) {
             throw new ReglaDeNegocioException("El correo no corresponde a un paciente registrado.");
         }
 
@@ -137,7 +129,7 @@ public class PacienteServiceImpl implements PacienteService {
     @Transactional
     public void reenviarCorreoConfirmacion(String email) {
         Paciente paciente = obtenerPacientePorEmail(email);
-        String estado = nombreEstado(paciente);
+        String estado = CuentaEntidadHelper.nombreEstado(paciente);
         if (!EstadoUsuario.PENDIENTE.equalsIgnoreCase(estado)) {
             if (EstadoUsuario.SIN_CONTRASENA.equalsIgnoreCase(estado)) {
                 throw new ReglaDeNegocioException(
@@ -154,7 +146,7 @@ public class PacienteServiceImpl implements PacienteService {
     @Override
     @Transactional
     public PacienteCargaProfesionalResponseDTO cargarPacienteSinPassword(PacienteCargaProfesionalDTO dto) {
-        UnicidadUsuarioValidator.validarAlta(usuarioRepository, dto.getEmail(), dto.getDni());
+        cuentaEntidadHelper.validarAlta(dto.getEmail(), dto.getDni());
 
         Rol rolPaciente = rolRepository.findByDescripcion("ROLE_PACIENTE")
                 .orElseThrow(() -> new RecursoNoEncontradoException("Rol ROLE_PACIENTE no configurado."));
@@ -173,20 +165,17 @@ public class PacienteServiceImpl implements PacienteService {
                 .nombre(dto.getNombre())
                 .apellido(dto.getApellido())
                 .dni(dto.getDni())
-                .email(dto.getEmail())
                 .telefono(dto.getTelefono())
                 .fechaNacimiento(dto.getFechaNacimiento())
-                .sexo(dto.getSexo())
-                .roles(Set.of(rolPaciente))
+                .sexo(CuentaEntidadHelper.sexoAsString(dto.getSexo()))
                 .direccion(direccionService.obtenerOCrearPorTextoYLocalidad(dto.getDireccion(), localidad))
                 .obraSocial(obraSocial)
                 .numeroAfiliado(dto.getNumeroAfiliado())
-                .password(passwordEncoder.encode(UUID.randomUUID().toString()))
-                .estadoActual(sinContrasena)
                 .build();
 
-        Paciente guardado = pacienteRepository.save(paciente);
-        registrarCambioEstado(guardado, sinContrasena);
+        Paciente guardado = cuentaEntidadHelper.guardarPaciente(
+                paciente, dto.getEmail(), passwordEncoder.encode(UUID.randomUUID().toString()), sinContrasena, Set.of(rolPaciente));
+        registrarCambioEstado(guardado.getUsuario(), sinContrasena);
         enviarCorreoActivacionPaciente(guardado);
 
         return PacienteCargaProfesionalResponseDTO.builder()
@@ -199,7 +188,7 @@ public class PacienteServiceImpl implements PacienteService {
     @Transactional
     public void reenviarCorreoAccesoPaciente(String email) {
         Paciente paciente = obtenerPacientePorEmail(email);
-        String estado = nombreEstado(paciente);
+        String estado = CuentaEntidadHelper.nombreEstado(paciente);
         if (EstadoUsuario.BLOQUEADO.equalsIgnoreCase(estado)) {
             throw new ReglaDeNegocioException(
                     "Tu cuenta está bloqueada. Contactá a la clínica o al administrador para rehabilitar el acceso.");
@@ -223,7 +212,7 @@ public class PacienteServiceImpl implements PacienteService {
     @Transactional
     public void solicitarCambioPasswordPaciente(String email) {
         Paciente paciente = obtenerPacientePorEmail(email);
-        String estado = nombreEstado(paciente);
+        String estado = CuentaEntidadHelper.nombreEstado(paciente);
         if (EstadoUsuario.BLOQUEADO.equalsIgnoreCase(estado)) {
             throw new ReglaDeNegocioException(
                     "Tu cuenta está bloqueada. Contactá a la clínica o al administrador para rehabilitar el acceso.");
@@ -262,23 +251,23 @@ public class PacienteServiceImpl implements PacienteService {
                     "El enlace de activación ha expirado (válido por 72 horas). Solicitá uno nuevo desde el login.");
         }
 
-        if (!(vToken.getUsuario() instanceof Paciente paciente)) {
-            throw new ReglaDeNegocioException("El enlace no corresponde a un paciente.");
-        }
+        Paciente paciente = pacienteRepository.findByUsuario_IdUsuario(vToken.getUsuario().getIdUsuario())
+                .orElseThrow(() -> new ReglaDeNegocioException("El enlace no corresponde a un paciente."));
 
-        if (!EstadoUsuario.SIN_CONTRASENA.equalsIgnoreCase(nombreEstado(paciente))) {
+        if (!EstadoUsuario.SIN_CONTRASENA.equalsIgnoreCase(CuentaEntidadHelper.nombreEstado(paciente))) {
             throw new ReglaDeNegocioException("Esta cuenta no está pendiente de activación con contraseña.");
         }
 
         Estado activo = estadoRepository.findByNombre(EstadoUsuario.ACTIVO)
                 .orElseThrow(() -> new ReglaDeNegocioException("Estado ACTIVO no disponible"));
 
-        paciente.setPassword(passwordEncoder.encode(passwordNueva));
-        paciente.setEstadoActual(activo);
-        usuarioRepository.save(paciente);
-        registrarCambioEstado(paciente, activo);
+        Usuario usuario = paciente.getUsuario();
+        usuario.setPassword(passwordEncoder.encode(passwordNueva));
+        usuario.setEstadoActual(activo);
+        usuarioRepository.save(usuario);
+        registrarCambioEstado(usuario, activo);
         tokenRepository.delete(vToken);
-        refreshTokenRepository.deleteByUsuario(paciente);
+        refreshTokenRepository.deleteByUsuario(usuario);
     }
 
     @Override
@@ -295,29 +284,31 @@ public class PacienteServiceImpl implements PacienteService {
         Usuario usuario = usuarioRepository.findByEmail(email)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Usuario no encontrado."));
 
-        if (usuario instanceof Paciente paciente) {
-            return pacienteRepository.findWithUbicacionById(paciente.getIdUsuario())
+        if (entidadPortalHelper.esPaciente(usuario)) {
+            return pacienteRepository.findWithUbicacionById(usuario.getIdUsuario())
                     .map(p -> toPortalSesionDesdePaciente(pacienteMapper.toResponseDTO(p)))
                     .orElseThrow(() -> new RecursoNoEncontradoException(
-                            "No se encontró el paciente con ID: " + paciente.getIdUsuario()));
+                            "No se encontró el paciente con ID: " + usuario.getIdUsuario()));
         }
 
-        if (usuario instanceof Profesional profesional) {
-            if (!tieneRol(profesional, "ROLE_PACIENTE")) {
+        if (entidadPortalHelper.esProfesional(usuario)) {
+            if (!EntidadPortalHelper.tieneRol(usuario, "ROLE_PACIENTE")) {
                 throw new ReglaDeNegocioException("La cuenta no corresponde a un paciente.");
             }
+            Profesional profesional = profesionalRepository.findWithUbicacionById(usuario.getIdUsuario())
+                    .orElseThrow(() -> new RecursoNoEncontradoException("Profesional no encontrado"));
             return PacientePortalSesionDTO.builder()
                     .idUsuario(profesional.getIdUsuario())
                     .nombre(profesional.getNombre())
                     .apellido(profesional.getApellido())
-                    .email(profesional.getEmail())
+                    .email(CuentaEntidadHelper.emailDe(profesional))
                     .telefono(profesional.getTelefono())
                     .dni(profesional.getDni())
                     .fechaNacimiento(profesional.getFechaNacimiento())
-                    .sexo(profesional.getSexo())
-                    .estadoActual(profesional.getEstadoActual() != null
-                            ? profesional.getEstadoActual().getNombre() : null)
-                    .roles(rolesADescripciones(profesional.getRoles()))
+                    .sexo(CuentaEntidadHelper.sexoAsEnum(profesional.getSexo()))
+                    .estadoActual(usuario.getEstadoActual() != null
+                            ? usuario.getEstadoActual().getNombre() : null)
+                    .roles(rolesADescripciones(usuario.getRoles()))
                     .tipoCuenta(TIPO_CUENTA_PROFESIONAL_EN_PORTAL_PACIENTE)
                     .perfilEditable(false)
                     .build();
@@ -366,7 +357,7 @@ public class PacienteServiceImpl implements PacienteService {
     private void rechazarEdicionPerfilSiProfesional(Long idUsuario) {
         Usuario usuario = usuarioRepository.findById(idUsuario)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Usuario no encontrado con ID: " + idUsuario));
-        if (usuario instanceof Profesional) {
+        if (entidadPortalHelper.esProfesional(usuario)) {
             throw new ReglaDeNegocioException(
                     "Tu perfil se gestiona desde el portal profesional. Ingresá como profesional para editar tus datos.",
                     CODE_PERFIL_PACIENTE_NO_DISPONIBLE);
@@ -525,32 +516,30 @@ public class PacienteServiceImpl implements PacienteService {
         Paciente paciente = pacienteRepository.findWithUbicacionById(id)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Paciente no encontrado con ID: " + id));
 
-        UnicidadUsuarioValidator.validarActualizacion(
-                usuarioRepository, paciente.getIdUsuario(), dto.getEmail(), dto.getDni());
+        cuentaEntidadHelper.validarActualizacion(paciente.getIdUsuario(), dto.getEmail(), dto.getDni());
 
-        // Actualizamos datos b?sicos
+        Usuario usuario = paciente.getUsuario();
         paciente.setNombre(dto.getNombre());
         paciente.setApellido(dto.getApellido());
         paciente.setDni(dto.getDni());
-        paciente.setEmail(dto.getEmail());
+        usuario.setEmail(dto.getEmail());
         paciente.setTelefono(dto.getTelefono());
         paciente.setFechaNacimiento(dto.getFechaNacimiento());
-        paciente.setSexo(dto.getSexo());
+        paciente.setSexo(CuentaEntidadHelper.sexoAsString(dto.getSexo()));
         paciente.setNumeroAfiliado(dto.getNumeroAfiliado());
 
-        // Cambio de estado: solo administrador
         if (dto.getEstadoActual() != null && callerIsAdministrador()) {
             Estado nuevoEstado = estadoRepository.findByNombre(dto.getEstadoActual())
                     .orElseThrow(() -> new RecursoNoEncontradoException("Estado no v?lido: " + dto.getEstadoActual()));
 
-            if (!paciente.getEstadoActual().equals(nuevoEstado)) {
-                paciente.setEstadoActual(nuevoEstado);
-                registrarCambioEstado(paciente, nuevoEstado);
+            if (!usuario.getEstadoActual().equals(nuevoEstado)) {
+                usuario.setEstadoActual(nuevoEstado);
+                registrarCambioEstado(usuario, nuevoEstado);
             }
         }
 
         if (dto.getRolesIds() != null && callerIsAdministrador()) {
-            paciente.setRoles(buscarRoles(dto.getRolesIds()));
+            usuario.setRoles(buscarRoles(dto.getRolesIds()));
         }
 
         if (dto.getIdLocalidad() != null || (dto.getDireccion() != null && !dto.getDireccion().isBlank())) {
@@ -573,19 +562,22 @@ public class PacienteServiceImpl implements PacienteService {
         paciente.setObraSocial(obraSocialRepository.findById(dto.getIdObraSocial())
                 .orElseThrow(() -> new RecursoNoEncontradoException("Obra Social no encontrada")));
 
+        usuarioRepository.save(usuario);
         return pacienteMapper.toResponseDTO(pacienteRepository.save(paciente));
     }
 
     @Override
     @Transactional 
     public void eliminarSoloPaciente(Long id) {
-        Paciente paciente = pacienteRepository.findById(id)
+        Paciente paciente = pacienteRepository.findByUsuario_IdUsuario(id)
                 .orElseThrow(() -> new RecursoNoEncontradoException("El paciente con ID " + id + " no fue encontrado."));
-        tokenRepository.deleteByUsuario(paciente);
-        refreshTokenRepository.deleteByUsuario(paciente);
+        Usuario usuario = paciente.getUsuario();
+        tokenRepository.deleteByUsuario(usuario);
+        refreshTokenRepository.deleteByUsuario(usuario);
         cambioEstadoRepository.deleteByUsuario_IdUsuario(id);
         try {
             pacienteRepository.delete(paciente);
+            usuarioRepository.delete(usuario);
         } catch (DataIntegrityViolationException e) {
             throw new ReglaDeNegocioException("No se puede eliminar el paciente porque tiene registros asociados.");
         }
@@ -624,41 +616,36 @@ public class PacienteServiceImpl implements PacienteService {
     }
 
     private Paciente obtenerPacientePorEmail(String email) {
-        Usuario usuario = usuarioRepository.findByEmail(email)
+        return pacienteRepository.findByUsuario_Email(email)
                 .orElseThrow(() -> new RecursoNoEncontradoException(
-                        "No se encontró un usuario registrado con el email: " + email));
-        if (!(usuario instanceof Paciente paciente)) {
-            throw new ReglaDeNegocioException("El correo no corresponde a un paciente registrado.");
-        }
-        return paciente;
-    }
-
-    private static String nombreEstado(Usuario usuario) {
-        return usuario.getEstadoActual() != null ? usuario.getEstadoActual().getNombre() : "";
+                        "No se encontró un paciente registrado con el email: " + email));
     }
 
     private void validarNoBloqueado(Paciente paciente) {
-        if (EstadoUsuario.BLOQUEADO.equalsIgnoreCase(nombreEstado(paciente))) {
+        if (EstadoUsuario.BLOQUEADO.equalsIgnoreCase(CuentaEntidadHelper.nombreEstado(paciente))) {
             throw new ReglaDeNegocioException(
                     "Tu cuenta está bloqueada. Contactá a la clínica o al administrador para rehabilitar el acceso.");
         }
     }
 
     private void enviarCorreoConfirmacionRegistro(Paciente paciente) {
-        VerificationTokenService.DatosConfirmacion datos = verificationTokenService.crearTokenConfirmacion(paciente);
-        emailService.enviarEmailConfirmacion(paciente, datos.token(), datos.codigo());
+        Usuario usuario = paciente.getUsuario();
+        VerificationTokenService.DatosConfirmacion datos = verificationTokenService.crearTokenConfirmacion(usuario);
+        emailService.enviarEmailConfirmacion(usuario, datos.token(), datos.codigo());
     }
 
     private void enviarCorreoActivacionPaciente(Paciente paciente) {
-        String token = verificationTokenService.crearTokenActivacionPaciente(paciente);
+        Usuario usuario = paciente.getUsuario();
+        String token = verificationTokenService.crearTokenActivacionPaciente(usuario);
         String link = String.format("%s/usuarios/api/auth/confirmar-activacion-paciente?token=%s", appUrl, token);
-        emailService.enviarEmailActivacionPaciente(paciente, link);
+        emailService.enviarEmailActivacionPaciente(usuario, link);
     }
 
     private void enviarCorreoRecuperacionPassword(Paciente paciente) {
-        String token = verificationTokenService.crearTokenRecuperacionPassword(paciente);
+        Usuario usuario = paciente.getUsuario();
+        String token = verificationTokenService.crearTokenRecuperacionPassword(usuario);
         String link = String.format("%s/usuarios/api/auth/confirmar-cambio-password?token=%s&tipo=paciente", appUrl, token);
-        emailService.enviarEmailRecuperacionPassword(paciente, link, "paciente");
+        emailService.enviarEmailRecuperacionPassword(usuario, link, "paciente");
     }
 
     private Paciente resolverPacienteDesdeTokenActivacion(String token) {
@@ -668,10 +655,9 @@ public class PacienteServiceImpl implements PacienteService {
             throw new ReglaDeNegocioException(
                     "El enlace de activación ha expirado (válido por 72 horas). Solicitá uno nuevo desde el login.");
         }
-        if (!(vToken.getUsuario() instanceof Paciente paciente)) {
-            throw new ReglaDeNegocioException("El enlace no corresponde a un paciente.");
-        }
-        if (!EstadoUsuario.SIN_CONTRASENA.equalsIgnoreCase(nombreEstado(paciente))) {
+        Paciente paciente = pacienteRepository.findByUsuario_IdUsuario(vToken.getUsuario().getIdUsuario())
+                .orElseThrow(() -> new ReglaDeNegocioException("El enlace no corresponde a un paciente."));
+        if (!EstadoUsuario.SIN_CONTRASENA.equalsIgnoreCase(CuentaEntidadHelper.nombreEstado(paciente))) {
             throw new ReglaDeNegocioException("Esta cuenta no está pendiente de activación con contraseña.");
         }
         return pacienteRepository.findWithUbicacionById(paciente.getIdUsuario())
@@ -683,10 +669,10 @@ public class PacienteServiceImpl implements PacienteService {
                 .nombre(paciente.getNombre())
                 .apellido(paciente.getApellido())
                 .dni(paciente.getDni())
-                .email(paciente.getEmail())
+                .email(CuentaEntidadHelper.emailDe(paciente))
                 .telefono(paciente.getTelefono())
                 .fechaNacimiento(paciente.getFechaNacimiento())
-                .sexo(paciente.getSexo())
+                .sexo(CuentaEntidadHelper.sexoAsEnum(paciente.getSexo()))
                 .numeroAfiliado(paciente.getNumeroAfiliado());
         if (paciente.getObraSocial() != null) {
             b.nombreObraSocial(paciente.getObraSocial().getDescripcion());

@@ -13,7 +13,8 @@ import com.clinica.usuarios.service.AdministradorService;
 import com.clinica.usuarios.service.DireccionService;
 import com.clinica.usuarios.service.EmailService;
 import com.clinica.usuarios.service.VerificationTokenService;
-import com.clinica.usuarios.service.support.UnicidadUsuarioValidator;
+import com.clinica.usuarios.service.support.CuentaEntidadHelper;
+import com.clinica.usuarios.service.support.EntidadPortalHelper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -36,6 +37,8 @@ public class AdministradorServiceImpl implements AdministradorService {
 
     private final AdministradorRepository administradorRepository;
     private final UsuarioRepository usuarioRepository;
+    private final CuentaEntidadHelper cuentaEntidadHelper;
+    private final EntidadPortalHelper entidadPortalHelper;
     private final RolRepository rolRepository;
     private final LocalidadRepository localidadRepository;
     private final EstadoRepository estadoRepository;
@@ -59,33 +62,28 @@ public class AdministradorServiceImpl implements AdministradorService {
         }
 
         // 2. Validar Unicidad de Email y DNI
-        UnicidadUsuarioValidator.validarAlta(usuarioRepository, dto.getEmail(), dto.getDni());
+        cuentaEntidadHelper.validarAlta(dto.getEmail(), dto.getDni());
 
-        // 3. Obtención de dependencias y Estado inicial
         Rol rolAdmin = obtenerRolObligatorio("ROLE_ADMINISTRADOR");
         Rol rolProfesional = obtenerRolObligatorio("ROLE_PROFESIONAL");
         Rol rolPaciente = obtenerRolObligatorio("ROLE_PACIENTE");
-        
+
         Localidad localidad = localidadRepository.findById(dto.getIdLocalidad())
                 .orElseThrow(() -> new RecursoNoEncontradoException("Localidad no encontrada con ID: " + dto.getIdLocalidad()));
 
         Estado estadoPendiente = estadoRepository.findByNombre("PENDIENTE")
                 .orElseThrow(() -> new ReglaDeNegocioException("Estado inicial PENDIENTE no configurado"));
 
-        // 4. Mapeo y Configuración
         Administrador admin = administradorMapper.toEntity(dto);
-        admin.setRoles(Set.of(rolAdmin, rolProfesional, rolPaciente));
         admin.setDireccion(direccionService.obtenerOCrearPorTextoYLocalidad(dto.getDireccion(), localidad));
-        admin.setPassword(passwordEncoder.encode(dto.getPassword()));
-        admin.setEstadoActual(estadoPendiente); 
+        Administrador adminGuardado = cuentaEntidadHelper.guardarAdministrador(
+                admin, dto.getEmail(), passwordEncoder.encode(dto.getPassword()), estadoPendiente,
+                Set.of(rolAdmin, rolProfesional, rolPaciente));
 
-        // 5. Guardado del Administrador
-        Administrador adminGuardado = administradorRepository.save(admin);
-
-        // 6. Registro de Auditoría, Generación de Token y ENVÍO DE EMAIL
-        registrarCambioEstado(adminGuardado, estadoPendiente);
-        VerificationTokenService.DatosConfirmacion datos = verificationTokenService.crearTokenConfirmacion(adminGuardado);
-        emailService.enviarEmailConfirmacion(adminGuardado, datos.token(), datos.codigo());
+        registrarCambioEstado(adminGuardado.getUsuario(), estadoPendiente);
+        VerificationTokenService.DatosConfirmacion datos =
+                verificationTokenService.crearTokenConfirmacion(adminGuardado.getUsuario());
+        emailService.enviarEmailConfirmacion(adminGuardado.getUsuario(), datos.token(), datos.codigo());
 
         return administradorMapper.toResponseDTO(adminGuardado);
     }
@@ -105,7 +103,7 @@ public class AdministradorServiceImpl implements AdministradorService {
                 .orElseThrow(() -> new RecursoNoEncontradoException("Código de confirmación inválido."));
 
         Usuario usuario = vToken.getUsuario();
-        if (!(usuario instanceof Administrador)) {
+        if (!entidadPortalHelper.esAdministrador(usuario)) {
             throw new ReglaDeNegocioException("El correo no corresponde a un administrador registrado.");
         }
 
@@ -125,13 +123,7 @@ public class AdministradorServiceImpl implements AdministradorService {
                 .orElseThrow(() -> new RecursoNoEncontradoException(
                         "No se encontró un usuario registrado con el email: " + email));
 
-        if (!(usuario instanceof Administrador)) {
-            throw new ReglaDeNegocioException("El correo no corresponde a un administrador registrado.");
-        }
-
-        boolean esAdmin = usuario.getRoles().stream()
-                .anyMatch(r -> "ROLE_ADMINISTRADOR".equals(r.getDescripcion()));
-        if (!esAdmin) {
+        if (!entidadPortalHelper.esAdministrador(usuario)) {
             throw new ReglaDeNegocioException("El correo no corresponde a un administrador registrado.");
         }
 
@@ -154,7 +146,7 @@ public class AdministradorServiceImpl implements AdministradorService {
     @Override
     @Transactional(readOnly = true)
     public AdministradorResponseDTO obtenerAdministradorPorEmail(String email) {
-        Administrador admin = administradorRepository.findByEmail(email)
+        Administrador admin = administradorRepository.findByUsuario_Email(email)
                 .flatMap(a -> administradorRepository.findWithUbicacionById(a.getIdUsuario()))
                 .orElseThrow(() -> new RecursoNoEncontradoException("Administrador no encontrado."));
         return administradorMapper.toResponseDTO(admin);
@@ -176,24 +168,24 @@ public class AdministradorServiceImpl implements AdministradorService {
         Administrador admin = administradorRepository.findWithUbicacionById(id)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Administrador no encontrado"));
 
-        UnicidadUsuarioValidator.validarActualizacion(
-                usuarioRepository, admin.getIdUsuario(), dto.getEmail(), dto.getDni());
+        cuentaEntidadHelper.validarActualizacion(admin.getIdUsuario(), dto.getEmail(), dto.getDni());
 
+        Usuario usuario = admin.getUsuario();
         admin.setNombre(dto.getNombre());
         admin.setApellido(dto.getApellido());
         admin.setDni(dto.getDni());
-        admin.setEmail(dto.getEmail());
+        usuario.setEmail(dto.getEmail());
         admin.setTelefono(dto.getTelefono());
         admin.setFechaNacimiento(dto.getFechaNacimiento());
-        admin.setSexo(dto.getSexo());
+        admin.setSexo(CuentaEntidadHelper.sexoAsString(dto.getSexo()));
 
         if (dto.getEstadoActual() != null) {
             Estado nuevoEstado = estadoRepository.findByNombre(dto.getEstadoActual())
                     .orElseThrow(() -> new RecursoNoEncontradoException("Estado no válido: " + dto.getEstadoActual()));
 
-            if (!admin.getEstadoActual().equals(nuevoEstado)) {
-                admin.setEstadoActual(nuevoEstado);
-                registrarCambioEstado(admin, nuevoEstado);
+            if (!usuario.getEstadoActual().equals(nuevoEstado)) {
+                usuario.setEstadoActual(nuevoEstado);
+                registrarCambioEstado(usuario, nuevoEstado);
             }
         }
 
@@ -214,19 +206,22 @@ public class AdministradorServiceImpl implements AdministradorService {
             }
         }
 
+        usuarioRepository.save(usuario);
         return administradorMapper.toResponseDTO(administradorRepository.save(admin));
     }
 
     @Override
     @Transactional
     public void eliminarAdministrador(Long id) {
-        Administrador admin = administradorRepository.findById(id)
+        Administrador admin = administradorRepository.findByUsuario_IdUsuario(id)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Administrador no encontrado"));
-        tokenRepository.deleteByUsuario(admin);
-        refreshTokenRepository.deleteByUsuario(admin);
+        Usuario usuario = admin.getUsuario();
+        tokenRepository.deleteByUsuario(usuario);
+        refreshTokenRepository.deleteByUsuario(usuario);
         cambioEstadoRepository.deleteByUsuario_IdUsuario(id);
         try {
             administradorRepository.delete(admin);
+            usuarioRepository.delete(usuario);
         } catch (DataIntegrityViolationException e) {
             throw new ReglaDeNegocioException("No se puede eliminar el administrador porque tiene registros asociados.");
         }

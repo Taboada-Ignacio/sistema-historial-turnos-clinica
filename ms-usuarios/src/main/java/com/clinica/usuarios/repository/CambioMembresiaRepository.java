@@ -10,7 +10,7 @@ import java.util.List;
 public interface CambioMembresiaRepository extends JpaRepository<CambioMembresia, Long> {
     
     // Obtener todo el historial de membresías de un profesional, ordenado desde el más reciente al más antiguo
-    List<CambioMembresia> findByProfesional_IdUsuarioOrderByFechaInicioDesc(Long idUsuario);
+    List<CambioMembresia> findByProfesional_IdProfesionalOrderByFechaInicioDesc(Long idProfesional);
 
-    void deleteByProfesional_IdUsuario(Long idUsuario);
+    void deleteByProfesional_IdProfesional(Long idProfesional);
 }

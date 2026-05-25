@@ -1,21 +1,53 @@
 package com.clinica.usuarios.model;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
-import lombok.experimental.SuperBuilder;
+
+import java.time.LocalDate;
 
 @Entity
 @Table(name = "administradores")
 @Data
-@EqualsAndHashCode(callSuper = true)
 @NoArgsConstructor
-@SuperBuilder
-public class Administrador extends Usuario {
-    
-    // Por el momento no tiene atributos adicionales, hereda todo de Usuario.
-    // La anotación @EqualsAndHashCode(callSuper = true) es necesaria 
-    // para que Lombok compare correctamente usando los campos del padre.
+@AllArgsConstructor
+@Builder
+public class Administrador {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id_administrador")
+    private Long idAdministrador;
+
+    @Column(nullable = false)
+    private String nombre;
+
+    @Column(nullable = false)
+    private String apellido;
+
+    @Column(nullable = false, unique = true)
+    private Integer dni;
+
+    @Column(nullable = false)
+    private String telefono;
+
+    @Column(name = "fecha_nacimiento")
+    private LocalDate fechaNacimiento;
+
+    @Column(nullable = false, length = 20)
+    private String sexo;
+
+    @OneToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "id_usuario", nullable = false, unique = true)
+    private Usuario usuario;
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "id_direccion", nullable = false)
+    private Direccion direccion;
+
+    public Long getIdUsuario() {
+        return usuario != null ? usuario.getIdUsuario() : null;
+    }
 }

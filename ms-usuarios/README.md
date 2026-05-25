@@ -11,6 +11,7 @@ Identidad, roles, JWT, refresh tokens, catálogos maestros, direcciones y confir
 | [README-deploy.md](README-deploy.md) | Cookies, CORS, variables de despliegue |
 | [../docs/API.md](../docs/API.md) | Rutas HTTP y acceso |
 | [../docs/ENTIDADES.md](../docs/ENTIDADES.md) | Modelo JPA |
+| [../docs/CAMBIOS-MODELO-COMPOSICION-USUARIOS.md](../docs/CAMBIOS-MODELO-COMPOSICION-USUARIOS.md) | Refactor composición, diagrama de clases, changelog |
 | [../docs/SEGURIDAD.md](../docs/SEGURIDAD.md) | JWT, filtros, `@PreAuthorize` |
 | [../docs/CAMBIOS-ADMIN-PACIENTES-PROFESIONALES.md](../docs/CAMBIOS-ADMIN-PACIENTES-PROFESIONALES.md) | Búsqueda admin, CRUD pacientes/profesionales, unicidad |
 | [../docs/CAMBIOS-ADMIN-ADMINISTRADORES.md](../docs/CAMBIOS-ADMIN-ADMINISTRADORES.md) | Listado admin de administradores; PUT/DELETE solo cuenta propia |

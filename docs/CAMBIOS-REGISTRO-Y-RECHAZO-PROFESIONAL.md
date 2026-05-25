@@ -108,7 +108,7 @@ Helper en `portalPaths.js`: `ADMIN_PATHS.profesionalPendienteRechazar(id)`.
    - `RefreshTokenRepository.deleteByUsuario`
    - `CambioMembresiaRepository.deleteByProfesional_IdUsuario`
    - `CambioEstadoRepository.deleteByUsuario_IdUsuario`
-   - `ProfesionalRepository.delete(profesional)` (herencia JOINED: usuario + fila en `profesionales`).
+   - `ProfesionalRepository.delete(profesional)` y `UsuarioRepository.delete(usuario)` (composición 1:1 — ver [`CAMBIOS-MODELO-COMPOSICION-USUARIOS.md`](CAMBIOS-MODELO-COMPOSICION-USUARIOS.md)).
 
 Si quedan FK externas (turnos, historiales futuros) → **400** con mensaje de registros asociados.
 

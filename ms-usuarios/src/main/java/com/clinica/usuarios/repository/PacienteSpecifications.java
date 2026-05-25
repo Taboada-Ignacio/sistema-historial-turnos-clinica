@@ -54,6 +54,10 @@ public final class PacienteSpecifications {
             predicates.add(cb.equal(provincia.get("idProvincia"), idProvincia));
             predicates.add(cb.equal(localidad.get("idLocalidad"), idLocalidad));
 
+            Join<?, ?> usuario = root.join("usuario", JoinType.INNER);
+            Join<?, ?> estado = usuario.join("estadoActual", JoinType.INNER);
+            predicates.add(cb.notEqual(cb.upper(estado.get("nombre")), "BLOQUEADO"));
+
             String normalizado = texto.trim();
             if (normalizado.matches("\\d+")) {
                 String digitos = normalizado;
